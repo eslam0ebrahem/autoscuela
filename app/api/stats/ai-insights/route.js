@@ -6,7 +6,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { getAIInsights } from '@/lib/groq'
 
 const MIN_QUESTIONS_FOR_AI = 60
-const CACHE_HOURS = 24
+const CACHE_HOURS = 8
 
 export async function GET(request) {
   try {
