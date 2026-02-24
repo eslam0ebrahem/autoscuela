@@ -15,6 +15,13 @@ function sanitizeHtml(html) {
   return div.innerHTML
 }
 
+function playSound(src) {
+  if (typeof window !== 'undefined') {
+    const audio = new Audio(src)
+    audio.play().catch((e) => console.error('Audio play failed:', e))
+  }
+}
+
 function ExamInterface() {
   const { user, t } = useAuth()
   const params = useParams()
@@ -46,6 +53,20 @@ function ExamInterface() {
       .then((data) => {
         setSession(data.session)
         setQuestions(data.questions)
+
+        // If we just loaded the page and it's already completed, trigger the result screen
+        if (data.session.status === 'completed') {
+          setResult({
+            score: data.session.score,
+            errors: data.session.errors,
+            passed: data.session.passed,
+            xpEarned: 0, // Not tracked in session object directly for reloading
+            newBadges: [],
+          })
+          setLoading(false)
+          return
+        }
+
         setCurrentIdx(data.session.currentQuestionIndex || 0)
         if (data.session.expiresAt) {
           const remaining = Math.max(0, Math.floor((new Date(data.session.expiresAt) - Date.now()) / 1000))
@@ -89,6 +110,14 @@ function ExamInterface() {
       })
       const data = await res.json()
       setFeedbackData(data)
+
+      if (session?.assistanceMode === 'instant') {
+        if (data.isCorrect) {
+          playSound('/sounds/correct-answer.mp3')
+        } else {
+          playSound('/sounds/wrong-answer.mp3')
+        }
+      }
     } catch (e) {
       console.error(e)
     }
@@ -114,7 +143,12 @@ function ExamInterface() {
       const data = await res.json()
       if (data.result) {
         setResult(data.result)
-        if (data.result.passed) setConfetti(true)
+        if (data.result.passed) {
+          setConfetti(true)
+          playSound('/sounds/sucess-exam.mp3')
+        } else {
+          playSound('/sounds/fail-exam.mp3')
+        }
       }
     } catch (e) {
       console.error(e)
@@ -186,10 +220,12 @@ function ExamInterface() {
               <div className="text-3xl font-bold text-danger">{result.errors}</div>
               <div className="text-xs text-ink-light">{t('Errores', 'Errors')}</div>
             </div>
-            <div className="bg-slate-50 rounded-xl p-4">
-              <div className="text-3xl font-bold text-secondary">+{result.xpEarned}</div>
-              <div className="text-xs text-ink-light">XP</div>
-            </div>
+            {result.xpEarned !== undefined && (
+              <div className="bg-slate-50 rounded-xl p-4">
+                <div className="text-3xl font-bold text-secondary">+{result.xpEarned}</div>
+                <div className="text-xs text-ink-light">XP</div>
+              </div>
+            )}
           </div>
 
           {result.newBadges?.length > 0 && (
@@ -205,7 +241,7 @@ function ExamInterface() {
 
           <div className="flex gap-3">
             <button
-              onClick={() => router.push(`/api/exams/${sessionId}`)}
+              onClick={() => router.push(`/exam/${sessionId}/review`)}
               className="btn-secondary flex-1"
             >
               {t('Revisar respuestas', 'Review answers')}
@@ -382,11 +418,13 @@ function ExamInterface() {
 export default function ExamSessionPage() {
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-canvas">
-        <main className="max-w-3xl mx-auto px-4 py-6">
-          <ExamInterface />
-        </main>
-      </div>
+      <AppShell>
+        <div className="min-h-screen bg-canvas">
+          <main className="max-w-3xl mx-auto px-4 py-6">
+            <ExamInterface />
+          </main>
+        </div>
+      </AppShell>
     </AuthProvider>
   )
 }

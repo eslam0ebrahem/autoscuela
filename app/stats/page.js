@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 
@@ -21,6 +22,7 @@ function TopicBar({ tag, accuracy, attempted }) {
 }
 
 function StatsContent() {
+  const router = useRouter()
   const { user, t } = useAuth()
   const [stats, setStats] = useState(null)
   const [insights, setInsights] = useState(null)
@@ -124,7 +126,7 @@ function StatsContent() {
           <h2 className="font-bold text-lg text-ink mb-4">⚠️ {t('Áreas Débiles', 'Weak Areas')}</h2>
           {insightsLoading ? (
             <div className="space-y-3">
-              {[1,2,3].map(i => <div key={i} className="h-8 bg-slate-200 rounded animate-pulse" />)}
+              {[1, 2, 3].map(i => <div key={i} className="h-8 bg-slate-200 rounded animate-pulse" />)}
             </div>
           ) : insights?.weak_topics?.length > 0 ? (
             <div className="space-y-3">
@@ -174,25 +176,32 @@ function StatsContent() {
           <h2 className="font-bold text-lg text-ink mb-4">{t('Exámenes Recientes', 'Recent Exams')}</h2>
           <div className="space-y-2">
             {stats.recent_sessions.map((s, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+              <button
+                key={i}
+                onClick={() => router.push(`/exam/${s._id}`)}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors text-left"
+              >
                 <div className="flex items-center gap-3">
                   <span className={s.passed ? 'text-success' : 'text-warning'}>{s.passed ? '✅' : '❌'}</span>
                   <div>
-                    <span className="text-sm font-medium text-ink">
+                    <span className="text-sm font-medium text-ink block">
                       {s.mode === 'official' ? t('Oficial', 'Official') : t('Personalizado', 'Custom')}
                     </span>
-                    <span className="text-xs text-ink-light ml-2">
+                    <span className="text-xs text-ink-light">
                       {new Date(s.completedAt).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className={`text-sm font-bold ${s.passed ? 'text-success' : 'text-warning'}`}>
-                    {s.score}/{s.score + s.errors}
-                  </span>
-                  <span className="text-xs text-ink-light ml-1">({s.errors} {t('errores', 'errors')})</span>
+                <div className="text-right flex items-center gap-3">
+                  <div>
+                    <span className={`text-sm font-bold block ${s.passed ? 'text-success' : 'text-warning'}`}>
+                      {s.score}/{s.score + s.errors}
+                    </span>
+                    <span className="text-xs text-ink-light">({s.errors} {t('errores', 'errors')})</span>
+                  </div>
+                  <span className="text-slate-300">›</span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
