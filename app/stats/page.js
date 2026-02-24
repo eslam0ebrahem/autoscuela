@@ -195,9 +195,9 @@ function StatsContent() {
                 <div className="text-right flex items-center gap-3">
                   <div>
                     <span className={`text-sm font-bold block ${s.passed ? 'text-success' : 'text-warning'}`}>
-                      {s.score}/{s.score + s.errors}
+                      {s.score}/{s.score + s.errorCount}
                     </span>
-                    <span className="text-xs text-ink-light">({s.errors} {t('errores', 'errors')})</span>
+                    <span className="text-xs text-ink-light">({s.errorCount} {t('errores', 'errors')})</span>
                   </div>
                   <span className="text-slate-300">›</span>
                 </div>

@@ -95,7 +95,7 @@ export async function GET(request) {
       .sort({ completedAt: -1 })
       .skip(skip)
       .limit(limit)
-      .select('mode score errors passed completedAt language createdAt topicFilters')
+      .select('mode score errorCount passed completedAt language createdAt topicFilters')
 
     const total = await ExamSession.countDocuments({
       userId: tokenData.userId,

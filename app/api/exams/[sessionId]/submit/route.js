@@ -30,7 +30,7 @@ export async function POST(request, { params }) {
     const passed = errors <= MAX_ERRORS_TO_PASS
 
     session.score = correctCount
-    session.errors = errors
+    session.errorCount = errors
     session.passed = passed
     session.status = 'completed'
     session.completedAt = new Date()

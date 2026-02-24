@@ -58,7 +58,7 @@ function ExamInterface() {
         if (data.session.status === 'completed') {
           setResult({
             score: data.session.score,
-            errors: data.session.errors,
+            errors: data.session.errorCount,
             passed: data.session.passed,
             xpEarned: 0, // Not tracked in session object directly for reloading
             newBadges: [],

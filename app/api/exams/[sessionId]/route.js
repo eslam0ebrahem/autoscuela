@@ -54,7 +54,7 @@ export async function GET(request, { params }) {
         totalQuestions: session.questionIds.length,
         answers: session.answers,
         score: session.score,
-        errors: session.errors,
+        errorCount: session.errorCount,
         passed: session.passed,
         expiresAt: session.expiresAt,
         completedAt: session.completedAt,

@@ -25,7 +25,7 @@ const examSessionSchema = new mongoose.Schema(
 
     currentQuestionIndex: { type: Number, default: 0 },
     score: { type: Number }, // out of total questions
-    errors: { type: Number },
+    errorCount: { type: Number },
     passed: { type: Boolean },
     completedAt: { type: Date },
     expiresAt: { type: Date }, // For official mode timer

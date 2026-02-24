@@ -18,7 +18,7 @@ export async function GET(request) {
       ExamSession.find({ userId: tokenData.userId, status: 'completed' })
         .sort({ completedAt: -1 })
         .limit(10)
-        .select('score passed errors completedAt mode'),
+        .select('score passed errorCount completedAt mode'),
     ])
 
     const passedExams = await ExamSession.countDocuments({

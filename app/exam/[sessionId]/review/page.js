@@ -93,7 +93,7 @@ function ReviewInterface() {
                         <div className="text-xs text-ink-light">{t('Correctas', 'Correct')}</div>
                     </div>
                     <div className="bg-slate-50 rounded-xl p-4 w-24">
-                        <div className="text-3xl font-bold text-danger">{session.errors || 0}</div>
+                        <div className="text-3xl font-bold text-danger">{session.errorCount || 0}</div>
                         <div className="text-xs text-ink-light">{t('Errores', 'Errors')}</div>
                     </div>
                 </div>
