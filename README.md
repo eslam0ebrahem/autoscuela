@@ -198,7 +198,7 @@ autoscuela/
 
 ## 🤖 Groq AI Integration
 
-The AI Readiness Score is powered by **Groq's llama3-70b-8192** model.
+The AI Readiness Score is powered by **Groq's llama-3.1-8b-instant** model.
 
 **Trigger:** After user answers 60+ questions.  
 **Cache:** 24 hours or after completing a new exam.  
