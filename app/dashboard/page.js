@@ -227,6 +227,23 @@ function DashboardContent() {
             </div>
           </Link>
 
+          <Link href="/dashboard/bookmarks" className="card-hover block">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-2xl shadow-glow-amber">
+                ⭐
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-ink">{t('Guardados', 'Bookmarks')}</h3>
+                <p className="text-sm text-ink-light">
+                  {t('Repasa tus preguntas guardadas', 'Review your saved questions')}
+                </p>
+              </div>
+              <svg className="w-5 h-5 text-ink-light" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </Link>
+
           <Link href="/stats" className="card-hover block">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 bg-gradient-success rounded-2xl flex items-center justify-center text-2xl shadow-glow-green">

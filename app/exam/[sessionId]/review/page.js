@@ -25,8 +25,16 @@ function ReviewInterface() {
     const [lang, setLang] = useState(user?.preferences?.language || 'es')
     const [expandedImage, setExpandedImage] = useState(null)
     const [showExplanationMap, setShowExplanationMap] = useState({})
+    const [bookmarkedQuestions, setBookmarkedQuestions] = useState(new Set())
 
     useEffect(() => {
+        // Fetch initial bookmarks
+        fetch('/api/users/bookmarks').then(r => r.json()).then(data => {
+            if (data.bookmarks) {
+                setBookmarkedQuestions(new Set(data.bookmarks))
+            }
+        }).catch(console.error)
+
         fetch(`/api/exams/${sessionId}`)
             .then((r) => r.json())
             .then((data) => {
@@ -41,6 +49,28 @@ function ReviewInterface() {
             ...prev,
             [idx]: !prev[idx]
         }))
+    }
+
+    const toggleBookmark = async (questionId) => {
+        try {
+            const res = await fetch('/api/users/bookmarks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ questionId })
+            })
+            const data = await res.json()
+            if (data.success) {
+                const newSet = new Set(bookmarkedQuestions)
+                if (data.isBookmarked) {
+                    newSet.add(questionId)
+                } else {
+                    newSet.delete(questionId)
+                }
+                setBookmarkedQuestions(newSet)
+            }
+        } catch (error) {
+            console.error('Error toggling bookmark:', error)
+        }
     }
 
     if (loading) {
@@ -108,8 +138,16 @@ function ReviewInterface() {
 
                 return (
                     <div key={q._id} className="card relative">
-                        <div className="absolute top-4 right-4 text-sm font-bold text-ink-light bg-slate-100 px-3 py-1 rounded-lg">
-                            {idx + 1} / {questions.length}
+                        <div className="absolute top-4 right-4 flex items-center gap-3">
+                            <button
+                                onClick={() => toggleBookmark(q._id)}
+                                className={`flex items-center gap-1 text-sm font-medium transition-colors ${bookmarkedQuestions.has(q._id) ? 'text-amber-500 hover:text-amber-600' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                {bookmarkedQuestions.has(q._id) ? '⭐ Guardado' : '☆ Guardar'}
+                            </button>
+                            <div className="text-sm font-bold text-ink-light bg-slate-100 px-3 py-1 rounded-lg">
+                                {idx + 1} / {questions.length}
+                            </div>
                         </div>
 
                         {/* Image */}

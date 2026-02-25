@@ -17,6 +17,7 @@ export default function Navbar() {
     { href: '/dashboard', label: t('Inicio', 'Home'), icon: '🏠' },
     { href: '/exam', label: t('Examen', 'Exam'), icon: '📝' },
     { href: '/flashcards', label: t('Tarjetas', 'Flashcards'), icon: '🃏' },
+    { href: '/dashboard/bookmarks', label: t('Guardados', 'Bookmarks'), icon: '⭐' },
     { href: '/stats', label: t('Estadísticas', 'Stats'), icon: '📊' },
     { href: '/leaderboard', label: t('Ranking', 'Leaderboard'), icon: '🏆' },
     { href: '/badges', label: t('Logros', 'Badges'), icon: '🎖️' },
@@ -38,11 +39,10 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  pathname === link.href
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${pathname === link.href
                     ? 'bg-blue-50 text-primary'
                     : 'text-ink-light hover:text-ink hover:bg-slate-50'
-                }`}
+                  }`}
               >
                 {link.label}
               </Link>
@@ -147,9 +147,8 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg mx-1 ${
-                  pathname === link.href ? 'bg-blue-50 text-primary' : 'text-ink hover:bg-slate-50'
-                }`}
+                className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg mx-1 ${pathname === link.href ? 'bg-blue-50 text-primary' : 'text-ink hover:bg-slate-50'
+                  }`}
                 onClick={() => setMenuOpen(false)}
               >
                 <span>{link.icon}</span>

@@ -40,6 +40,9 @@ const userSchema = new mongoose.Schema(
 
     // Manual override by admin
     premiumOverride: { type: Boolean, default: false },
+
+    // Bookmarked Questions
+    bookmarkedQuestions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
   },
   { timestamps: true }
 )

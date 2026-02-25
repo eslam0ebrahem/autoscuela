@@ -43,11 +43,19 @@ function ExamInterface() {
   const [result, setResult] = useState(null)
   const [startTime, setStartTime] = useState(null)
   const [confetti, setConfetti] = useState(false)
+  const [bookmarkedQuestions, setBookmarkedQuestions] = useState(new Set())
 
   const timerRef = useRef(null)
 
-  // Load exam
+  // Load exam and bookmarks
   useEffect(() => {
+    // Fetch initial bookmarks
+    fetch('/api/users/bookmarks').then(r => r.json()).then(data => {
+      if (data.bookmarks) {
+        setBookmarkedQuestions(new Set(data.bookmarks))
+      }
+    }).catch(console.error)
+
     fetch(`/api/exams/${sessionId}`)
       .then((r) => r.json())
       .then((data) => {
@@ -132,6 +140,28 @@ function ExamInterface() {
       setShowExplanation(false)
     } else {
       handleSubmitExam()
+    }
+  }
+
+  const toggleBookmark = async (questionId) => {
+    try {
+      const res = await fetch('/api/users/bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId })
+      })
+      const data = await res.json()
+      if (data.success) {
+        const newSet = new Set(bookmarkedQuestions)
+        if (data.isBookmarked) {
+          newSet.add(questionId)
+        } else {
+          newSet.delete(questionId)
+        }
+        setBookmarkedQuestions(newSet)
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error)
     }
   }
 
@@ -300,14 +330,6 @@ function ExamInterface() {
             ⏱ {formatTime(timeLeft)}
           </div>
         )}
-
-        {/* Language toggle */}
-        <button
-          onClick={() => setLang((l) => (l === 'es' ? 'en' : 'es'))}
-          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-sm font-semibold transition-colors"
-        >
-          {lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}
-        </button>
       </div>
 
       {/* Question card */}
@@ -383,10 +405,16 @@ function ExamInterface() {
 
       {/* Footer */}
       <div className="flex items-center justify-between">
-        <div className="text-sm text-ink-light">
+        <div className="flex items-center gap-3">
           {currentQuestion.topic_tag && (
             <span className="badge-pill bg-slate-100 text-ink-light">{currentQuestion.topic_tag}</span>
           )}
+          <button
+            onClick={() => toggleBookmark(currentQuestion._id)}
+            className={`flex items-center gap-1 text-sm font-medium transition-colors ${bookmarkedQuestions.has(currentQuestion._id) ? 'text-amber-500 hover:text-amber-600' : 'text-slate-400 hover:text-slate-600'}`}
+          >
+            {bookmarkedQuestions.has(currentQuestion._id) ? '⭐ Guardado' : '☆ Guardar'}
+          </button>
         </div>
 
         {answered && (
