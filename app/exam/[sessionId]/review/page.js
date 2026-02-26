@@ -101,7 +101,7 @@ function ReviewInterface() {
     })
 
     return (
-        <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-12">
+        <div className="max-w-6xl mx-auto space-y-6 animate-fade-in pb-12">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <button
@@ -130,7 +130,9 @@ function ReviewInterface() {
             </div>
 
             {questions.map((q, idx) => {
-                const questionText = lang === 'en' ? q.question?.en : q.question?.es
+                const questionText = lang === 'en' && q.question?.en
+                    ? q.question.en
+                    : q.question?.es
                 const userAnswer = answerMap[q._id]
                 const selectedOptionIdx = userAnswer?.selectedOptionIdx
                 const correctIdx = q.correct_option_idx
@@ -172,7 +174,7 @@ function ReviewInterface() {
                                 {/* Options */}
                                 <div className="space-y-3">
                                     {q.options?.map((opt) => {
-                                        const text = lang === 'en' ? opt.text_en : opt.text_es
+                                        const text = lang === 'en' && opt.text_en ? opt.text_en : opt.text_es
                                         const letter = ['A', 'B', 'C', 'D'][opt.idx]
 
                                         let cls = 'option-btn pointer-events-none'
@@ -251,7 +253,7 @@ export default function ExamReviewPage() {
         <AuthProvider>
             <AppShell>
                 <div className="min-h-screen bg-canvas">
-                    <main className="max-w-6xl mx-auto px-4 py-6">
+                    <main className="max-w-7xl mx-auto px-4 py-6">
                         <ReviewInterface />
                     </main>
                 </div>

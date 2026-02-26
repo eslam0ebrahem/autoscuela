@@ -311,10 +311,12 @@ function ExamInterface() {
   const isCorrectSelected = feedbackData?.isCorrect
   const correctIdx = feedbackData?.correctOptionIdx ?? currentQuestion.correct_option_idx
 
-  const questionText = lang === 'en' ? currentQuestion.question?.en : currentQuestion.question?.es
+  const questionText = lang === 'en' && currentQuestion.question?.en
+    ? currentQuestion.question.en
+    : currentQuestion.question?.es
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4 animate-fade-in">
+    <div className="max-w-7xl mx-auto space-y-4 animate-fade-in">
       {/* Sticky header */}
       <div className="flex items-center gap-3">
         <button
@@ -394,7 +396,7 @@ function ExamInterface() {
             {/* Options */}
             <div className="space-y-3">
               {currentQuestion.options?.map((opt) => {
-                const text = lang === 'en' ? opt.text_en : opt.text_es
+                const text = lang === 'en' && opt.text_en ? opt.text_en : opt.text_es
                 const letter = ['A', 'B', 'C', 'D'][opt.idx]
 
                 let cls = 'option-btn'
@@ -453,7 +455,7 @@ function ExamInterface() {
         <div className="flex items-center gap-3">
           {currentQuestion.topic_tag && (
             <span className="badge-pill bg-slate-100 text-ink-light">
-              {lang === 'en' ? currentQuestion.topic_tag.en || currentQuestion.topic_tag.es : currentQuestion.topic_tag.es}
+              {(lang === 'en' && currentQuestion.topic_tag.en) ? currentQuestion.topic_tag.en : currentQuestion.topic_tag.es}
             </span>
           )}
           <button
