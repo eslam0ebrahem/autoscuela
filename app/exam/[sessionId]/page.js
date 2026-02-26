@@ -407,7 +407,9 @@ function ExamInterface() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           {currentQuestion.topic_tag && (
-            <span className="badge-pill bg-slate-100 text-ink-light">{currentQuestion.topic_tag}</span>
+            <span className="badge-pill bg-slate-100 text-ink-light">
+              {lang === 'en' ? currentQuestion.topic_tag.en || currentQuestion.topic_tag.es : currentQuestion.topic_tag.es}
+            </span>
           )}
           <button
             onClick={() => toggleBookmark(currentQuestion._id)}

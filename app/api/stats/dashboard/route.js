@@ -35,14 +35,15 @@ export async function GET(request) {
       { $match: { userId: tokenData.userId } },
       {
         $group: {
-          _id: '$topic_tag',
+          _id: '$topic_tag.es',
+          tagObj: { $first: '$topic_tag' },
           attempted: { $sum: 1 },
           correct: { $sum: { $cond: ['$is_correct', 1, 0] } },
         },
       },
       {
         $project: {
-          tag: '$_id',
+          tag: '$tagObj',
           attempted: 1,
           correct: 1,
           accuracy: {

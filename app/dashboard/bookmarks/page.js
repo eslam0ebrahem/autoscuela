@@ -139,7 +139,9 @@ function BookmarksInterface() {
 
                             <div className="flex items-center gap-2 mb-3">
                                 {q.topic_tag && (
-                                    <span className="badge-pill bg-slate-100 text-ink-light text-xs">{q.topic_tag}</span>
+                                    <span className="badge-pill bg-slate-100 text-ink-light text-xs">
+                                        {lang === 'en' ? q.topic_tag.en || q.topic_tag.es : q.topic_tag.es}
+                                    </span>
                                 )}
                             </div>
 

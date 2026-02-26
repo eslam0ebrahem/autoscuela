@@ -11,7 +11,10 @@ const questionSchema = new mongoose.Schema(
     exam_id: { type: Number, required: true, index: true },
     question_number: { type: Number, required: true },
     correct_option_idx: { type: Number, required: true },
-    topic_tag: { type: String, index: true },
+    topic_tag: {
+      es: { type: String, index: true },
+      en: { type: String }
+    },
     isActive: { type: Boolean, default: true },
 
     metadata: {
@@ -30,6 +33,6 @@ const questionSchema = new mongoose.Schema(
 )
 
 questionSchema.index({ exam_id: 1, question_number: 1 })
-questionSchema.index({ topic_tag: 1, isActive: 1 })
+questionSchema.index({ 'topic_tag.es': 1, isActive: 1 })
 
 export default mongoose.models.Question || mongoose.model('Question', questionSchema)

@@ -145,7 +145,7 @@ function AdminQuestionsContent() {
       {/* Questions table */}
       {loading ? (
         <div className="space-y-3">
-          {[1,2,3,4,5].map(i => <div key={i} className="h-16 bg-white rounded-xl animate-pulse" />)}
+          {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-16 bg-white rounded-xl animate-pulse" />)}
         </div>
       ) : (
         <div className="card p-0 overflow-hidden">
@@ -178,7 +178,7 @@ function AdminQuestionsContent() {
                     </td>
                     <td className="px-4 py-3">
                       {q.topic_tag && (
-                        <span className="badge-pill bg-slate-100 text-ink-light text-xs">{q.topic_tag}</span>
+                        <span className="badge-pill bg-slate-100 text-ink-light text-xs">{q.topic_tag.es}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -257,11 +257,18 @@ function AdminQuestionsContent() {
                   />
                 </div>
                 <div>
-                  <label className="label">{t('Tema', 'Topic tag')}</label>
+                  <label className="label">{t('Tema (ES)', 'Topic tag (ES)')}</label>
                   <input
                     type="text"
-                    value={editingQ.topic_tag || ''}
-                    onChange={(e) => setEditingQ(q => ({ ...q, topic_tag: e.target.value }))}
+                    value={editingQ.topic_tag?.es || ''}
+                    onChange={(e) => setEditingQ(q => ({ ...q, topic_tag: { ...q.topic_tag, es: e.target.value } }))}
+                    className="input mb-2"
+                  />
+                  <label className="label">{t('Tema (EN)', 'Topic tag (EN)')}</label>
+                  <input
+                    type="text"
+                    value={editingQ.topic_tag?.en || ''}
+                    onChange={(e) => setEditingQ(q => ({ ...q, topic_tag: { ...q.topic_tag, en: e.target.value } }))}
                     className="input"
                   />
                 </div>

@@ -30,7 +30,7 @@ function FlashcardDeck({ deck, lang, onBack }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ card_id: currentCard._id, status }),
       })
-    } catch (e) {}
+    } catch (e) { }
 
     setStats((s) => ({ ...s, [status === 'got_it' ? 'got' : 'practice']: s[status === 'got_it' ? 'got' : 'practice'] + 1 }))
 
@@ -118,7 +118,7 @@ function FlashcardDeck({ deck, lang, onBack }) {
             <div className="text-3xl mb-3">✓</div>
             <p className="text-xl font-bold text-primary">{answerText}</p>
             <p className="text-xs text-ink-light mt-3">
-              {t('Tema:', 'Topic:')} {currentCard.topic_tag}
+              {t('Tema:', 'Topic:')} {lang === 'en' ? currentCard.topic_tag?.en || currentCard.topic_tag?.es : currentCard.topic_tag?.es}
             </p>
           </div>
         </div>
@@ -202,7 +202,7 @@ function FlashcardsContent() {
         <h2 className="font-bold text-lg text-ink mb-4">{t('Mazos por tema', 'Topic decks')}</h2>
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {[1,2,3,4,5,6].map(i => (
+            {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i} className="h-24 bg-white rounded-2xl animate-pulse" />
             ))}
           </div>
@@ -210,12 +210,12 @@ function FlashcardsContent() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {decks.map(({ tag, count }) => (
               <button
-                key={tag}
-                onClick={() => { setActiveDeck(tag); setStarted(true) }}
+                key={tag.es}
+                onClick={() => { setActiveDeck(tag.es); setStarted(true) }}
                 className="card-hover p-4 text-left"
               >
                 <div className="text-2xl mb-2">📚</div>
-                <h3 className="font-bold text-ink text-sm leading-tight">{tag}</h3>
+                <h3 className="font-bold text-ink text-sm leading-tight">{lang === 'en' ? tag.en || tag.es : tag.es}</h3>
                 <p className="text-xs text-ink-light mt-1">{count} {t('tarjetas', 'cards')}</p>
               </button>
             ))}

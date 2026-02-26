@@ -61,11 +61,11 @@ function assignTopicTag(question) {
 
   for (const [topic, keywords] of Object.entries(TOPIC_KEYWORDS)) {
     if (keywords.some((kw) => text.includes(kw.toLowerCase()))) {
-      return topic
+      return { es: topic, en: topic } // Currently defaulting 'en' to 'es' name, would need a proper translation map in real life.
     }
   }
 
-  return 'General'
+  return { es: 'General', en: 'General' }
 }
 
 // --- Mongoose schemas (minimal for seeding) ---
@@ -74,7 +74,10 @@ const questionSchema = new mongoose.Schema({
   exam_id: Number,
   question_number: Number,
   correct_option_idx: Number,
-  topic_tag: String,
+  topic_tag: {
+    es: String,
+    en: String
+  },
   isActive: { type: Boolean, default: true },
   metadata: { image_url: String, help_html: String },
   options: [optionSchema],

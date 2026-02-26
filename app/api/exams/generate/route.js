@@ -32,7 +32,7 @@ export async function POST(request) {
     // Build query
     const query = { isActive: true }
     if (mode === 'custom' && topic_filter && topic_filter.length > 0) {
-      query.topic_tag = { $in: Array.isArray(topic_filter) ? topic_filter : [topic_filter] }
+      query['topic_tag.es'] = { $in: Array.isArray(topic_filter) ? topic_filter : [topic_filter] }
     }
 
     // Get random questions

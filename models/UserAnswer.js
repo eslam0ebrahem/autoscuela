@@ -5,7 +5,10 @@ const userAnswerSchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     examSessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExamSession' },
     questionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Question', required: true },
-    topic_tag: { type: String, required: true },
+    topic_tag: {
+      es: { type: String, required: true },
+      en: { type: String, required: true }
+    },
     selected_option_idx: { type: Number, required: true },
     is_correct: { type: Boolean, required: true },
     time_taken_seconds: { type: Number },
@@ -14,7 +17,7 @@ const userAnswerSchema = new mongoose.Schema(
 )
 
 userAnswerSchema.index({ userId: 1, createdAt: -1 })
-userAnswerSchema.index({ userId: 1, topic_tag: 1 })
+userAnswerSchema.index({ userId: 1, 'topic_tag.es': 1 })
 
 // Static: aggregate user performance for AI
 userAnswerSchema.statics.aggregateForAI = async function (userId) {
@@ -30,7 +33,7 @@ userAnswerSchema.statics.aggregateForAI = async function (userId) {
     },
     {
       $group: {
-        _id: '$topic_tag',
+        _id: '$topic_tag.es',
         attempted: { $sum: 1 },
         correct: { $sum: { $cond: ['$is_correct', 1, 0] } },
         avg_time_sec: { $avg: '$time_taken_seconds' },

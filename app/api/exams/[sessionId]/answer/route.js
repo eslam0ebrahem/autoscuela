@@ -37,7 +37,7 @@ export async function POST(request, { params }) {
       userId: tokenData.userId,
       examSessionId: session._id,
       questionId: question._id,
-      topic_tag: question.topic_tag || 'General',
+      topic_tag: question.topic_tag || { es: 'General', en: 'General' },
       selected_option_idx,
       is_correct: isCorrect,
       time_taken_seconds: time_taken,

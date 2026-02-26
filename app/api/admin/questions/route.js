@@ -26,7 +26,7 @@ export async function GET(request) {
 
     const query = {}
     if (search) query['question.es'] = { $regex: search, $options: 'i' }
-    if (topic) query.topic_tag = topic
+    if (topic) query['topic_tag.es'] = topic
 
     const questions = await Question.find(query)
       .skip((page - 1) * limit)

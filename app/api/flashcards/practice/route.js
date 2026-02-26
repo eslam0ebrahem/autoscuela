@@ -16,7 +16,7 @@ export async function GET(request) {
     await connectDB()
 
     const query = { isActive: true }
-    if (deck) query.topic_tag = deck
+    if (deck) query['topic_tag.es'] = deck
 
     // Get cards due for review (spaced repetition)
     const dueProgress = await FlashcardProgress.find({
