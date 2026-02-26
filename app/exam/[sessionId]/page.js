@@ -15,10 +15,35 @@ function sanitizeHtml(html) {
   return div.innerHTML
 }
 
+const audioCache = {}
+
+const preloadAudio = (src) => {
+  if (typeof window !== 'undefined' && !audioCache[src]) {
+    const audio = new Audio(src)
+    audio.preload = 'auto'
+    audioCache[src] = audio
+  }
+}
+
+// Preload common sounds
+if (typeof window !== 'undefined') {
+  preloadAudio('/sounds/correct-answer.mp3')
+  preloadAudio('/sounds/wrong-answer.mp3')
+  preloadAudio('/sounds/sucess-exam.mp3')
+  preloadAudio('/sounds/fail-exam.mp3')
+}
+
 function playSound(src) {
   if (typeof window !== 'undefined') {
-    const audio = new Audio(src)
-    audio.play().catch((e) => console.error('Audio play failed:', e))
+    preloadAudio(src) // Ensure it's in cache
+    const audio = audioCache[src]
+    if (audio) {
+      audio.currentTime = 0
+      const playPromise = audio.play()
+      if (playPromise !== undefined) {
+        playPromise.catch((e) => console.error('Audio play failed:', e))
+      }
+    }
   }
 }
 
