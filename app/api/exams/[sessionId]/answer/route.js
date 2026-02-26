@@ -49,20 +49,15 @@ export async function POST(request, { params }) {
     )
 
     if (existingAnswerIdx >= 0) {
-      session.answers[existingAnswerIdx] = {
-        questionId: question._id,
-        selectedOptionIdx: selected_option_idx,
-        isCorrect,
-        timeTakenSeconds: time_taken,
-      }
-    } else {
-      session.answers.push({
-        questionId: question._id,
-        selectedOptionIdx: selected_option_idx,
-        isCorrect,
-        timeTakenSeconds: time_taken,
-      })
+      return NextResponse.json({ error: 'Question already answered' }, { status: 400 })
     }
+
+    session.answers.push({
+      questionId: question._id,
+      selectedOptionIdx: selected_option_idx,
+      isCorrect,
+      timeTakenSeconds: time_taken,
+    })
 
     session.currentQuestionIndex = Math.max(session.currentQuestionIndex, session.answers.length)
     await session.save()

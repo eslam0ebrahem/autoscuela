@@ -130,9 +130,14 @@ function ReviewInterface() {
             </div>
 
             {questions.map((q, idx) => {
-                const questionText = lang === 'en' && q.question?.en
-                    ? q.question.en
-                    : q.question?.es
+                const getLocalizedText = (obj) => {
+                    if (!obj) return ''
+                    if (typeof obj === 'string') return obj
+                    if (lang === 'en' && obj.en) return obj.en
+                    return obj.es || obj.en || ''
+                }
+
+                const questionText = getLocalizedText(q.question)
                 const userAnswer = answerMap[q._id]
                 const selectedOptionIdx = userAnswer?.selectedOptionIdx
                 const correctIdx = q.correct_option_idx

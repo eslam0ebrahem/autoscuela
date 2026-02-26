@@ -133,6 +133,24 @@ function ExamInterface() {
       const data = await res.json()
       setFeedbackData(data)
 
+      setSession(prev => {
+        if (!prev) return prev
+        const answers = [...(prev.answers || [])]
+        const existingIdx = answers.findIndex(a => a.questionId === currentQuestion._id)
+        const newAnswer = {
+          questionId: currentQuestion._id,
+          selectedOptionIdx: optIdx,
+          isCorrect: data.isCorrect,
+          timeTakenSeconds: timeTaken
+        }
+        if (existingIdx >= 0) {
+          answers[existingIdx] = newAnswer
+        } else {
+          answers.push(newAnswer)
+        }
+        return { ...prev, answers }
+      })
+
       if (session?.assistanceMode === 'instant') {
         if (data.isCorrect) {
           playSound('/sounds/correct-answer.mp3')
@@ -311,9 +329,14 @@ function ExamInterface() {
   const isCorrectSelected = feedbackData?.isCorrect
   const correctIdx = feedbackData?.correctOptionIdx ?? currentQuestion.correct_option_idx
 
-  const questionText = lang === 'en' && currentQuestion.question?.en
-    ? currentQuestion.question.en
-    : currentQuestion.question?.es
+  const getLocalizedText = (obj) => {
+    if (!obj) return ''
+    if (typeof obj === 'string') return obj
+    if (lang === 'en' && obj.en) return obj.en
+    return obj.es || obj.en || ''
+  }
+
+  const questionText = getLocalizedText(currentQuestion.question)
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 animate-fade-in">
@@ -455,7 +478,7 @@ function ExamInterface() {
         <div className="flex items-center gap-3">
           {currentQuestion.topic_tag && (
             <span className="badge-pill bg-slate-100 text-ink-light">
-              {(lang === 'en' && currentQuestion.topic_tag.en) ? currentQuestion.topic_tag.en : currentQuestion.topic_tag.es}
+              {getLocalizedText(currentQuestion.topic_tag)}
             </span>
           )}
           <button
