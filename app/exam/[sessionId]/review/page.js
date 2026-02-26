@@ -101,7 +101,7 @@ function ReviewInterface() {
     })
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-12">
+        <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-12">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <button
@@ -251,7 +251,7 @@ export default function ExamReviewPage() {
         <AuthProvider>
             <AppShell>
                 <div className="min-h-screen bg-canvas">
-                    <main className="max-w-5xl mx-auto px-4 py-6">
+                    <main className="max-w-6xl mx-auto px-4 py-6">
                         <ReviewInterface />
                     </main>
                 </div>

@@ -314,7 +314,7 @@ function ExamInterface() {
   const questionText = lang === 'en' ? currentQuestion.question?.en : currentQuestion.question?.es
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4 animate-fade-in">
+    <div className="max-w-5xl mx-auto space-y-4 animate-fade-in">
       {/* Sticky header */}
       <div className="flex items-center gap-3">
         <button
@@ -345,10 +345,17 @@ function ExamInterface() {
                 if (status === 'correct') bgColor = 'bg-success'
                 if (status === 'incorrect') bgColor = 'bg-danger'
 
+                let borderStyle = ''
+                if (i === currentIdx) {
+                  borderStyle = 'ring-2 ring-primary ring-offset-2 scale-110 z-10 opacity-100'
+                } else if (status === 'unanswered') {
+                  borderStyle = 'opacity-60'
+                }
+
                 return (
                   <div
                     key={i}
-                    className={`h-2 flex-1 rounded-sm min-w-[8px] ${bgColor} ${i === currentIdx ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                    className={`h-1.5 flex-1 rounded-full min-w-[12px] transition-all duration-300 ${bgColor} ${borderStyle}`}
                     title={`${t('Pregunta', 'Question')} ${i + 1}`}
                   />
                 )
@@ -488,7 +495,7 @@ export default function ExamSessionPage() {
     <AuthProvider>
       <AppShell>
         <div className="min-h-screen bg-canvas">
-          <main className="max-w-5xl mx-auto px-4 py-6">
+          <main className="max-w-6xl mx-auto px-4 py-6">
             <ExamInterface />
           </main>
         </div>
