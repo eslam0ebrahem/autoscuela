@@ -351,7 +351,6 @@ function ExamInterface() {
   if (!currentQuestion) return null
 
   const isInstant = session?.assistanceMode === 'instant'
-  const isCorrectSelected = feedbackData?.isCorrect
   const correctIdx = feedbackData?.correctOptionIdx ?? currentQuestion.correct_option_idx
 
   const getLocalizedText = (obj) => {
@@ -451,7 +450,7 @@ function ExamInterface() {
                 if (answered) {
                   if (isInstant) {
                     if (opt.idx === correctIdx) cls += ' correct'
-                    else if (opt.idx === selectedOption && !isCorrectSelected) cls += ' incorrect'
+                    else if (opt.idx === selectedOption && opt.idx !== correctIdx) cls += ' incorrect'
                   } else {
                     if (opt.idx === selectedOption) cls += ' selected'
                   }
@@ -469,7 +468,7 @@ function ExamInterface() {
                     {isInstant && answered && opt.idx === correctIdx && (
                       <span className="ml-2 text-success">✓</span>
                     )}
-                    {isInstant && answered && opt.idx === selectedOption && !isCorrectSelected && (
+                    {isInstant && answered && opt.idx === selectedOption && opt.idx !== correctIdx && (
                       <span className="ml-2 text-danger">✗</span>
                     )}
                   </button>
