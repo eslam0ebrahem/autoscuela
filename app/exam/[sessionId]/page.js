@@ -300,7 +300,7 @@ function ExamInterface() {
   const questionText = lang === 'en' ? currentQuestion.question?.en : currentQuestion.question?.es
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4 animate-fade-in">
+    <div className="max-w-4xl mx-auto space-y-4 animate-fade-in">
       {/* Sticky header */}
       <div className="flex items-center gap-3">
         <button
@@ -333,74 +333,79 @@ function ExamInterface() {
       </div>
 
       {/* Question card */}
-      <div className="card">
-        {/* Image */}
-        {currentQuestion.metadata?.image_url && (
-          <div className="mb-4 -mx-6 -mt-6">
-            <img
-              src={currentQuestion.metadata.image_url}
-              alt="Question image"
-              className="w-full rounded-t-2xl max-h-48 object-contain bg-slate-50 cursor-zoom-in"
-              onClick={() => setExpandedImage(currentQuestion.metadata.image_url)}
-            />
-          </div>
-        )}
-
-        <h2 className="text-xl font-semibold text-ink mb-6 leading-relaxed">{questionText}</h2>
-
-        {/* Options */}
-        <div className="space-y-3">
-          {currentQuestion.options?.map((opt) => {
-            const text = lang === 'en' ? opt.text_en : opt.text_es
-            const letter = ['A', 'B', 'C', 'D'][opt.idx]
-
-            let cls = 'option-btn'
-            if (answered) {
-              if (isInstant) {
-                if (opt.idx === correctIdx) cls += ' correct'
-                else if (opt.idx === selectedOption && !isCorrectSelected) cls += ' incorrect'
-              } else {
-                if (opt.idx === selectedOption) cls += ' selected'
-              }
-            }
-
-            return (
-              <button
-                key={opt.idx}
-                onClick={() => handleSelectOption(opt.idx)}
-                className={cls}
-                disabled={answered}
-              >
-                <span className="font-bold mr-3 text-primary">{letter}.</span>
-                {text}
-                {isInstant && answered && opt.idx === correctIdx && (
-                  <span className="ml-2 text-success">✓</span>
-                )}
-                {isInstant && answered && opt.idx === selectedOption && !isCorrectSelected && (
-                  <span className="ml-2 text-danger">✗</span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Instant explanation */}
-        {isInstant && answered && feedbackData?.helpHtml && (
-          <div className="mt-6">
-            <button
-              onClick={() => setShowExplanation(!showExplanation)}
-              className="text-sm text-primary font-medium hover:underline"
-            >
-              {showExplanation ? '▲' : '▼'} {t('Ver explicación del manual DGT', 'View DGT manual explanation')}
-            </button>
-            {showExplanation && (
-              <div
-                className="mt-3 p-4 bg-blue-50 rounded-xl help-html text-ink-light border border-blue-100"
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(feedbackData.helpHtml) }}
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="flex flex-col md:flex-row md:items-stretch h-full">
+          {/* Image */}
+          {currentQuestion.metadata?.image_url && (
+            <div className="w-full md:w-1/2 bg-slate-50 md:relative flex flex-col justify-center min-h-[12rem] cursor-zoom-in border-b md:border-b-0 md:border-r border-slate-100"
+              onClick={() => setExpandedImage(currentQuestion.metadata.image_url)}>
+              <img
+                src={currentQuestion.metadata.image_url}
+                alt="Question image"
+                className="w-full max-h-64 object-contain md:absolute md:inset-0 md:h-full md:max-h-none"
               />
+            </div>
+          )}
+
+          {/* Content */}
+          <div className={`p-6 md:p-8 flex flex-col justify-center w-full ${currentQuestion.metadata?.image_url ? 'md:w-1/2' : ''}`}>
+            <h2 className="text-xl font-semibold text-ink mb-6 leading-relaxed">{questionText}</h2>
+
+            {/* Options */}
+            <div className="space-y-3">
+              {currentQuestion.options?.map((opt) => {
+                const text = lang === 'en' ? opt.text_en : opt.text_es
+                const letter = ['A', 'B', 'C', 'D'][opt.idx]
+
+                let cls = 'option-btn'
+                if (answered) {
+                  if (isInstant) {
+                    if (opt.idx === correctIdx) cls += ' correct'
+                    else if (opt.idx === selectedOption && !isCorrectSelected) cls += ' incorrect'
+                  } else {
+                    if (opt.idx === selectedOption) cls += ' selected'
+                  }
+                }
+
+                return (
+                  <button
+                    key={opt.idx}
+                    onClick={() => handleSelectOption(opt.idx)}
+                    className={cls}
+                    disabled={answered}
+                  >
+                    <span className="font-bold mr-3 text-primary">{letter}.</span>
+                    {text}
+                    {isInstant && answered && opt.idx === correctIdx && (
+                      <span className="ml-2 text-success">✓</span>
+                    )}
+                    {isInstant && answered && opt.idx === selectedOption && !isCorrectSelected && (
+                      <span className="ml-2 text-danger">✗</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Instant explanation */}
+            {isInstant && answered && feedbackData?.helpHtml && (
+              <div className="mt-6">
+                <button
+                  onClick={() => setShowExplanation(!showExplanation)}
+                  className="text-sm text-primary font-medium hover:underline"
+                >
+                  {showExplanation ? '▲' : '▼'} {t('Ver explicación del manual DGT', 'View DGT manual explanation')}
+                </button>
+                {showExplanation && (
+                  <div
+                    className="mt-3 p-4 bg-blue-50 rounded-xl help-html text-ink-light border border-blue-100"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(feedbackData.helpHtml) }}
+                  />
+                )}
+              </div>
             )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Footer */}
@@ -450,7 +455,7 @@ export default function ExamSessionPage() {
     <AuthProvider>
       <AppShell>
         <div className="min-h-screen bg-canvas">
-          <main className="max-w-3xl mx-auto px-4 py-6">
+          <main className="max-w-5xl mx-auto px-4 py-6">
             <ExamInterface />
           </main>
         </div>

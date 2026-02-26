@@ -101,7 +101,7 @@ function ReviewInterface() {
     })
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6 animate-fade-in pb-12">
+        <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-12">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <button
@@ -137,89 +137,94 @@ function ReviewInterface() {
                 const helpHtml = q.metadata?.help_html
 
                 return (
-                    <div key={q._id} className="card relative">
-                        <div className="absolute top-4 right-4 flex items-center gap-3">
-                            <button
-                                onClick={() => toggleBookmark(q._id)}
-                                className={`flex items-center gap-1 text-sm font-medium transition-colors ${bookmarkedQuestions.has(q._id) ? 'text-amber-500 hover:text-amber-600' : 'text-slate-400 hover:text-slate-600'}`}
-                            >
-                                {bookmarkedQuestions.has(q._id) ? '⭐ Guardado' : '☆ Guardar'}
-                            </button>
-                            <div className="text-sm font-bold text-ink-light bg-slate-100 px-3 py-1 rounded-lg">
-                                {idx + 1} / {questions.length}
-                            </div>
-                        </div>
+                    <div key={q._id} className="card relative" style={{ padding: 0, overflow: 'hidden' }}>
+                        <div className="flex flex-col md:flex-row md:items-stretch h-full">
+                            {/* Image */}
+                            {q.metadata?.image_url && (
+                                <div className="w-full md:w-1/2 bg-slate-50 md:relative flex flex-col justify-center min-h-[12rem] cursor-zoom-in border-b md:border-b-0 md:border-r border-slate-100"
+                                    onClick={() => setExpandedImage(q.metadata.image_url)}>
+                                    <img
+                                        src={q.metadata.image_url}
+                                        alt="Question image"
+                                        className="w-full max-h-64 object-contain md:absolute md:inset-0 md:h-full md:max-h-none"
+                                    />
+                                </div>
+                            )}
 
-                        {/* Image */}
-                        {q.metadata?.image_url && (
-                            <div className="mb-4 -mx-6 -mt-6">
-                                <img
-                                    src={q.metadata.image_url}
-                                    alt="Question image"
-                                    className="w-full rounded-t-2xl max-h-48 object-contain bg-slate-50 cursor-zoom-in"
-                                    onClick={() => setExpandedImage(q.metadata.image_url)}
-                                />
-                            </div>
-                        )}
+                            {/* Content */}
+                            <div className={`p-6 md:p-8 flex flex-col justify-center w-full relative ${q.metadata?.image_url ? 'md:w-1/2' : ''}`}>
+                                <div className="absolute top-4 right-4 flex items-center gap-3">
+                                    <button
+                                        onClick={() => toggleBookmark(q._id)}
+                                        className={`flex items-center gap-1 text-sm font-medium transition-colors ${bookmarkedQuestions.has(q._id) ? 'text-amber-500 hover:text-amber-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                    >
+                                        {bookmarkedQuestions.has(q._id) ? '⭐ Guardado' : '☆ Guardar'}
+                                    </button>
+                                    <div className="text-sm font-bold text-ink-light bg-slate-100 px-3 py-1 rounded-lg">
+                                        {idx + 1} / {questions.length}
+                                    </div>
+                                </div>
 
-                        <h2 className="text-lg font-semibold text-ink mb-6 pr-14 leading-relaxed">
-                            {questionText}
-                        </h2>
+                                <h2 className="text-lg font-semibold text-ink mt-8 mb-6 pr-14 leading-relaxed">
+                                    {questionText}
+                                </h2>
 
-                        {/* Options */}
-                        <div className="space-y-3">
-                            {q.options?.map((opt) => {
-                                const text = lang === 'en' ? opt.text_en : opt.text_es
-                                const letter = ['A', 'B', 'C', 'D'][opt.idx]
+                                {/* Options */}
+                                <div className="space-y-3">
+                                    {q.options?.map((opt) => {
+                                        const text = lang === 'en' ? opt.text_en : opt.text_es
+                                        const letter = ['A', 'B', 'C', 'D'][opt.idx]
 
-                                let cls = 'option-btn pointer-events-none'
+                                        let cls = 'option-btn pointer-events-none'
 
-                                if (opt.idx === correctIdx) {
-                                    cls += ' correct border-success bg-green-50'
-                                } else if (opt.idx === selectedOptionIdx && selectedOptionIdx !== correctIdx) {
-                                    cls += ' incorrect border-danger bg-red-50'
-                                }
+                                        if (opt.idx === correctIdx) {
+                                            cls += ' correct border-success bg-green-50'
+                                        } else if (opt.idx === selectedOptionIdx && selectedOptionIdx !== correctIdx) {
+                                            cls += ' incorrect border-danger bg-red-50'
+                                        }
 
-                                return (
-                                    <div key={opt.idx} className={cls}>
-                                        <span className="font-bold mr-3">{letter}.</span>
-                                        <span className="flex-1">{text}</span>
-                                        {opt.idx === correctIdx && (
-                                            <span className="ml-2 text-success font-bold text-xl">✓</span>
-                                        )}
-                                        {opt.idx === selectedOptionIdx && opt.idx !== correctIdx && (
-                                            <span className="ml-2 text-danger font-bold text-xl">✗</span>
+                                        return (
+                                            <div key={opt.idx} className={cls}>
+                                                <span className="font-bold mr-3">{letter}.</span>
+                                                <span className="flex-1">{text}</span>
+                                                {opt.idx === correctIdx && (
+                                                    <span className="ml-2 text-success font-bold text-xl">✓</span>
+                                                )}
+                                                {opt.idx === selectedOptionIdx && opt.idx !== correctIdx && (
+                                                    <span className="ml-2 text-danger font-bold text-xl">✗</span>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+
+                                {/* If user didn't answer */}
+                                {selectedOptionIdx === undefined && (
+                                    <div className="mt-4 p-3 bg-slate-100 rounded-lg text-ink-light text-center text-sm font-medium">
+                                        {t('No respondiste a esta pregunta.', 'You did not answer this question.')}
+                                    </div>
+                                )}
+
+                                {/* Explanation */}
+                                {helpHtml && (
+                                    <div className="mt-6 pt-4 border-t border-slate-100">
+                                        <button
+                                            onClick={() => toggleExplanation(idx)}
+                                            className="text-sm text-primary font-medium hover:underline flex items-center gap-1"
+                                        >
+                                            {showExplanationMap[idx] ? '▲' : '▼'}{' '}
+                                            {t('Ver explicación del manual DGT', 'View DGT manual explanation')}
+                                        </button>
+                                        {showExplanationMap[idx] && (
+                                            <div
+                                                className="mt-3 p-4 bg-blue-50 rounded-xl help-html text-ink-light border border-blue-100 text-sm"
+                                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(helpHtml) }}
+                                            />
                                         )}
                                     </div>
-                                )
-                            })}
-                        </div>
-
-                        {/* If user didn't answer */}
-                        {selectedOptionIdx === undefined && (
-                            <div className="mt-4 p-3 bg-slate-100 rounded-lg text-ink-light text-center text-sm font-medium">
-                                {t('No respondiste a esta pregunta.', 'You did not answer this question.')}
-                            </div>
-                        )}
-
-                        {/* Explanation */}
-                        {helpHtml && (
-                            <div className="mt-6 pt-4 border-t border-slate-100">
-                                <button
-                                    onClick={() => toggleExplanation(idx)}
-                                    className="text-sm text-primary font-medium hover:underline flex items-center gap-1"
-                                >
-                                    {showExplanationMap[idx] ? '▲' : '▼'}{' '}
-                                    {t('Ver explicación del manual DGT', 'View DGT manual explanation')}
-                                </button>
-                                {showExplanationMap[idx] && (
-                                    <div
-                                        className="mt-3 p-4 bg-blue-50 rounded-xl help-html text-ink-light border border-blue-100 text-sm"
-                                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(helpHtml) }}
-                                    />
                                 )}
                             </div>
-                        )}
+                        </div>
                     </div>
                 )
             })}
@@ -246,7 +251,7 @@ export default function ExamReviewPage() {
         <AuthProvider>
             <AppShell>
                 <div className="min-h-screen bg-canvas">
-                    <main className="max-w-3xl mx-auto px-4 py-6">
+                    <main className="max-w-5xl mx-auto px-4 py-6">
                         <ReviewInterface />
                     </main>
                 </div>
