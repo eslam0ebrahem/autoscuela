@@ -98,6 +98,20 @@ function ExamInterface() {
 
   const currentQuestion = questions[currentIdx]
 
+  // Compute answered statuses for the progress bar
+  const answeredStatuses = questions.map((q, idx) => {
+    // If it's the current question and answered, use feedbackData
+    if (idx === currentIdx && answered && feedbackData) {
+      return feedbackData.isCorrect ? 'correct' : 'incorrect'
+    }
+    // Otherwise, check session.answers
+    const ans = session?.answers?.find(a => a.questionId === q._id)
+    if (ans) {
+      return ans.isCorrect ? 'correct' : 'incorrect'
+    }
+    return 'unanswered'
+  })
+
   const handleSelectOption = async (optIdx) => {
     if (answered) return
     setSelectedOption(optIdx)
@@ -316,12 +330,31 @@ function ExamInterface() {
             <span>{t('Pregunta', 'Question')} {currentIdx + 1} / {questions.length}</span>
             <span>{Math.round(((currentIdx) / questions.length) * 100)}%</span>
           </div>
-          <div className="progress-bar">
+          <div className="progress-bar mb-2">
             <div
               className="progress-fill"
               style={{ width: `${(currentIdx / questions.length) * 100}%` }}
             />
           </div>
+
+          {/* Detailed Progress blocks for Instant mode */}
+          {isInstant && (
+            <div className="flex gap-1 overflow-x-auto pb-1 hide-scrollbar">
+              {answeredStatuses.map((status, i) => {
+                let bgColor = 'bg-slate-200'
+                if (status === 'correct') bgColor = 'bg-success'
+                if (status === 'incorrect') bgColor = 'bg-danger'
+
+                return (
+                  <div
+                    key={i}
+                    className={`h-2 flex-1 rounded-sm min-w-[8px] ${bgColor} ${i === currentIdx ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+                    title={`${t('Pregunta', 'Question')} ${i + 1}`}
+                  />
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Timer */}
