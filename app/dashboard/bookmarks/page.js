@@ -18,7 +18,7 @@ function BookmarksInterface() {
 
     const [questions, setQuestions] = useState([])
     const [loading, setLoading] = useState(true)
-    const [lang, setLang] = useState(user?.preferences?.language || 'es')
+    const lang = user?.preferences?.language || 'es'
     const [expandedImage, setExpandedImage] = useState(null)
     const [showExplanationMap, setShowExplanationMap] = useState({})
 

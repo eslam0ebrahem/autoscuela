@@ -37,7 +37,7 @@ function ExamInterface() {
   const [showExplanation, setShowExplanation] = useState(false)
   const [expandedImage, setExpandedImage] = useState(null)
   const [timeLeft, setTimeLeft] = useState(null)
-  const [lang, setLang] = useState(user?.preferences?.language || 'es')
+  const lang = user?.preferences?.language || 'es'
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState(null)
