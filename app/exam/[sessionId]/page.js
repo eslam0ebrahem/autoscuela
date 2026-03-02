@@ -109,17 +109,6 @@ function ExamInterface() {
       })
   }, [sessionId])
 
-  // Timer
-  useEffect(() => {
-    if (timeLeft == null) return
-    if (timeLeft <= 0) {
-      handleSubmitExam()
-      return
-    }
-    timerRef.current = setTimeout(() => setTimeLeft((t) => t - 1), 1000)
-    return () => clearTimeout(timerRef.current)
-  }, [timeLeft, handleSubmitExam])
-
   const currentQuestion = questions[currentIdx]
 
   // Compute answered statuses for the progress bar
@@ -187,6 +176,27 @@ function ExamInterface() {
     }
   }
 
+  const handleSubmitExam = useCallback(async () => {
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/exams/${sessionId}/submit`, { method: 'POST' })
+      const data = await res.json()
+      if (data.result) {
+        setResult(data.result)
+        if (data.result.passed) {
+          setConfetti(true)
+          playSound('/sounds/sucess-exam.mp3')
+        } else {
+          playSound('/sounds/fail-exam.mp3')
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
+    setSubmitting(false)
+  }, [sessionId, submitting])
+
   const handleNext = () => {
     if (currentIdx < questions.length - 1) {
       setCurrentIdx((i) => i + 1)
@@ -221,26 +231,16 @@ function ExamInterface() {
     }
   }
 
-  const handleSubmitExam = useCallback(async () => {
-    if (submitting) return
-    setSubmitting(true)
-    try {
-      const res = await fetch(`/api/exams/${sessionId}/submit`, { method: 'POST' })
-      const data = await res.json()
-      if (data.result) {
-        setResult(data.result)
-        if (data.result.passed) {
-          setConfetti(true)
-          playSound('/sounds/sucess-exam.mp3')
-        } else {
-          playSound('/sounds/fail-exam.mp3')
-        }
-      }
-    } catch (e) {
-      console.error(e)
+  // Timer
+  useEffect(() => {
+    if (timeLeft == null) return
+    if (timeLeft <= 0) {
+      handleSubmitExam()
+      return
     }
-    setSubmitting(false)
-  }, [sessionId, submitting])
+    timerRef.current = setTimeout(() => setTimeLeft((t) => t - 1), 1000)
+    return () => clearTimeout(timerRef.current)
+  }, [timeLeft, handleSubmitExam])
 
   const formatTime = (secs) => {
     const m = Math.floor(secs / 60)
