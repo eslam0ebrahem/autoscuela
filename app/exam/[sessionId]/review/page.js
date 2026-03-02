@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useAuth, AuthProvider } from '@/components/AuthContext'
+import { useAuth } from '@/components/AuthContext'
 import AppShell from '@/components/AppShell'
 
 function sanitizeHtml(html) {
@@ -165,7 +165,7 @@ function ReviewInterface() {
                                         onClick={() => toggleBookmark(q._id)}
                                         className={`flex items-center gap-1 text-sm font-medium transition-colors ${bookmarkedQuestions.has(q._id) ? 'text-amber-500 hover:text-amber-600' : 'text-slate-400 hover:text-slate-600'}`}
                                     >
-                                        {bookmarkedQuestions.has(q._id) ? '⭐ Guardado' : '☆ Guardar'}
+                                        {bookmarkedQuestions.has(q._id) ? `⭐ ${t('Guardado', 'Saved')}` : `☆ ${t('Guardar', 'Save')}`}
                                     </button>
                                     <div className="text-sm font-bold text-ink-light bg-slate-100 px-3 py-1 rounded-lg">
                                         {idx + 1} / {questions.length}
@@ -255,14 +255,8 @@ function ReviewInterface() {
 
 export default function ExamReviewPage() {
     return (
-        <AuthProvider>
-            <AppShell>
-                <div className="min-h-screen bg-canvas">
-                    <main className="max-w-7xl mx-auto px-4 py-6">
-                        <ReviewInterface />
-                    </main>
-                </div>
-            </AppShell>
-        </AuthProvider>
+        <AppShell>
+            <ReviewInterface />
+        </AppShell>
     )
 }

@@ -3,7 +3,7 @@ import connectDB from '@/lib/db'
 import ExamSession from '@/models/ExamSession'
 import User from '@/models/User'
 import { getCurrentUser } from '@/lib/auth'
-import { checkBadgeConditions, XP, getMadridStartOfDay, shouldStreakBreak } from '@/lib/gamification'
+import { checkBadgeConditions, XP, getMadridStartOfDay, shouldStreakBreak, isTodayStudied } from '@/lib/gamification'
 import UserAnswer from '@/models/UserAnswer'
 
 const MAX_ERRORS_TO_PASS = 3
@@ -46,7 +46,7 @@ export async function POST(request, { params }) {
 
     if (streakBroken) {
       newStreak = 1
-    } else if (!user.gamification.lastStudyDate || !isSameDay(user.gamification.lastStudyDate, new Date())) {
+    } else if (!isTodayStudied(user.gamification.lastStudyDate)) {
       newStreak += 1
     }
 
@@ -104,12 +104,3 @@ export async function POST(request, { params }) {
   }
 }
 
-function isSameDay(date1, date2) {
-  const d1 = new Date(date1)
-  const d2 = new Date(date2)
-  return (
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate()
-  )
-}

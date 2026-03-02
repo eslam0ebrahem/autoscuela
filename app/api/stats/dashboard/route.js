@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import mongoose from 'mongoose'
 import connectDB from '@/lib/db'
 import ExamSession from '@/models/ExamSession'
 import UserAnswer from '@/models/UserAnswer'
@@ -32,18 +33,17 @@ export async function GET(request) {
 
     // Topic breakdown
     const topicStats = await UserAnswer.aggregate([
-      { $match: { userId: tokenData.userId } },
+      { $match: { userId: new mongoose.Types.ObjectId(tokenData.userId) } },
       {
         $group: {
           _id: '$topic_tag.es',
-          tagObj: { $first: '$topic_tag' },
           attempted: { $sum: 1 },
           correct: { $sum: { $cond: ['$is_correct', 1, 0] } },
         },
       },
       {
         $project: {
-          tag: '$tagObj',
+          tag: '$_id',
           attempted: 1,
           correct: 1,
           accuracy: {

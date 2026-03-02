@@ -147,7 +147,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/10 py-8 text-center text-white/40 text-sm">
-        <p>© 2025 Autoscuela · DGT Tipo B · hecho con ❤️ en España</p>
+        <p>© {new Date().getFullYear()} Autoscuela · DGT Tipo B · hecho con ❤️ en España</p>
       </footer>
     </div>
   )

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import AppShell from '@/components/AppShell'
-import { useAuth, AuthProvider } from '@/components/AuthContext'
+import { useAuth } from '@/components/AuthContext'
 
 function sanitizeHtml(html) {
     if (typeof window === 'undefined') return ''
@@ -215,14 +215,8 @@ function BookmarksInterface() {
 
 export default function BookmarksPage() {
     return (
-        <AuthProvider>
-            <AppShell>
-                <div className="min-h-screen bg-canvas">
-                    <main className="max-w-3xl mx-auto px-4 py-6">
-                        <BookmarksInterface />
-                    </main>
-                </div>
-            </AppShell>
-        </AuthProvider>
+        <AppShell>
+            <BookmarksInterface />
+        </AppShell>
     )
 }

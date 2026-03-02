@@ -22,15 +22,22 @@ export async function GET(request) {
     const dueProgress = await FlashcardProgress.find({
       userId: tokenData.userId,
       nextReviewDate: { $lte: new Date() },
-      ...(deck ? {} : {}),
     })
-      .limit(BATCH_SIZE)
+      .limit(BATCH_SIZE * 2) // Fetch extra to allow filtering by deck
       .select('questionId')
 
     const dueQuestionIds = dueProgress.map((p) => p.questionId)
 
+    // Fetch full question data for due cards, filtered by deck if specified
+    const dueCards = await Question.find({
+      _id: { $in: dueQuestionIds },
+      ...query,
+    })
+      .limit(BATCH_SIZE)
+      .select('_id question metadata options topic_tag correct_option_idx')
+
     // Fill remaining with new cards
-    const remaining = BATCH_SIZE - dueQuestionIds.length
+    const remaining = BATCH_SIZE - dueCards.length
     let newCards = []
     if (remaining > 0) {
       const seenIds = await FlashcardProgress.find({ userId: tokenData.userId }).distinct('questionId')
@@ -41,12 +48,6 @@ export async function GET(request) {
         .limit(remaining)
         .select('_id question metadata options topic_tag correct_option_idx')
     }
-
-    // Fetch full question data for due cards
-    const dueCards = await Question.find({
-      _id: { $in: dueQuestionIds },
-      ...query,
-    }).select('_id question metadata options topic_tag correct_option_idx')
 
     const cards = [...dueCards, ...newCards]
 

@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
-import { AuthProvider } from '@/components/AuthContext'
 
 function sanitizeHtml(html) {
   if (typeof window === 'undefined') return ''
@@ -119,7 +118,7 @@ function ExamInterface() {
     }
     timerRef.current = setTimeout(() => setTimeLeft((t) => t - 1), 1000)
     return () => clearTimeout(timerRef.current)
-  }, [timeLeft])
+  }, [timeLeft, handleSubmitExam])
 
   const currentQuestion = questions[currentIdx]
 
@@ -222,7 +221,7 @@ function ExamInterface() {
     }
   }
 
-  const handleSubmitExam = async () => {
+  const handleSubmitExam = useCallback(async () => {
     if (submitting) return
     setSubmitting(true)
     try {
@@ -241,7 +240,7 @@ function ExamInterface() {
       console.error(e)
     }
     setSubmitting(false)
-  }
+  }, [sessionId, submitting])
 
   const formatTime = (secs) => {
     const m = Math.floor(secs / 60)
@@ -509,7 +508,7 @@ function ExamInterface() {
             onClick={() => toggleBookmark(currentQuestion._id)}
             className={`flex items-center gap-1 text-sm font-medium transition-colors ${bookmarkedQuestions.has(currentQuestion._id) ? 'text-amber-500 hover:text-amber-600' : 'text-slate-400 hover:text-slate-600'}`}
           >
-            {bookmarkedQuestions.has(currentQuestion._id) ? '⭐ Guardado' : '☆ Guardar'}
+            {bookmarkedQuestions.has(currentQuestion._id) ? `⭐ ${t('Guardado', 'Saved')}` : `☆ ${t('Guardar', 'Save')}`}
           </button>
         </div>
 
@@ -541,14 +540,8 @@ function ExamInterface() {
 
 export default function ExamSessionPage() {
   return (
-    <AuthProvider>
-      <AppShell>
-        <div className="min-h-screen bg-canvas">
-          <main className="max-w-6xl mx-auto px-4 py-6">
-            <ExamInterface />
-          </main>
-        </div>
-      </AppShell>
-    </AuthProvider>
+    <AppShell>
+      <ExamInterface />
+    </AppShell>
   )
 }
