@@ -13,9 +13,9 @@ export async function GET(request) {
     // Aggregate unique topic tags with counts
     const decks = await Question.aggregate([
       { $match: { isActive: true } },
-      { $group: { _id: '$topic_tag.es', tagObj: { $first: '$topic_tag' }, count: { $sum: 1 } } },
+      { $group: { _id: '$topic_tag.es', tagEn: { $first: '$topic_tag.en' }, count: { $sum: 1 } } },
       { $sort: { count: -1 } },
-      { $project: { tag: '$tagObj', count: 1, _id: 0 } },
+      { $project: { tag: '$_id', tagEn: 1, count: 1, _id: 0 } },
     ])
 
     return NextResponse.json({ decks: decks.filter((d) => d.tag) })

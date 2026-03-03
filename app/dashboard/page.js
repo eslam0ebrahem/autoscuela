@@ -163,12 +163,13 @@ function DashboardContent() {
 
       {/* Stats quick view */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
             { label: t('Exámenes', 'Exams'), value: stats.total_exams || 0, icon: '📝', color: 'text-primary' },
             { label: t('Aprobados', 'Passed'), value: `${stats.pass_rate || 0}%`, icon: '✅', color: 'text-success' },
             { label: t('Preguntas', 'Questions'), value: stats.total_answered || 0, icon: '❓', color: 'text-secondary' },
             { label: t('Precisión', 'Accuracy'), value: `${stats.accuracy || 0}%`, icon: '🎯', color: 'text-orange-500' },
+            { label: t('Hoy', 'Today'), value: `${stats.study_today?.minutes || 0} min`, icon: '⏱️', color: 'text-emerald-500' },
           ].map((s, i) => (
             <div key={i} className="card text-center">
               <div className="text-2xl mb-1">{s.icon}</div>

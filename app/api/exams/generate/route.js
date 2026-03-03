@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/lib/auth'
 
 const OFFICIAL_EXAM_QUESTIONS = 30
 const OFFICIAL_EXAM_DURATION_MIN = 30
+const ABANDONED_SESSION_HOURS = 2
 
 export async function POST(request) {
   try {
@@ -21,6 +22,21 @@ export async function POST(request) {
     if (!user?.isPremium) {
       return NextResponse.json({ error: 'Premium subscription required' }, { status: 403 })
     }
+
+    // Auto-cleanup: mark old in_progress sessions as abandoned
+    const abandonedCutoff = new Date()
+    abandonedCutoff.setHours(abandonedCutoff.getHours() - ABANDONED_SESSION_HOURS)
+
+    await ExamSession.updateMany(
+      {
+        userId: user._id,
+        status: 'in_progress',
+        createdAt: { $lt: abandonedCutoff },
+      },
+      {
+        $set: { status: 'abandoned' },
+      }
+    )
 
     const {
       mode = 'official',
@@ -74,4 +90,3 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Failed to generate exam' }, { status: 500 })
   }
 }
-

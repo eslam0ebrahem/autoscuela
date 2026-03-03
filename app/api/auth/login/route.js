@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
-import { signToken } from '@/lib/auth'
+import { signToken, setAuthCookie } from '@/lib/auth'
 
 export async function POST(request) {
   try {
@@ -40,13 +40,7 @@ export async function POST(request) {
       },
     })
 
-    response.cookies.set('autoscuela_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30,
-      path: '/',
-    })
+    setAuthCookie(response, token)
 
     return response
   } catch (error) {

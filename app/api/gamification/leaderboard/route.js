@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
 import { getCurrentUser } from '@/lib/auth'
+import { shouldResetWeeklyXP, getMadridStartOfWeek } from '@/lib/gamification'
 
 export async function GET(request) {
   try {
@@ -9,6 +10,24 @@ export async function GET(request) {
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     await connectDB()
+
+    // Lazily reset weekly XP for all users whose week has rolled over
+    const currentWeekStart = getMadridStartOfWeek()
+    await User.updateMany(
+      {
+        $or: [
+          { 'gamification.weeklyXPResetAt': { $lt: currentWeekStart } },
+          { 'gamification.weeklyXPResetAt': { $exists: false } },
+        ],
+        'gamification.weeklyXP': { $gt: 0 },
+      },
+      {
+        $set: {
+          'gamification.weeklyXP': 0,
+          'gamification.weeklyXPResetAt': currentWeekStart,
+        },
+      }
+    )
 
     const topUsers = await User.find({ 'gamification.weeklyXP': { $gt: 0 } })
       .sort({ 'gamification.weeklyXP': -1 })

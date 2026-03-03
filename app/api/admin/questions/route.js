@@ -59,12 +59,22 @@ export async function POST(request) {
 
     for (const q of questions) {
       try {
+        const existing = await Question.findOne({
+          exam_id: q.exam_id,
+          question_number: q.question_number,
+        })
+
         await Question.findOneAndUpdate(
           { exam_id: q.exam_id, question_number: q.question_number },
           { $set: q },
           { upsert: true, new: true }
         )
-        results.inserted++
+
+        if (existing) {
+          results.updated++
+        } else {
+          results.inserted++
+        }
       } catch (err) {
         results.errors.push({ question: q.question_number, error: err.message })
       }

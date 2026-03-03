@@ -19,7 +19,11 @@ export async function PUT(request) {
       updateFields['preferences.language'] = language
     }
     if (nickname) {
-      updateFields.nickname = nickname
+      const trimmed = nickname.trim()
+      if (trimmed.length < 2 || trimmed.length > 20) {
+        return NextResponse.json({ error: 'Nickname must be between 2 and 20 characters' }, { status: 400 })
+      }
+      updateFields.nickname = trimmed
     }
 
     const user = await User.findByIdAndUpdate(tokenData.userId, { $set: updateFields }, { new: true }).select(

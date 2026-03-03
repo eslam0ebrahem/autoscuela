@@ -4,14 +4,11 @@ import { useRouter, useParams } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 
+import DOMPurify from 'dompurify'
+
 function sanitizeHtml(html) {
   if (typeof window === 'undefined') return ''
-  // Basic sanitization - in production, use DOMPurify
-  const div = document.createElement('div')
-  div.innerHTML = html
-  // Remove script tags
-  div.querySelectorAll('script, iframe, object, embed').forEach(el => el.remove())
-  return div.innerHTML
+  return DOMPurify.sanitize(html)
 }
 
 const audioCache = {}

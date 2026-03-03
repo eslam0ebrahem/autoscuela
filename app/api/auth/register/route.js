@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
-import { signToken } from '@/lib/auth'
+import { signToken, setAuthCookie } from '@/lib/auth'
 
 export async function POST(request) {
   try {
@@ -14,6 +14,12 @@ export async function POST(request) {
 
     if (password.length < 6) {
       return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
+    }
+
+    // Validate nickname
+    const trimmedNickname = nickname.trim()
+    if (trimmedNickname.length < 2 || trimmedNickname.length > 20) {
+      return NextResponse.json({ error: 'Nickname must be between 2 and 20 characters' }, { status: 400 })
     }
 
     await connectDB()
@@ -28,7 +34,7 @@ export async function POST(request) {
     const user = await User.create({
       email: email.toLowerCase(),
       passwordHash,
-      nickname,
+      nickname: trimmedNickname,
       preferences: { language },
     })
 
@@ -44,18 +50,14 @@ export async function POST(request) {
           role: user.role,
           preferences: user.preferences,
           subscription: user.subscription,
+          gamification: user.gamification,
+          isPremium: user.isPremium,
         },
       },
       { status: 201 }
     )
 
-    response.cookies.set('autoscuela_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30,
-      path: '/',
-    })
+    setAuthCookie(response, token)
 
     return response
   } catch (error) {

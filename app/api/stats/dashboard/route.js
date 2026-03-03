@@ -4,6 +4,7 @@ import connectDB from '@/lib/db'
 import ExamSession from '@/models/ExamSession'
 import UserAnswer from '@/models/UserAnswer'
 import { getCurrentUser } from '@/lib/auth'
+import { getMadridStartOfDay } from '@/lib/gamification'
 
 export async function GET(request) {
   try {
@@ -12,7 +13,9 @@ export async function GET(request) {
 
     await connectDB()
 
-    const [completedExams, totalAnswered, correctAnswers, recentSessions] = await Promise.all([
+    const todayStart = getMadridStartOfDay()
+
+    const [completedExams, totalAnswered, correctAnswers, recentSessions, studyTimeToday] = await Promise.all([
       ExamSession.countDocuments({ userId: tokenData.userId, status: 'completed' }),
       UserAnswer.countDocuments({ userId: tokenData.userId }),
       UserAnswer.countDocuments({ userId: tokenData.userId, is_correct: true }),
@@ -20,6 +23,23 @@ export async function GET(request) {
         .sort({ completedAt: -1 })
         .limit(10)
         .select('score passed errorCount completedAt mode'),
+      // Calculate study time today (sum of time_taken_seconds from today's answers)
+      UserAnswer.aggregate([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(tokenData.userId),
+            createdAt: { $gte: todayStart },
+            time_taken_seconds: { $exists: true, $gt: 0 },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalSeconds: { $sum: '$time_taken_seconds' },
+            questionsToday: { $sum: 1 },
+          },
+        },
+      ]),
     ])
 
     const passedExams = await ExamSession.countDocuments({
@@ -30,6 +50,10 @@ export async function GET(request) {
 
     const passRate = completedExams > 0 ? Math.round((passedExams / completedExams) * 100) : 0
     const accuracy = totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 0
+
+    // Study time today
+    const studyData = studyTimeToday[0] || { totalSeconds: 0, questionsToday: 0 }
+    const studyMinutesToday = Math.round(studyData.totalSeconds / 60)
 
     // Topic breakdown
     const topicStats = await UserAnswer.aggregate([
@@ -63,6 +87,10 @@ export async function GET(request) {
       passed_exams: passedExams,
       recent_sessions: recentSessions,
       topic_stats: topicStats,
+      study_today: {
+        minutes: studyMinutesToday,
+        questions: studyData.questionsToday,
+      },
     })
   } catch (error) {
     console.error('Stats error:', error)

@@ -27,12 +27,21 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Exam time has expired' }, { status: 400 })
     }
 
+    // Check duplicate FIRST — prevent orphaned UserAnswer records
+    const existingAnswerIdx = session.answers.findIndex(
+      (a) => a.questionId.toString() === question_id
+    )
+
+    if (existingAnswerIdx >= 0) {
+      return NextResponse.json({ error: 'Question already answered' }, { status: 400 })
+    }
+
     const question = await Question.findById(question_id)
     if (!question) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
 
     const isCorrect = question.correct_option_idx === selected_option_idx
 
-    // Log to UserAnswer collection (feeds AI)
+    // Log to UserAnswer collection (feeds AI) — only after duplicate check passes
     await UserAnswer.create({
       userId: tokenData.userId,
       examSessionId: session._id,
@@ -44,14 +53,6 @@ export async function POST(request, { params }) {
     })
 
     // Update session answers
-    const existingAnswerIdx = session.answers.findIndex(
-      (a) => a.questionId.toString() === question_id
-    )
-
-    if (existingAnswerIdx >= 0) {
-      return NextResponse.json({ error: 'Question already answered' }, { status: 400 })
-    }
-
     session.answers.push({
       questionId: question._id,
       selectedOptionIdx: selected_option_idx,

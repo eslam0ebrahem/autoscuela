@@ -63,13 +63,13 @@ export async function POST(request, { params }) {
       createdAt: { $gte: todayStart },
     })
 
-    // Check badges
-    const newBadges = checkBadgeConditions(user, { ...session.toObject(), score: correctCount }, dailyCount)
-
-    // Bilingual badge check
-    if (examLangs.length >= 2 && !user.gamification.earnedBadges?.includes('bilingual_driver')) {
-      newBadges.push('bilingual_driver')
-    }
+    // Check badges (bilingual + ai_ready now handled inside checkBadgeConditions)
+    const newBadges = checkBadgeConditions(
+      user,
+      { ...session.toObject(), score: correctCount },
+      dailyCount,
+      { examLanguages: examLangs }
+    )
 
     await User.findByIdAndUpdate(tokenData.userId, {
       $set: {
@@ -103,4 +103,3 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: 'Failed to submit exam' }, { status: 500 })
   }
 }
-
