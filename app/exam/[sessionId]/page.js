@@ -36,7 +36,7 @@ function playSound(src) {
       audio.currentTime = 0
       const playPromise = audio.play()
       if (playPromise !== undefined) {
-        playPromise.catch(() => {})
+        playPromise.catch(() => { })
       }
     }
   }
@@ -77,7 +77,7 @@ function ExamInterface() {
       if (data.bookmarks) {
         setBookmarkedQuestions(new Set(data.bookmarks))
       }
-    }).catch(() => {})
+    }).catch(() => { })
 
     fetch(`/api/exams/${sessionId}`)
       .then((r) => r.json())
@@ -120,7 +120,7 @@ function ExamInterface() {
     return 'unanswered'
   })
 
-  const handleSelectOption = async (optIdx) => {
+  const handleSelectOption = (optIdx) => {
     if (answered || submitting) return
     setSelectedOption(optIdx)
     setAnswered(true)
@@ -128,53 +128,65 @@ function ExamInterface() {
     const timeTaken = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0
     setStartTime(Date.now())
 
-    try {
-      const res = await fetch(`/api/exams/${sessionId}/answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question_id: currentQuestion._id,
-          selected_option_idx: optIdx,
-          time_taken: timeTaken,
-        }),
-      })
-      const data = await res.json()
-
-      if (data.expired) {
-        handleSubmitExam()
-        return
-      }
-
-      setFeedbackData(data)
-
-      setSession(prev => {
-        if (!prev) return prev
-        const answers = [...(prev.answers || [])]
-        const existingIdx = answers.findIndex(a => a.questionId === currentQuestion._id)
-        const newAnswer = {
-          questionId: currentQuestion._id,
-          selectedOptionIdx: optIdx,
-          isCorrect: data.isCorrect,
-          timeTakenSeconds: timeTaken
-        }
-        if (existingIdx >= 0) {
-          answers[existingIdx] = newAnswer
-        } else {
-          answers.push(newAnswer)
-        }
-        return { ...prev, answers }
-      })
-
-      if (session?.assistanceMode === 'instant' && soundEnabled) {
-        if (data.isCorrect) {
+    // Play sound immediately using local data (no waiting for API)
+    if (session?.assistanceMode === 'instant' && soundEnabled) {
+      const localCorrect = currentQuestion.correct_option_idx
+      if (localCorrect != null) {
+        if (optIdx === localCorrect) {
           playSound('/sounds/correct-answer.mp3')
         } else {
           playSound('/sounds/wrong-answer.mp3')
         }
       }
-    } catch (e) {
-      console.error(e)
     }
+
+    // Fire API call in background — don't block UI
+    fetch(`/api/exams/${sessionId}/answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question_id: currentQuestion._id,
+        selected_option_idx: optIdx,
+        time_taken: timeTaken,
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.expired) {
+          handleSubmitExam()
+          return
+        }
+
+        setFeedbackData(data)
+
+        setSession(prev => {
+          if (!prev) return prev
+          const answers = [...(prev.answers || [])]
+          const existingIdx = answers.findIndex(a => a.questionId === currentQuestion._id)
+          const newAnswer = {
+            questionId: currentQuestion._id,
+            selectedOptionIdx: optIdx,
+            isCorrect: data.isCorrect,
+            timeTakenSeconds: timeTaken
+          }
+          if (existingIdx >= 0) {
+            answers[existingIdx] = newAnswer
+          } else {
+            answers.push(newAnswer)
+          }
+          return { ...prev, answers }
+        })
+
+        // Play sound as fallback if it wasn't played optimistically
+        if (session?.assistanceMode === 'instant' && soundEnabled && currentQuestion.correct_option_idx == null) {
+          if (data.isCorrect) {
+            playSound('/sounds/correct-answer.mp3')
+          } else {
+            playSound('/sounds/wrong-answer.mp3')
+          }
+        }
+      })
+      .catch(e => console.error(e))
   }
 
   const handleSubmitExam = useCallback(async () => {
@@ -446,9 +458,8 @@ function ExamInterface() {
     <div className="max-w-7xl mx-auto space-y-4 animate-fade-in">
       {/* Timer warning banner */}
       {timerWarning && (
-        <div className={`rounded-xl px-4 py-2 text-center text-sm font-medium animate-scale-in ${
-          timerWarning === '1min' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-        }`} role="alert">
+        <div className={`rounded-xl px-4 py-2 text-center text-sm font-medium animate-scale-in ${timerWarning === '1min' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+          }`} role="alert">
           {timerWarning === '1min'
             ? t('1 minuto restante!', '1 minute remaining!')
             : t('5 minutos restantes', '5 minutes remaining')
@@ -521,12 +532,11 @@ function ExamInterface() {
 
         {/* Timer */}
         {timeLeft != null && (
-          <div className={`px-3 py-1.5 rounded-xl font-mono font-bold text-sm ${
-            timeLeft < 60 ? 'bg-red-100 dark:bg-red-900/30 text-danger animate-pulse' :
+          <div className={`px-3 py-1.5 rounded-xl font-mono font-bold text-sm ${timeLeft < 60 ? 'bg-red-100 dark:bg-red-900/30 text-danger animate-pulse' :
             timeLeft < 120 ? 'bg-red-100 dark:bg-red-900/30 text-danger' :
-            timeLeft < 300 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' :
-            'bg-slate-100 dark:bg-slate-800 text-ink dark:text-slate-300'
-          }`} role="timer" aria-label={`${Math.floor(timeLeft / 60)} minutes ${timeLeft % 60} seconds remaining`}>
+              timeLeft < 300 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' :
+                'bg-slate-100 dark:bg-slate-800 text-ink dark:text-slate-300'
+            }`} role="timer" aria-label={`${Math.floor(timeLeft / 60)} minutes ${timeLeft % 60} seconds remaining`}>
             ⏱ {formatTime(timeLeft)}
           </div>
         )}
@@ -561,7 +571,7 @@ function ExamInterface() {
 
                 let cls = 'option-btn'
                 if (answered) {
-                  if (isInstant) {
+                  if (isInstant && feedbackData) {
                     if (opt.idx === correctIdx) cls += ' correct'
                     else if (opt.idx === selectedOption && opt.idx !== correctIdx) cls += ' incorrect'
                   } else {
@@ -583,10 +593,10 @@ function ExamInterface() {
                       <span className="flex-1">{text}</span>
                     </span>
                     {!answered && <span className="kbd ml-auto">{opt.idx + 1}</span>}
-                    {isInstant && answered && opt.idx === correctIdx && (
+                    {isInstant && answered && feedbackData && opt.idx === correctIdx && (
                       <span className="ml-2 text-success font-bold">✓</span>
                     )}
-                    {isInstant && answered && opt.idx === selectedOption && opt.idx !== correctIdx && (
+                    {isInstant && answered && feedbackData && opt.idx === selectedOption && opt.idx !== correctIdx && (
                       <span className="ml-2 text-danger font-bold">✗</span>
                     )}
                   </button>
@@ -628,7 +638,7 @@ function ExamInterface() {
             className={`flex items-center gap-1 text-sm font-medium transition-colors ${bookmarkedQuestions.has(currentQuestion._id)
               ? 'text-amber-500 hover:text-amber-600'
               : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-            }`}
+              }`}
             aria-label={bookmarkedQuestions.has(currentQuestion._id) ? t('Quitar de guardados', 'Remove bookmark') : t('Guardar pregunta', 'Bookmark question')}
           >
             {bookmarkedQuestions.has(currentQuestion._id) ? `⭐ ${t('Guardado', 'Saved')}` : `☆ ${t('Guardar', 'Save')}`}
