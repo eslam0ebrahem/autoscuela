@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import connectDB from '@/lib/db'
 import Question from '@/models/Question'
 import { getCurrentUser } from '@/lib/auth'
+import { isValidObjectId } from '@/lib/utils'
 
 async function requireAdmin(request) {
   const tokenData = await getCurrentUser(request)
@@ -13,12 +14,19 @@ export async function GET(request, { params }) {
   try {
     const tokenData = await requireAdmin(request)
     if (!tokenData) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+
+    if (!isValidObjectId(params.id)) {
+      return NextResponse.json({ error: 'Invalid question ID' }, { status: 400 })
+    }
+
     await connectDB()
-    const q = await Question.findById(params.id)
-    if (!q) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json({ question: q })
+
+    const question = await Question.findById(params.id)
+    if (!question) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
+
+    return NextResponse.json({ question })
   } catch (error) {
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to fetch question' }, { status: 500 })
   }
 }
 
@@ -26,13 +34,30 @@ export async function PUT(request, { params }) {
   try {
     const tokenData = await requireAdmin(request)
     if (!tokenData) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+
+    if (!isValidObjectId(params.id)) {
+      return NextResponse.json({ error: 'Invalid question ID' }, { status: 400 })
+    }
+
     const data = await request.json()
+
+    // Prevent overwriting protected fields
+    delete data._id
+    delete data.stats
+
     await connectDB()
-    const q = await Question.findByIdAndUpdate(params.id, { $set: data }, { new: true })
-    if (!q) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json({ question: q })
+
+    const question = await Question.findByIdAndUpdate(
+      params.id,
+      { $set: data },
+      { new: true, runValidators: true }
+    )
+
+    if (!question) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
+
+    return NextResponse.json({ question, message: 'Question updated' })
   } catch (error) {
-    return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Update failed: ' + error.message }, { status: 500 })
   }
 }
 
@@ -40,9 +65,22 @@ export async function DELETE(request, { params }) {
   try {
     const tokenData = await requireAdmin(request)
     if (!tokenData) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+
+    if (!isValidObjectId(params.id)) {
+      return NextResponse.json({ error: 'Invalid question ID' }, { status: 400 })
+    }
+
     await connectDB()
+
     // Soft delete
-    await Question.findByIdAndUpdate(params.id, { isActive: false })
+    const question = await Question.findByIdAndUpdate(
+      params.id,
+      { $set: { isActive: false } },
+      { new: true }
+    )
+
+    if (!question) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
+
     return NextResponse.json({ message: 'Question deactivated' })
   } catch (error) {
     return NextResponse.json({ error: 'Delete failed' }, { status: 500 })

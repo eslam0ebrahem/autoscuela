@@ -21,7 +21,7 @@ export async function POST(request, { params }) {
       status: 'in_progress',
     })
 
-    if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    if (!session) return NextResponse.json({ error: 'Session not found or already completed' }, { status: 404 })
 
     // Calculate results
     const correctCount = session.answers.filter((a) => a.isCorrect).length
@@ -29,18 +29,20 @@ export async function POST(request, { params }) {
     const errors = totalQuestions - correctCount
     const passed = errors <= MAX_ERRORS_TO_PASS
 
+    const totalTime = session.answers.reduce((sum, a) => sum + (a.timeTakenSeconds || 0), 0)
+
     session.score = correctCount
     session.errorCount = errors
     session.passed = passed
     session.status = 'completed'
     session.completedAt = new Date()
+    session.totalTimeTakenSeconds = totalTime
     await session.save()
 
     // Update user gamification
     const user = await User.findById(tokenData.userId)
     const xpEarned = passed ? XP.EXAM_PASS : XP.EXAM_FAIL
 
-    // Update streak
     const streakBroken = shouldStreakBreak(user.gamification.lastStudyDate)
     let newStreak = user.gamification.currentStreak
 
@@ -50,25 +52,22 @@ export async function POST(request, { params }) {
       newStreak += 1
     }
 
-    // Track languages used
     const examLangs = user.gamification.examLanguages || []
     if (!examLangs.includes(session.language)) {
       examLangs.push(session.language)
     }
 
-    // Daily answer count for Marathoner badge
     const todayStart = getMadridStartOfDay()
     const dailyCount = await UserAnswer.countDocuments({
       userId: user._id,
       createdAt: { $gte: todayStart },
     })
 
-    // Check badges (bilingual + ai_ready now handled inside checkBadgeConditions)
     const newBadges = checkBadgeConditions(
       user,
       { ...session.toObject(), score: correctCount },
       dailyCount,
-      { examLanguages: examLangs }
+      { examLanguages: examLangs, newStreak }
     )
 
     await User.findByIdAndUpdate(tokenData.userId, {
@@ -96,6 +95,8 @@ export async function POST(request, { params }) {
         xpEarned,
         newBadges,
         newStreak,
+        totalTime,
+        accuracy: totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0,
       },
     })
   } catch (error) {

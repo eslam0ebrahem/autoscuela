@@ -4,15 +4,17 @@ const userSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
-    nickname: { type: String, required: true, trim: true },
+    nickname: { type: String, required: true, trim: true, minlength: 2, maxlength: 20 },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
 
     preferences: {
       language: { type: String, enum: ['es', 'en'], default: 'es' },
+      theme: { type: String, enum: ['light', 'dark', 'system'], default: 'system' },
+      soundEnabled: { type: Boolean, default: true },
     },
 
     subscription: {
-      status: { type: String, enum: ['active', 'inactive', 'past_due'], default: 'inactive' },
+      status: { type: String, enum: ['active', 'inactive', 'past_due', 'canceled'], default: 'inactive' },
       stripeCustomerId: { type: String },
       stripeSubscriptionId: { type: String },
       currentPeriodEnd: { type: Date },
@@ -26,7 +28,9 @@ const userSchema = new mongoose.Schema(
       weeklyXP: { type: Number, default: 0 },
       weeklyXPResetAt: { type: Date },
       earnedBadges: [{ type: String }],
-      examLanguages: [{ type: String }], // tracks which languages exams were taken in
+      examLanguages: [{ type: String }],
+      dailyChallengeCompletedAt: { type: Date },
+      dailyChallengeStreak: { type: Number, default: 0 },
     },
 
     // AI insights cache
@@ -43,19 +47,33 @@ const userSchema = new mongoose.Schema(
 
     // Bookmarked Questions
     bookmarkedQuestions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
+
+    // Study history for trends
+    studyHistory: [{
+      date: { type: Date },
+      questionsAnswered: { type: Number, default: 0 },
+      correctAnswers: { type: Number, default: 0 },
+      minutesStudied: { type: Number, default: 0 },
+    }],
   },
   { timestamps: true }
 )
 
 // Virtual: is user subscribed?
 userSchema.virtual('isPremium').get(function () {
-  return (
-    this.premiumOverride ||
-    this.subscription.status === 'active' ||
-    (this.subscription.status === 'past_due' && this.subscription.currentPeriodEnd > new Date())
-  )
+  if (this.premiumOverride) return true
+  if (this.subscription.status === 'active') return true
+  // Grace period: allow access during past_due only if still within billing period
+  if (this.subscription.status === 'past_due' && this.subscription.currentPeriodEnd) {
+    return new Date(this.subscription.currentPeriodEnd) > new Date()
+  }
+  return false
 })
 
 userSchema.set('toJSON', { virtuals: true })
+
+// Indexes for leaderboard and admin
+userSchema.index({ 'gamification.weeklyXP': -1 })
+userSchema.index({ 'gamification.totalXP': -1 })
 
 export default mongoose.models.User || mongoose.model('User', userSchema)

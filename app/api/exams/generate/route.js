@@ -4,6 +4,7 @@ import User from '@/models/User'
 import Question from '@/models/Question'
 import ExamSession from '@/models/ExamSession'
 import { getCurrentUser } from '@/lib/auth'
+import { clamp } from '@/lib/utils'
 
 const OFFICIAL_EXAM_QUESTIONS = 30
 const OFFICIAL_EXAM_DURATION_MIN = 30
@@ -23,7 +24,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Premium subscription required' }, { status: 403 })
     }
 
-    // Auto-cleanup: mark old in_progress sessions as abandoned
+    // Auto-cleanup old sessions
     const abandonedCutoff = new Date()
     abandonedCutoff.setHours(abandonedCutoff.getHours() - ABANDONED_SESSION_HOURS)
 
@@ -33,9 +34,7 @@ export async function POST(request) {
         status: 'in_progress',
         createdAt: { $lt: abandonedCutoff },
       },
-      {
-        $set: { status: 'abandoned' },
-      }
+      { $set: { status: 'abandoned' } }
     )
 
     const {
@@ -45,20 +44,29 @@ export async function POST(request) {
       num_questions = OFFICIAL_EXAM_QUESTIONS,
     } = await request.json()
 
-    // Build query
-    const query = { isActive: true }
-    if (mode === 'custom' && topic_filter && topic_filter.length > 0) {
-      query['topic_tag.es'] = { $in: Array.isArray(topic_filter) ? topic_filter : [topic_filter] }
+    if (!['official', 'custom'].includes(mode)) {
+      return NextResponse.json({ error: 'Invalid exam mode' }, { status: 400 })
+    }
+    if (!['instant', 'exam'].includes(assistance_mode)) {
+      return NextResponse.json({ error: 'Invalid assistance mode' }, { status: 400 })
     }
 
-    // Get random questions
+    const query = { isActive: true }
+    if (mode === 'custom' && topic_filter && topic_filter.length > 0) {
+      const filters = Array.isArray(topic_filter) ? topic_filter : [topic_filter]
+      query['topic_tag.es'] = { $in: filters }
+    }
+
     const totalAvailable = await Question.countDocuments(query)
-    const limit = mode === 'official' ? OFFICIAL_EXAM_QUESTIONS : Math.min(num_questions, totalAvailable)
+    const requestedCount = mode === 'official'
+      ? OFFICIAL_EXAM_QUESTIONS
+      : clamp(parseInt(num_questions) || OFFICIAL_EXAM_QUESTIONS, 5, 100)
+    const limit = Math.min(requestedCount, totalAvailable)
 
     const questions = await Question.aggregate([
       { $match: query },
       { $sample: { size: limit } },
-      { $project: { _id: 1, topic_tag: 1 } }, // Only send IDs initially for security
+      { $project: { _id: 1, topic_tag: 1 } },
     ])
 
     if (questions.length === 0) {

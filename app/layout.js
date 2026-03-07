@@ -1,11 +1,11 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Autoscuela - DGT Exam Prep',
+  title: 'Autoscuela v3 - DGT Exam Prep',
   description: 'The smartest way to prepare for your Spanish DGT Type B driving exam. AI-powered, bilingual, gamified.',
   keywords: 'DGT, driving test, Spain, examen conducir, autoescuela',
   openGraph: {
-    title: 'Autoscuela - DGT Exam Prep',
+    title: 'Autoscuela v3 - DGT Exam Prep',
     description: 'AI-powered DGT exam preparation for Spain',
     type: 'website',
   },
@@ -21,9 +21,20 @@ export default function RootLayout({ children }) {
     <html lang="es" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" />
-        <meta name="theme-color" content="#2563EB" />
+        <meta name="theme-color" content="#2563EB" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0F172A" media="(prefers-color-scheme: dark)" />
+        {/* Prevent flash of unstyled content for dark mode */}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            try {
+              const theme = localStorage.getItem('autoscuela-theme') || 'system';
+              const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+              if (isDark) document.documentElement.classList.add('dark');
+            } catch(e) {}
+          `
+        }} />
       </head>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased bg-canvas text-ink">
         {children}
       </body>
     </html>

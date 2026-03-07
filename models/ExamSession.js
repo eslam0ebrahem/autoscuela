@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 const examSessionSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    mode: { type: String, enum: ['official', 'custom'], required: true },
+    mode: { type: String, enum: ['official', 'custom', 'daily_challenge'], required: true },
     status: { type: String, enum: ['in_progress', 'completed', 'abandoned'], default: 'in_progress' },
     language: { type: String, enum: ['es', 'en'], default: 'es' },
     topicFilters: [{ type: String }],
@@ -24,16 +24,20 @@ const examSessionSchema = new mongoose.Schema(
     ],
 
     currentQuestionIndex: { type: Number, default: 0 },
-    score: { type: Number }, // out of total questions
+    score: { type: Number },
     errorCount: { type: Number },
     passed: { type: Boolean },
     completedAt: { type: Date },
-    expiresAt: { type: Date }, // For official mode timer
+    expiresAt: { type: Date },
+
+    // Total time tracking
+    totalTimeTakenSeconds: { type: Number },
   },
   { timestamps: true }
 )
 
 examSessionSchema.index({ userId: 1, status: 1 })
 examSessionSchema.index({ userId: 1, completedAt: -1 })
+examSessionSchema.index({ status: 1, createdAt: 1 })
 
 export default mongoose.models.ExamSession || mongoose.model('ExamSession', examSessionSchema)

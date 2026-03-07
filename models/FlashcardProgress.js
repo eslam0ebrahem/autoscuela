@@ -7,37 +7,49 @@ const flashcardProgressSchema = new mongoose.Schema(
     status: { type: String, enum: ['new', 'learning', 'mastered'], default: 'new' },
     nextReviewDate: { type: Date, default: Date.now },
     reviewCount: { type: Number, default: 0 },
-    easeFactor: { type: Number, default: 2.5 }, // SM-2 algorithm ease factor
-    interval: { type: Number, default: 1 }, // days until next review
+    easeFactor: { type: Number, default: 2.5 },
+    interval: { type: Number, default: 1 },
+    consecutiveCorrect: { type: Number, default: 0 },
   },
   { timestamps: true }
 )
 
 flashcardProgressSchema.index({ userId: 1, questionId: 1 }, { unique: true })
 flashcardProgressSchema.index({ userId: 1, nextReviewDate: 1 })
+flashcardProgressSchema.index({ userId: 1, status: 1 })
 
-// SM-2 Spaced Repetition Algorithm
+// Improved SM-2 Spaced Repetition Algorithm
 flashcardProgressSchema.methods.updateWithReview = function (quality) {
   // quality: 0 = failed (needs practice), 1 = passed (got it)
   this.reviewCount += 1
 
   if (quality === 0) {
-    // Failed: reset to learning
+    // Failed: reset interval, decrease ease factor
     this.status = 'learning'
     this.interval = 1
+    this.consecutiveCorrect = 0
     this.easeFactor = Math.max(1.3, this.easeFactor - 0.2)
   } else {
-    // Passed
-    if (this.reviewCount === 1) {
+    // Passed: increase interval using SM-2 schedule
+    this.consecutiveCorrect += 1
+
+    if (this.consecutiveCorrect === 1) {
       this.interval = 1
-    } else if (this.reviewCount === 2) {
-      this.interval = 6
+    } else if (this.consecutiveCorrect === 2) {
+      this.interval = 3
+    } else if (this.consecutiveCorrect === 3) {
+      this.interval = 7
     } else {
-      this.interval = Math.round(this.interval * this.easeFactor)
-      this.easeFactor = Math.max(1.3, this.easeFactor + 0.1)
+      this.interval = Math.min(365, Math.round(this.interval * this.easeFactor))
+      this.easeFactor = Math.min(3.0, this.easeFactor + 0.05)
     }
 
-    this.status = this.interval >= 21 ? 'mastered' : 'learning'
+    // Status transitions
+    if (this.interval >= 21) {
+      this.status = 'mastered'
+    } else if (this.consecutiveCorrect >= 2) {
+      this.status = 'learning'
+    }
   }
 
   const nextDate = new Date()
