@@ -39,6 +39,10 @@ const userSchema = new mongoose.Schema(
       weakTopics: [{ type: String }],
       coachMessage: { type: String },
       recommendedAction: { type: mongoose.Schema.Types.Mixed },
+      predictedReadyDate: { type: Date },
+      improvementRate: { type: Number },
+      studyTips: [{ type: String }],
+      topicPriorityOrder: [{ type: String }],
       lastUpdated: { type: Date },
     },
 
@@ -55,6 +59,13 @@ const userSchema = new mongoose.Schema(
       correctAnswers: { type: Number, default: 0 },
       minutesStudied: { type: Number, default: 0 },
     }],
+
+    // User skill profile (v4)
+    skillProfile: {
+      overallLevel: { type: String, enum: ['beginner', 'easy', 'medium', 'hard', 'expert'], default: 'beginner' },
+      topicLevels: { type: Map, of: String },
+      lastCalculated: { type: Date },
+    },
   },
   { timestamps: true }
 )

@@ -5,6 +5,7 @@ import Question from '@/models/Question'
 import ExamSession from '@/models/ExamSession'
 import { getCurrentUser } from '@/lib/auth'
 import { clamp } from '@/lib/utils'
+import { selectAdaptiveQuestions } from '@/lib/adaptive-selection'
 
 const OFFICIAL_EXAM_QUESTIONS = 30
 const OFFICIAL_EXAM_DURATION_MIN = 30
@@ -42,34 +43,28 @@ export async function POST(request) {
       topic_filter = null,
       assistance_mode = 'exam',
       num_questions = OFFICIAL_EXAM_QUESTIONS,
+      source = 'standard',
     } = await request.json()
 
-    if (!['official', 'custom'].includes(mode)) {
+    if (!['official', 'custom', 'mistakes', 'weak_topics'].includes(mode)) {
       return NextResponse.json({ error: 'Invalid exam mode' }, { status: 400 })
     }
     if (!['instant', 'exam'].includes(assistance_mode)) {
       return NextResponse.json({ error: 'Invalid assistance mode' }, { status: 400 })
     }
 
-    const query = { isActive: true }
-    if (mode === 'custom' && topic_filter && topic_filter.length > 0) {
-      const filters = Array.isArray(topic_filter) ? topic_filter : [topic_filter]
-      query['topic_tag.es'] = { $in: filters }
-    }
-
-    const totalAvailable = await Question.countDocuments(query)
     const requestedCount = mode === 'official'
       ? OFFICIAL_EXAM_QUESTIONS
       : clamp(parseInt(num_questions) || OFFICIAL_EXAM_QUESTIONS, 5, 100)
-    const limit = Math.min(requestedCount, totalAvailable)
 
-    const questions = await Question.aggregate([
-      { $match: query },
-      { $sample: { size: limit } },
-      { $project: { _id: 1, topic_tag: 1 } },
-    ])
+    // Use adaptive selection for all modes
+    const filters = mode === 'custom' || mode === 'weak_topics' ? topic_filter : null
+    const questionIds = await selectAdaptiveQuestions(tokenData.userId, requestedCount, {
+      topicFilters: filters,
+      mode,
+    })
 
-    if (questions.length === 0) {
+    if (questionIds.length === 0) {
       return NextResponse.json({ error: 'No questions available for the selected filters' }, { status: 404 })
     }
 
@@ -80,15 +75,15 @@ export async function POST(request) {
       userId: user._id,
       mode,
       language: user.preferences.language,
-      topicFilters: topic_filter ? [topic_filter].flat() : [],
+      topicFilters: filters ? [filters].flat() : [],
       assistanceMode: assistance_mode,
-      questionIds: questions.map((q) => q._id),
+      questionIds,
       expiresAt: mode === 'official' ? expiresAt : null,
     })
 
     return NextResponse.json({
       sessionId: session._id,
-      totalQuestions: questions.length,
+      totalQuestions: questionIds.length,
       mode,
       assistanceMode: assistance_mode,
       expiresAt: mode === 'official' ? expiresAt : null,

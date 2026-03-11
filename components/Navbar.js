@@ -49,6 +49,7 @@ export default function Navbar() {
     { href: '/exam', label: t('Examen', 'Exam'), icon: '📝' },
     { href: '/flashcards', label: t('Tarjetas', 'Flashcards'), icon: '🃏' },
     { href: '/dashboard/bookmarks', label: t('Guardados', 'Bookmarks'), icon: '⭐' },
+    { href: '/mistakes', label: t('Errores', 'Mistakes'), icon: '❌' },
     { href: '/stats', label: t('Estadisticas', 'Stats'), icon: '📊' },
     { href: '/leaderboard', label: t('Ranking', 'Leaderboard'), icon: '🏆' },
     { href: '/badges', label: t('Logros', 'Badges'), icon: '🎖️' },
@@ -65,7 +66,7 @@ export default function Navbar() {
           <Link href="/dashboard" className="flex items-center gap-2 font-display font-bold text-xl" aria-label="Autoscuela Home">
             <span className="text-2xl" role="img" aria-hidden="true">🚗</span>
             <span className="text-gradient-blue">Autoscuela</span>
-            <span className="text-[10px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded-md">v3</span>
+            <span className="text-[10px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded-md">v4</span>
           </Link>
 
           {/* Desktop Nav */}

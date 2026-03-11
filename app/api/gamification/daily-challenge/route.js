@@ -5,6 +5,7 @@ import Question from '@/models/Question'
 import ExamSession from '@/models/ExamSession'
 import { getCurrentUser } from '@/lib/auth'
 import { getMadridStartOfDay, XP } from '@/lib/gamification'
+import { selectAdaptiveQuestions } from '@/lib/adaptive-selection'
 
 const DAILY_CHALLENGE_QUESTIONS = 10
 
@@ -73,14 +74,12 @@ export async function POST(request) {
       return NextResponse.json({ sessionId: existing._id, resumed: true })
     }
 
-    // Pick questions focusing on weak areas
-    const questions = await Question.aggregate([
-      { $match: { isActive: true } },
-      { $sample: { size: DAILY_CHALLENGE_QUESTIONS } },
-      { $project: { _id: 1 } },
-    ])
+    // Pick questions using adaptive selection focusing on weak areas
+    const questionIds = await selectAdaptiveQuestions(user._id, DAILY_CHALLENGE_QUESTIONS, {
+      mode: 'daily_challenge',
+    })
 
-    if (questions.length === 0) {
+    if (questionIds.length === 0) {
       return NextResponse.json({ error: 'No questions available' }, { status: 404 })
     }
 
@@ -89,7 +88,7 @@ export async function POST(request) {
       mode: 'daily_challenge',
       language: user.preferences.language,
       assistanceMode: 'instant',
-      questionIds: questions.map(q => q._id),
+      questionIds,
     })
 
     return NextResponse.json({

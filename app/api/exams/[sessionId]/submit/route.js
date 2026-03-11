@@ -5,6 +5,7 @@ import User from '@/models/User'
 import { getCurrentUser } from '@/lib/auth'
 import { checkBadgeConditions, XP, getMadridStartOfDay, shouldStreakBreak, isTodayStudied } from '@/lib/gamification'
 import UserAnswer from '@/models/UserAnswer'
+import { getUserSkillProfile } from '@/lib/user-skill'
 
 const MAX_ERRORS_TO_PASS = 3
 
@@ -70,12 +71,18 @@ export async function POST(request, { params }) {
       { examLanguages: examLangs, newStreak }
     )
 
+    // Recalculate and cache user skill profile
+    const skillProfile = await getUserSkillProfile(tokenData.userId)
+
     await User.findByIdAndUpdate(tokenData.userId, {
       $set: {
         'gamification.currentStreak': newStreak,
         'gamification.maxStreak': Math.max(user.gamification.maxStreak || 0, newStreak),
         'gamification.lastStudyDate': new Date(),
         'gamification.examLanguages': examLangs,
+        'skillProfile.overallLevel': skillProfile.overallLevel,
+        'skillProfile.topicLevels': skillProfile.topicLevels,
+        'skillProfile.lastCalculated': new Date(),
       },
       $inc: {
         'gamification.totalXP': xpEarned,
@@ -97,6 +104,7 @@ export async function POST(request, { params }) {
         newStreak,
         totalTime,
         accuracy: totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0,
+        skillLevel: skillProfile.overallLevel,
       },
     })
   } catch (error) {

@@ -1,14 +1,15 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Autoscuela v3 - DGT Exam Prep',
-  description: 'The smartest way to prepare for your Spanish DGT Type B driving exam. AI-powered, bilingual, gamified.',
+  title: 'Autoscuela v4 - DGT Exam Prep',
+  description: 'The smartest way to prepare for your Spanish DGT Type B driving exam. AI-powered, adaptive learning, bilingual, gamified.',
   keywords: 'DGT, driving test, Spain, examen conducir, autoescuela',
   openGraph: {
-    title: 'Autoscuela v3 - DGT Exam Prep',
-    description: 'AI-powered DGT exam preparation for Spain',
+    title: 'Autoscuela v4 - DGT Exam Prep',
+    description: 'AI-powered adaptive DGT exam preparation for Spain',
     type: 'website',
   },
+  manifest: '/manifest.json',
 }
 
 export const viewport = {
@@ -21,8 +22,12 @@ export default function RootLayout({ children }) {
     <html lang="es" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" />
+        <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#2563EB" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#0F172A" media="(prefers-color-scheme: dark)" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Autoscuela" />
         {/* Prevent flash of unstyled content for dark mode */}
         <script dangerouslySetInnerHTML={{
           __html: `

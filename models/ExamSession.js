@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 const examSessionSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    mode: { type: String, enum: ['official', 'custom', 'daily_challenge'], required: true },
+    mode: { type: String, enum: ['official', 'custom', 'daily_challenge', 'mistakes', 'weak_topics'], required: true },
     status: { type: String, enum: ['in_progress', 'completed', 'abandoned'], default: 'in_progress' },
     language: { type: String, enum: ['es', 'en'], default: 'es' },
     topicFilters: [{ type: String }],
