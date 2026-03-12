@@ -9,6 +9,7 @@ import { getCurrentUser } from '@/lib/auth'
  */
 export async function PATCH(request, { params }) {
   try {
+    const { sessionId } = await params
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -17,7 +18,7 @@ export async function PATCH(request, { params }) {
     const { questionId, flagged } = await request.json()
 
     const session = await ExamSession.findOne({
-      _id: params.sessionId,
+      _id: sessionId,
       userId: tokenData.userId,
       status: 'in_progress',
     })

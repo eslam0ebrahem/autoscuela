@@ -6,13 +6,14 @@ import { getCurrentUser } from '@/lib/auth'
 
 export async function GET(request, { params }) {
   try {
+    const { sessionId } = await params
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     await connectDB()
 
     const session = await ExamSession.findOne({
-      _id: params.sessionId,
+      _id: sessionId,
       userId: tokenData.userId,
     })
 

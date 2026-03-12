@@ -1,8 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
 @layer base {
   :root {
@@ -96,7 +94,7 @@
   }
 
   .card-hover {
-    @apply card hover:shadow-card-hover dark:hover:border-slate-600 transition-all duration-200 cursor-pointer;
+    @apply bg-white dark:bg-slate-800 rounded-2xl shadow-card dark:shadow-none border border-slate-100 dark:border-slate-700 p-6 hover:shadow-card-hover dark:hover:border-slate-600 transition-all duration-200 cursor-pointer;
   }
 
   .input {

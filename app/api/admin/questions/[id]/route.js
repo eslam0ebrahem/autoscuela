@@ -12,16 +12,17 @@ async function requireAdmin(request) {
 
 export async function GET(request, { params }) {
   try {
+    const { id } = await params
     const tokenData = await requireAdmin(request)
     if (!tokenData) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
-    if (!isValidObjectId(params.id)) {
+    if (!isValidObjectId(id)) {
       return NextResponse.json({ error: 'Invalid question ID' }, { status: 400 })
     }
 
     await connectDB()
 
-    const question = await Question.findById(params.id)
+    const question = await Question.findById(id)
     if (!question) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
 
     return NextResponse.json({ question })
@@ -32,10 +33,11 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    const { id } = await params
     const tokenData = await requireAdmin(request)
     if (!tokenData) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
-    if (!isValidObjectId(params.id)) {
+    if (!isValidObjectId(id)) {
       return NextResponse.json({ error: 'Invalid question ID' }, { status: 400 })
     }
 
@@ -48,7 +50,7 @@ export async function PUT(request, { params }) {
     await connectDB()
 
     const question = await Question.findByIdAndUpdate(
-      params.id,
+      id,
       { $set: data },
       { new: true, runValidators: true }
     )
@@ -63,10 +65,11 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    const { id } = await params
     const tokenData = await requireAdmin(request)
     if (!tokenData) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
 
-    if (!isValidObjectId(params.id)) {
+    if (!isValidObjectId(id)) {
       return NextResponse.json({ error: 'Invalid question ID' }, { status: 400 })
     }
 
@@ -74,7 +77,7 @@ export async function DELETE(request, { params }) {
 
     // Soft delete
     const question = await Question.findByIdAndUpdate(
-      params.id,
+      id,
       { $set: { isActive: false } },
       { new: true }
     )

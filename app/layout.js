@@ -1,4 +1,5 @@
 import './globals.css'
+import { Providers } from '@/components/Providers'
 
 export const metadata = {
   title: 'Autoscuela v4 - DGT Exam Prep',
@@ -40,7 +41,9 @@ export default function RootLayout({ children }) {
         }} />
       </head>
       <body className="font-sans antialiased bg-canvas text-ink">
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )

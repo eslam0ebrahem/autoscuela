@@ -6,18 +6,19 @@ import { isValidObjectId } from '@/lib/utils'
 
 export async function GET(request, { params }) {
   try {
+    const { id } = await params
     const tokenData = await getCurrentUser(request)
     if (!tokenData || tokenData.role !== 'admin') {
       return NextResponse.json({ error: 'Admin only' }, { status: 403 })
     }
 
-    if (!isValidObjectId(params.id)) {
+    if (!isValidObjectId(id)) {
       return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 })
     }
 
     await connectDB()
 
-    const user = await User.findById(params.id).select('-passwordHash')
+    const user = await User.findById(id).select('-passwordHash')
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     return NextResponse.json({ user })
@@ -28,12 +29,13 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    const { id } = await params
     const tokenData = await getCurrentUser(request)
     if (!tokenData || tokenData.role !== 'admin') {
       return NextResponse.json({ error: 'Admin only' }, { status: 403 })
     }
 
-    if (!isValidObjectId(params.id)) {
+    if (!isValidObjectId(id)) {
       return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 })
     }
 
@@ -53,7 +55,7 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'No valid updates provided' }, { status: 400 })
     }
 
-    const user = await User.findByIdAndUpdate(params.id, { $set: updates }, { new: true }).select(
+    const user = await User.findByIdAndUpdate(id, { $set: updates }, { new: true }).select(
       '-passwordHash'
     )
 

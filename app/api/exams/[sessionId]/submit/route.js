@@ -11,13 +11,14 @@ const MAX_ERRORS_TO_PASS = 3
 
 export async function POST(request, { params }) {
   try {
+    const { sessionId } = await params
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     await connectDB()
 
     const session = await ExamSession.findOne({
-      _id: params.sessionId,
+      _id: sessionId,
       userId: tokenData.userId,
       status: 'in_progress',
     })
