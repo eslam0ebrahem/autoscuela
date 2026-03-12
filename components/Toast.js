@@ -4,117 +4,147 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef } f
 
 const ToastContext = createContext(null)
 
-// ==== SUB-COMPONENT: Individual Toast ====
-// Extracted to give each toast its own lifecycle and timer management
+// ── Individual Toast ──────────────────────────────────────
 function ToastItem({ toast, dismiss }) {
+  const [visible, setVisible] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const timerRef = useRef(null)
 
-  // Manage auto-dismiss timer with pause-on-hover support
+  // Animate in
   useEffect(() => {
-    if (!isHovered) {
-      timerRef.current = setTimeout(() => {
-        dismiss(toast.id)
-      }, toast.duration)
-    }
+    requestAnimationFrame(() => setVisible(true))
+  }, [])
 
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
+  // Auto-dismiss with hover pause
+  useEffect(() => {
+    if (isHovered) return
+    timerRef.current = setTimeout(() => dismiss(toast.id), toast.duration)
+    return () => clearTimeout(timerRef.current)
   }, [isHovered, toast.id, toast.duration, dismiss])
 
-  // Styling maps
-  const typeStyles = {
-    success: 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-300',
-    error: 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-700/50 dark:text-red-300',
-    warning: 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/30 dark:border-amber-700/50 dark:text-amber-300',
-    info: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 dark:text-blue-300'
+  const config = {
+    success: {
+      bar:  'bg-success',
+      icon: '✓',
+      ring: 'border-success/20 bg-success/8',
+      iconBg: 'bg-success/15 text-success',
+      text: 'text-base-content',
+    },
+    error: {
+      bar:  'bg-error',
+      icon: '✕',
+      ring: 'border-error/20 bg-error/8',
+      iconBg: 'bg-error/15 text-error',
+      text: 'text-base-content',
+    },
+    warning: {
+      bar:  'bg-warning',
+      icon: '⚠',
+      ring: 'border-warning/20 bg-warning/8',
+      iconBg: 'bg-warning/15 text-warning',
+      text: 'text-base-content',
+    },
+    info: {
+      bar:  'bg-primary',
+      icon: 'ℹ',
+      ring: 'border-primary/20 bg-primary/8',
+      iconBg: 'bg-primary/15 text-primary',
+      text: 'text-base-content',
+    },
   }
 
-  const icons = {
-    success: '✓',
-    error: '✕',
-    warning: '⚠',
-    info: 'ℹ'
-  }
+  const c = config[toast.type] || config.info
 
   return (
     <div
-      className={`toast-item animate-slide-up rounded-xl px-4 py-3 shadow-lg border flex items-start gap-3 pointer-events-auto transition-all duration-200 hover:shadow-xl ${typeStyles[toast.type]}`}
+      role="alert"
+      aria-live="assertive"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      role={toast.type === 'error' ? 'alert' : 'status'}
-      aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+      className={`w-full max-w-sm rounded-2xl border shadow-lg overflow-hidden
+        transition-all duration-300 ease-out
+        ${c.ring}
+        ${visible
+          ? 'opacity-100 translate-y-0 scale-100'
+          : 'opacity-0 translate-y-4 scale-95'}`}
     >
-      <div className="text-lg flex-shrink-0 font-bold mt-0.5" aria-hidden="true">
-        {icons[toast.type]}
+      {/* Colour top bar */}
+      <div className={`h-1 w-full ${c.bar}`} />
+
+      <div className="flex items-start gap-3 px-4 py-3">
+        {/* Icon */}
+        <div className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center
+          text-sm font-black ${c.iconBg}`}>
+          {c.icon}
+        </div>
+
+        {/* Message */}
+        <p className={`flex-1 min-w-0 text-sm font-medium leading-snug pt-1 ${c.text}`}>
+          {toast.message}
+        </p>
+
+        {/* Dismiss */}
+        <button
+          onClick={() => dismiss(toast.id)}
+          className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center
+            text-base-content/30 hover:text-base-content/60 hover:bg-base-200
+            transition-colors text-xs mt-0.5"
+          aria-label="Cerrar"
+        >
+          ✕
+        </button>
       </div>
-      
-      <div className="flex-1 text-sm font-medium leading-relaxed pt-1">
-        {toast.message}
-      </div>
-      
-      <button
-        type="button"
-        onClick={() => dismiss(toast.id)}
-        className="flex-shrink-0 p-1 rounded-lg opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-current"
-        aria-label="Cerrar notificación / Close notification"
-      >
-        ✕
-      </button>
     </div>
   )
 }
 
-// ==== MAIN PROVIDER ====
+// ── Provider ──────────────────────────────────────────────
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([])
 
-  const addToast = useCallback((message, type = 'info', duration = 4000) => {
-    const id = typeof crypto !== 'undefined' && crypto.randomUUID 
-      ? crypto.randomUUID() 
-      : Date.now().toString() + Math.random().toString()
-      
-    setToasts(prev => [...prev, { id, message, type, duration }])
-  }, [])
-
   const dismiss = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id))
+    setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 
-  // Convenience methods
-  const success = useCallback((msg, duration) => addToast(msg, 'success', duration), [addToast])
-  const error = useCallback((msg, duration = 6000) => addToast(msg, 'error', duration), [addToast]) // Errors show longer by default
-  const info = useCallback((msg, duration) => addToast(msg, 'info', duration), [addToast])
-  const warning = useCallback((msg, duration) => addToast(msg, 'warning', duration), [addToast])
+  const addToast = useCallback((message, type = 'info', duration = 4000) => {
+    const id = Date.now() + Math.random()
+    setToasts((prev) => [...prev.slice(-4), { id, message, type, duration }])
+  }, [])
+
+  const toast = {
+    success: (msg, dur) => addToast(msg, 'success', dur),
+    error:   (msg, dur) => addToast(msg, 'error',   dur || 5000),
+    warning: (msg, dur) => addToast(msg, 'warning', dur),
+    info:    (msg, dur) => addToast(msg, 'info',    dur),
+  }
 
   return (
-    <ToastContext.Provider value={{ addToast, success, error, info, warning }}>
+    <ToastContext.Provider value={toast}>
       {children}
-      
-      {/* Toast Container 
-        pointer-events-none ensures the container itself doesn't block clicks on the page,
-        while pointer-events-auto on the ToastItem allows interaction with the toasts.
-      */}
-      <div 
-        className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 z-[100] flex flex-col gap-3 sm:max-w-sm pointer-events-none" 
-      >
-        {toasts.map(toast => (
-          <ToastItem 
-            key={toast.id} 
-            toast={toast} 
-            dismiss={dismiss} 
-          />
-        ))}
-      </div>
+
+      {/* ── Toast container ──
+          Mobile: bottom-center, above bottom nav (bottom-20)
+          Desktop: top-right (sm:top-4 sm:right-4) */}
+      {toasts.length > 0 && (
+        <div
+          className="fixed z-[9999] flex flex-col gap-2 pointer-events-none
+            bottom-20 left-4 right-4
+            sm:bottom-auto sm:top-4 sm:left-auto sm:right-4 sm:w-80"
+          aria-live="polite"
+        >
+          {toasts.map((t) => (
+            <div key={t.id} className="pointer-events-auto">
+              <ToastItem toast={t} dismiss={dismiss} />
+            </div>
+          ))}
+        </div>
+      )}
     </ToastContext.Provider>
   )
 }
 
 export function useToast() {
   const ctx = useContext(ToastContext)
-  if (!ctx) {
-    throw new Error('useToast must be used within a ToastProvider')
-  }
+  if (!ctx) throw new Error('useToast must be used within a ToastProvider')
   return ctx
 }

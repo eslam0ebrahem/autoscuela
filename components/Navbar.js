@@ -10,276 +10,287 @@ export default function Navbar() {
   const { user, logout, updateLanguage, t } = useAuth()
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
-  
-  const [menuOpen, setMenuOpen] = useState(false)
+
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
-
   const lang = user?.preferences?.language || 'es'
   const streak = user?.gamification?.currentStreak || 0
 
-  // Optimize: Only attach click-outside listener when dropdown is open
+  // Click-outside for dropdown
   useEffect(() => {
     if (!dropdownOpen) return
-
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target))
         setDropdownOpen(false)
-      }
     }
-    
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [dropdownOpen])
 
-  // Optimize: Only attach Escape key listener when either menu is open
+  // Escape key
   useEffect(() => {
-    if (!dropdownOpen && !menuOpen) return
-
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') {
-        setDropdownOpen(false)
-        setMenuOpen(false)
-      }
-    }
-    
+    if (!dropdownOpen) return
+    const handleEscape = (e) => { if (e.key === 'Escape') setDropdownOpen(false) }
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [dropdownOpen, menuOpen])
+  }, [dropdownOpen])
 
-  // Close mobile menu automatically on route change
-  useEffect(() => {
-    setMenuOpen(false)
-    setDropdownOpen(false)
-  }, [pathname])
+  // Close dropdown on route change
+  useEffect(() => { setDropdownOpen(false) }, [pathname])
 
+  const themeIcon   = theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🖥️'
+  const nextTheme   = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'
+
+  // All nav links — bottom nav shows first 5, rest in dropdown on desktop
   const navLinks = [
-    { href: '/dashboard', label: t('Inicio', 'Home'), icon: '🏠' },
-    { href: '/exam', label: t('Examen', 'Exam'), icon: '📝' },
-    { href: '/flashcards', label: t('Tarjetas', 'Flashcards'), icon: '🃏' },
-    { href: '/dashboard/bookmarks', label: t('Guardados', 'Bookmarks'), icon: '⭐' },
-    { href: '/mistakes', label: t('Errores', 'Mistakes'), icon: '❌' },
-    { href: '/stats', label: t('Estadísticas', 'Stats'), icon: '📊' },
-    { href: '/leaderboard', label: t('Ranking', 'Leaderboard'), icon: '🏆' },
-    { href: '/badges', label: t('Logros', 'Badges'), icon: '🎖️' },
+    { href: '/dashboard',           label: t('Inicio', 'Home'),         icon: '🏠' },
+    { href: '/exam',                label: t('Examen', 'Exam'),         icon: '📝' },
+    { href: '/flashcards',          label: t('Tarjetas', 'Cards'),      icon: '🃏' },
+    { href: '/mistakes',            label: t('Errores', 'Mistakes'),    icon: '❌' },
+    { href: '/stats',               label: t('Stats', 'Stats'),         icon: '📊' },
+    { href: '/dashboard/bookmarks', label: t('Guardados', 'Saved'),     icon: '⭐' },
+    { href: '/leaderboard',         label: t('Ranking', 'Ranking'),     icon: '🏆' },
+    { href: '/badges',              label: t('Logros', 'Badges'),       icon: '🎖️' },
   ]
 
-  // Theme toggle logic
-  const themeIcon = theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🖥️'
-  const nextTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'
+  const bottomNavLinks = navLinks.slice(0, 5)
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-100 dark:border-slate-800 shadow-sm transition-colors" role="navigation" aria-label="Main navigation">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          
+    <>
+      {/* ════════════════════════════════════════
+          TOP BAR  (always visible)
+      ════════════════════════════════════════ */}
+      <header className="sticky top-0 z-40 w-full border-b border-base-200
+        bg-base-100/95 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
+
           {/* Logo */}
-          <Link href="/dashboard" className="flex items-center gap-2 font-display font-bold text-xl focus:outline-none focus:ring-2 focus:ring-primary rounded-lg" aria-label={t('Ir al inicio', 'Go to home')}>
-            <span className="text-2xl" role="img" aria-hidden="true">🚗</span>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-primary dark:from-blue-400 dark:to-blue-600">
-              Autoscuela
-            </span>
-            <span className="text-[10px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-semibold">v4</span>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 font-black text-base-content
+              focus:outline-none focus:ring-2 focus:ring-primary rounded-lg"
+          >
+            <span className="text-xl" aria-hidden="true">🚗</span>
+            <span className="hidden xs:inline tracking-tight text-base">Autoscuela</span>
+            <span className="hidden sm:inline text-[10px] font-bold text-base-content/30
+              bg-base-200 px-1.5 py-0.5 rounded-md">v4</span>
           </Link>
 
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1">
+          {/* Desktop nav links (hidden on mobile — handled by bottom nav) */}
+          <nav className="hidden lg:flex items-center gap-1" aria-label="Navegación principal">
             {navLinks.map((link) => {
               const isActive = pathname === link.href
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
-                    isActive
-                      ? 'bg-blue-50 dark:bg-blue-900/40 text-primary dark:text-blue-400'
-                      : 'text-ink-light dark:text-slate-400 hover:text-ink dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800'
-                  }`}
-                  aria-current={isActive ? 'page' : undefined}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold
+                    transition-all focus:outline-none focus:ring-2 focus:ring-primary
+                    ${isActive
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-base-content/60 hover:text-base-content hover:bg-base-200'}`}
                 >
+                  <span className="text-base" aria-hidden="true">{link.icon}</span>
                   {link.label}
                 </Link>
               )
             })}
-          </div>
+          </nav>
 
-          {/* Right side Tools */}
-          <div className="flex items-center gap-2">
-            
-            {/* Theme Toggle */}
+          {/* Right-side controls */}
+          <div className="flex items-center gap-1.5 shrink-0">
+
+            {/* Theme toggle */}
             <button
-              type="button"
               onClick={() => setTheme(nextTheme)}
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-              title={t(`Tema: ${theme}`, `Theme: ${theme}`)}
+              className="w-9 h-9 rounded-xl flex items-center justify-center
+                text-base hover:bg-base-200 transition-colors
+                focus:outline-none focus:ring-2 focus:ring-primary"
               aria-label={t('Cambiar tema', 'Toggle theme')}
+              title={`Theme: ${theme}`}
             >
-              <span className="text-lg">{themeIcon}</span>
+              {themeIcon}
             </button>
 
-            {/* Language Toggle */}
+            {/* Language toggle */}
             <button
-              type="button"
               onClick={() => updateLanguage(lang === 'es' ? 'en' : 'es')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-              title={lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
+              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-xl
+                bg-base-200 hover:bg-base-300 text-xs font-black transition-colors
+                focus:outline-none focus:ring-2 focus:ring-primary"
               aria-label={lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
             >
-              <span aria-hidden="true">{lang === 'es' ? '🇪🇸' : '🇬🇧'}</span>
-              <span className="text-ink dark:text-slate-200">{lang === 'es' ? 'ES' : 'EN'}</span>
+              {lang === 'es' ? '🇪🇸' : '🇬🇧'}
+              <span>{lang === 'es' ? 'ES' : 'EN'}</span>
             </button>
 
-            {/* Streak */}
+            {/* Streak badge */}
             {streak > 0 && (
-              <div 
-                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800" 
-                title={t(`${streak} días de racha`, `${streak} day streak`)}
-              >
-                <span className="streak-flame text-lg" role="img" aria-label="Racha">🔥</span>
-                <span className="text-sm font-bold text-orange-600 dark:text-orange-400">{streak}</span>
+              <div className="hidden sm:flex items-center gap-1 px-2.5 py-1.5
+                rounded-xl bg-orange-100 dark:bg-orange-900/30 text-xs font-black text-orange-600
+                dark:text-orange-400">
+                🔥 <span>{streak}</span>
               </div>
             )}
 
-            {/* User Dropdown */}
-            <div className="relative ml-1" ref={dropdownRef}>
+            {/* User avatar + dropdown */}
+            <div className="relative" ref={dropdownRef}>
               <button
-                type="button"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-xl
+                  hover:bg-base-200 transition-colors
+                  focus:outline-none focus:ring-2 focus:ring-primary"
                 aria-expanded={dropdownOpen}
                 aria-haspopup="menu"
                 aria-label={t('Menú de usuario', 'User menu')}
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                {/* Avatar circle */}
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-purple-500
+                  flex items-center justify-center text-white text-xs font-black shrink-0
+                  shadow-sm">
                   {user?.nickname?.[0]?.toUpperCase() || '?'}
                 </div>
-                <span className="hidden md:block text-sm font-medium text-ink dark:text-slate-200 max-w-[100px] truncate">
+                {/* Name — hidden on small screens */}
+                <span className="hidden md:inline text-sm font-semibold text-base-content max-w-[80px] truncate">
                   {user?.nickname || t('Usuario', 'User')}
                 </span>
-                <svg className={`hidden sm:block w-4 h-4 text-ink-light transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <span className={`hidden md:inline text-[10px] text-base-content/30
+                  transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`}>
+                  ▼
+                </span>
               </button>
 
-              {/* Dropdown Menu */}
+              {/* ── Dropdown ── */}
               {dropdownOpen && (
-                <div 
-                  className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 py-2 z-50 animate-scale-in transform origin-top-right" 
+                <div
+                  className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-base-200
+                    bg-base-100 shadow-xl z-50 overflow-hidden"
                   role="menu"
-                  aria-orientation="vertical"
                 >
-                  <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700 mb-1">
-                    <p className="text-sm font-medium text-ink dark:text-white truncate">{user?.nickname}</p>
-                    <p className="text-xs text-ink-light dark:text-slate-400 truncate mt-0.5">{user?.email}</p>
-                    <div className="flex items-center justify-between mt-3">
-                      {user?.isPremium ? (
-                        <span className="badge-pill bg-blue-100 dark:bg-blue-900/40 text-primary dark:text-blue-400 text-xs px-2 py-0.5 rounded-full font-semibold">Premium</span>
-                      ) : (
-                        <span className="badge-pill bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs px-2 py-0.5 rounded-full font-semibold">Gratis</span>
-                      )}
-                      <span className="text-xs font-bold text-amber-500 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">
-                        {user?.gamification?.totalXP || 0} XP
+                  {/* User info header */}
+                  <div className="px-4 py-3 bg-base-200/60 border-b border-base-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-500
+                        flex items-center justify-center text-white font-black shrink-0">
+                        {user?.nickname?.[0]?.toUpperCase() || '?'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-black text-sm text-base-content truncate">
+                          {user?.nickname}
+                        </p>
+                        <p className="text-xs text-base-content/50 truncate">{user?.email}</p>
+                      </div>
+                    </div>
+                    {/* Badges row */}
+                    <div className="flex items-center gap-2 mt-2.5">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border
+                        ${user?.isPremium
+                          ? 'bg-success/10 border-success/25 text-success'
+                          : 'bg-base-300 border-base-300 text-base-content/50'}`}>
+                        {user?.isPremium ? '✨ Premium' : t('Gratis', 'Free')}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black
+                        bg-warning/10 border border-warning/25 text-warning">
+                        ⚡ {user?.gamification?.totalXP || 0} XP
                       </span>
                     </div>
                   </div>
-                  
-                  <Link
-                    href="/settings"
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-ink dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
-                    onClick={() => setDropdownOpen(false)}
-                    role="menuitem"
-                  >
-                    <span aria-hidden="true">⚙️</span> {t('Ajustes', 'Settings')}
-                  </Link>
-                  
-                  {user?.role === 'admin' && (
-                    <Link
-                      href="/admin"
-                      className="flex items-center gap-2 px-4 py-2 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 font-medium transition-colors"
-                      onClick={() => setDropdownOpen(false)}
+
+                  {/* Menu items */}
+                  <div className="p-1.5 space-y-0.5">
+                    {/* Language toggle (visible in dropdown on mobile too) */}
+                    <button
+                      onClick={() => { updateLanguage(lang === 'es' ? 'en' : 'es'); setDropdownOpen(false) }}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl
+                        text-sm text-base-content/70 hover:bg-base-200 transition-colors text-left"
                       role="menuitem"
                     >
-                      <span aria-hidden="true">🛡️</span> Admin Panel
+                      <span>{lang === 'es' ? '🇬🇧' : '🇪🇸'}</span>
+                      {lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
+                    </button>
+
+                    <Link
+                      href="/settings"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl
+                        text-sm text-base-content/70 hover:bg-base-200 transition-colors"
+                      role="menuitem"
+                    >
+                      ⚙️ {t('Ajustes', 'Settings')}
                     </Link>
-                  )}
-                  
-                  <div className="h-px bg-slate-100 dark:bg-slate-700 my-1" role="separator" />
-                  
-                  <button
-                    type="button"
-                    onClick={() => { logout(); setDropdownOpen(false) }}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-danger hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
-                    role="menuitem"
-                  >
-                    <span aria-hidden="true">🚪</span> {t('Cerrar sesión', 'Log out')}
-                  </button>
+
+                    {user?.role === 'admin' && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl
+                          text-sm text-primary hover:bg-primary/10 transition-colors"
+                        role="menuitem"
+                      >
+                        🛡️ Admin Panel
+                      </Link>
+                    )}
+                  </div>
+
+                  {/* Logout */}
+                  <div className="p-1.5 border-t border-base-200">
+                    <button
+                      onClick={() => { logout(); setDropdownOpen(false) }}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl
+                        text-sm text-error hover:bg-error/10 transition-colors text-left"
+                      role="menuitem"
+                    >
+                      🚪 {t('Cerrar sesión', 'Log out')}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-
-            {/* Mobile Menu Toggle */}
-            <button
-              type="button"
-              className="md:hidden p-2 ml-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-ink dark:text-slate-300 transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-label={menuOpen ? t('Cerrar menú', 'Close menu') : t('Abrir menú', 'Open menu')}
-              aria-expanded={menuOpen}
-              aria-controls="mobile-menu"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d={menuOpen ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'}
-                />
-              </svg>
-            </button>
           </div>
         </div>
+      </header>
 
-        {/* Mobile Menu Drawer */}
-        {menuOpen && (
-          <div 
-            id="mobile-menu"
-            className="md:hidden pb-4 pt-2 border-t border-slate-100 dark:border-slate-800 animate-fade-in" 
-            role="menu"
-          >
-            <div className="space-y-1">
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
-                      isActive
-                        ? 'bg-blue-50 dark:bg-blue-900/40 text-primary dark:text-blue-400'
-                        : 'text-ink dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                    }`}
-                    role="menuitem"
-                    aria-current={isActive ? 'page' : undefined}
-                  >
-                    <span className="text-lg" role="img" aria-hidden="true">{link.icon}</span>
-                    {link.label}
-                  </Link>
-                )
-              })}
-            </div>
-            
-            {/* Mobile Streak (Shown here since it's hidden in the top bar on very small screens) */}
-            {streak > 0 && (
-              <div className="sm:hidden mt-4 mx-4 px-4 py-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-100 dark:border-orange-800/50 flex items-center justify-between">
-                <span className="text-sm font-semibold text-orange-700 dark:text-orange-400">{t('Racha actual', 'Current Streak')}</span>
-                <div className="flex items-center gap-1">
-                  <span className="streak-flame" aria-hidden="true">🔥</span>
-                  <span className="font-bold text-orange-600 dark:text-orange-400">{streak} {t('días', 'days')}</span>
+      {/* ════════════════════════════════════════
+          MOBILE BOTTOM NAV BAR
+          (hidden on lg+ where top nav is shown)
+      ════════════════════════════════════════ */}
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40
+          bg-base-100/95 backdrop-blur-md border-t border-base-200
+          safe-area-inset-bottom"
+        aria-label="Navegación móvil"
+      >
+        <div className="flex items-stretch justify-around h-16">
+          {bottomNavLinks.map((link) => {
+            const isActive = pathname === link.href
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1
+                  min-w-0 px-1 transition-all active:scale-95
+                  ${isActive ? 'text-primary' : 'text-base-content/40 hover:text-base-content/70'}`}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {/* Active indicator dot */}
+                <div className="relative">
+                  <span className="text-xl leading-none">{link.icon}</span>
+                  {isActive && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full
+                      bg-primary border-2 border-base-100" />
+                  )}
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </nav>
+                <span className={`text-[10px] font-bold truncate max-w-full leading-tight
+                  ${isActive ? 'text-primary' : 'text-base-content/40'}`}>
+                  {link.label}
+                </span>
+              </Link>
+            )
+          })}
+        </div>
+        {/* iOS safe area spacer */}
+        <div className="h-safe-area-inset-bottom" />
+      </nav>
+    </>
   )
 }

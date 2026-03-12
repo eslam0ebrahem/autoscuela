@@ -9,65 +9,65 @@ export default class ErrorBoundary extends Component {
   }
 
   static getDerivedStateFromError(error) {
-    // Update state so the next render will show the fallback UI.
     return { hasError: true, error }
   }
 
   componentDidCatch(error, errorInfo) {
-    // You can also log the error to an error reporting service (e.g., Sentry) here
     console.error('ErrorBoundary caught:', error, errorInfo)
   }
 
   render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-[400px] flex items-center justify-center p-6 animate-fade-in">
-          <div className="card bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl max-w-md w-full text-center py-10 px-6 sm:px-8 animate-scale-in">
-            
-            <div className="text-6xl mb-6" aria-hidden="true">🛠️</div>
-            
-            <h2 className="text-2xl font-bold text-ink dark:text-white mb-3">
-              {this.props.title || 'Algo salió mal / Something went wrong'}
-            </h2>
-            
-            <p className="text-ink-light dark:text-slate-400 mb-8 leading-relaxed text-sm">
-              {this.props.message || 'Ha ocurrido un error inesperado en esta sección. Por favor, inténtalo de nuevo.'}
-            </p>
+    if (!this.state.hasError) return this.props.children
 
-            {/* Dev-Mode Error Trace (Only shows on localhost during development) */}
-            {process.env.NODE_ENV === 'development' && this.state.error && (
-              <div className="mb-8 text-left p-3 bg-red-50 dark:bg-red-900/20 rounded-lg overflow-auto max-h-32 text-xs font-mono text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50">
-                <strong>Dev Error Trace:</strong><br/>
-                {this.state.error.toString()}
-              </div>
-            )}
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center px-4">
+        <div className="w-full max-w-sm rounded-3xl border border-error/20 bg-base-100
+          shadow-sm overflow-hidden text-center">
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  this.setState({ hasError: false, error: null })
-                  if (this.props.onReset) this.props.onReset()
-                }}
-                className="btn-primary flex-1 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-slate-800"
-              >
-                Reintentar / Try again
-              </button>
-              
-              {/* Hard Reload Fallback */}
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                className="px-6 py-3 rounded-xl font-bold text-ink dark:text-white bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex-1 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
-              >
-                Recargar / Reload
-              </button>
+          {/* Red top strip */}
+          <div className="h-1.5 bg-gradient-to-r from-error/60 via-error to-error/60" />
+
+          <div className="p-8 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-error/10 border border-error/20
+              flex items-center justify-center text-2xl mx-auto">
+              ⚠️
             </div>
+
+            <div>
+              <h2 className="text-lg font-black text-base-content">
+                Algo salió mal
+              </h2>
+              <p className="text-sm text-base-content/50 mt-1.5 leading-relaxed">
+                {this.props.message ||
+                  'Ha ocurrido un error inesperado en esta sección. Por favor, inténtalo de nuevo.'}
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null })
+                window.location.reload()
+              }}
+              className="btn btn-error btn-sm w-full rounded-xl h-11 font-bold"
+            >
+              🔄 Reintentar
+            </button>
+
+            {/* Dev-only stack trace */}
+            {process.env.NODE_ENV === 'development' && this.state.error && (
+              <details className="text-left mt-2">
+                <summary className="text-xs font-bold text-base-content/40 cursor-pointer hover:text-base-content/60">
+                  Stack trace (dev only)
+                </summary>
+                <pre className="mt-2 p-3 rounded-xl bg-base-200 text-[10px] text-error/80
+                  overflow-auto max-h-40 leading-relaxed whitespace-pre-wrap">
+                  {this.state.error.toString()}
+                </pre>
+              </details>
+            )}
           </div>
         </div>
-      )
-    }
-
-    return this.props.children
+      </div>
+    )
   }
 }

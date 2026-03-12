@@ -7,11 +7,11 @@ import { ToastProvider } from './Toast'
 export function Providers({ children }) {
   return (
     <ThemeProvider>
-      <ToastProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <ToastProvider>
           {children}
-        </AuthProvider>
-      </ToastProvider>
+        </ToastProvider>
+      </AuthProvider>
     </ThemeProvider>
   )
 }
