@@ -6,7 +6,6 @@ import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 import DOMPurify from 'dompurify'
 
-// Properly use DOMPurify to prevent XSS attacks when rendering explanations
 function sanitizeHtml(html) {
   if (typeof window === 'undefined') return ''
   return DOMPurify.sanitize(html)
@@ -15,27 +14,22 @@ function sanitizeHtml(html) {
 function MistakeBank() {
   const router = useRouter()
   const { t } = useAuth()
-  
-  // Data State
+
   const [mistakes, setMistakes] = useState([])
   const [stats, setStats] = useState(null)
   const [topics, setTopics] = useState([])
-  
-  // UI State
   const [loading, setLoading] = useState(true)
   const [practiceLoading, setPracticeLoading] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
-  
-  // Filter & Pagination State
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [topicFilter, setTopicFilter] = useState(null)
   const [difficultyFilter, setDifficultyFilter] = useState(null)
   const [correctedOnly, setCorrectedOnly] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
 
   const limit = 15
 
-  // 1. Fetch available topics for the filter dropdown
   useEffect(() => {
     fetch('/api/flashcards/decks')
       .then((r) => r.ok ? r.json() : { decks: [] })
@@ -43,19 +37,15 @@ function MistakeBank() {
       .catch(console.error)
   }, [])
 
-  // 2. Fetch mistakes based on current filters and pagination
   useEffect(() => {
     setLoading(true)
-    
     const query = new URLSearchParams({
       page,
       limit,
       ...(topicFilter && { topic: topicFilter }),
       ...(difficultyFilter && { difficulty: difficultyFilter }),
-      // API expects "corrected" boolean. By default, user wants to see uncorrected (false).
-      ...(correctedOnly !== null && { corrected: !correctedOnly }), 
+      ...(correctedOnly !== null && { corrected: !correctedOnly }),
     })
-
     fetch(`/api/mistakes?${query}`)
       .then((r) => {
         if (!r.ok) throw new Error('Failed to fetch mistakes')
@@ -70,12 +60,9 @@ function MistakeBank() {
         console.error('Error loading mistake bank:', err)
         setMistakes([])
       })
-      .finally(() => {
-        setLoading(false)
-      })
+      .finally(() => setLoading(false))
   }, [page, topicFilter, difficultyFilter, correctedOnly])
 
-  // 3. Launch a practice exam using the current filters
   const handlePracticeMistakes = async () => {
     setPracticeLoading(true)
     try {
@@ -85,12 +72,10 @@ function MistakeBank() {
         body: JSON.stringify({
           topic_filter: topicFilter,
           difficulty_filter: difficultyFilter,
-          count: 30, // Max 30 questions for practice mode
+          count: 30,
         }),
       })
-      
       const data = await res.json()
-      
       if (res.ok && data.sessionId) {
         router.push(`/exam/${data.sessionId}`)
       } else {
@@ -104,257 +89,322 @@ function MistakeBank() {
     }
   }
 
-  // ==== RENDER: LOADING ====
+  const activeFiltersCount = [topicFilter, difficultyFilter, correctedOnly].filter(Boolean).length
+
+  // ── LOADING ──
   if (loading && !mistakes.length) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center h-96">
-          <div className="text-center">
-             <div className="text-4xl animate-bounce mb-4" role="img" aria-label="Loading">📚</div>
-             <p className="text-ink-light dark:text-slate-400 font-medium">
-               {t('Cargando banco de errores...', 'Loading mistake bank...')}
-             </p>
-          </div>
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-base-100">
+          <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm text-base-content/50 animate-pulse">
+            {t('Cargando banco de errores...', 'Loading mistake bank...')}
+          </p>
         </div>
       </AppShell>
     )
   }
 
-  // ==== RENDER: MAIN INTERFACE ====
+  const diffColors = {
+    easy:   'bg-success/10 text-success border-success/25',
+    medium: 'bg-warning/10 text-warning border-warning/25',
+    hard:   'bg-error/10 text-error border-error/25',
+  }
+
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 animate-fade-in pb-16">
-        
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-ink dark:text-white">
-            {t('Banco de Errores', 'Mistake Bank')}
-          </h1>
-          <p className="text-ink-light dark:text-slate-400">
-            {t('Revisa y practica tus respuestas incorrectas para dominarlas.', 'Review and practice your incorrect answers to master them.')}
-          </p>
-        </div>
+      <div className="min-h-screen bg-base-100">
+        <div className="max-w-2xl mx-auto px-4 pt-6 pb-24 space-y-5">
 
-        {/* Stats Cards */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-            <div className="card bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-center py-6">
-              <div className="text-sm font-medium uppercase tracking-wide text-ink-light dark:text-slate-400 mb-1">
-                {t('Total Errores', 'Total Mistakes')}
-              </div>
-              <div className="text-4xl font-bold text-danger">{stats.totalMistakes}</div>
-            </div>
-            <div className="card bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-center py-6">
-              <div className="text-sm font-medium uppercase tracking-wide text-ink-light dark:text-slate-400 mb-1">
-                {t('Sin Corregir', 'Uncorrected')}
-              </div>
-              <div className="text-4xl font-bold text-warning">{stats.uncorrectedCount}</div>
-            </div>
-            <div className="card bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-center py-6 col-span-2 md:col-span-1">
-              <div className="text-sm font-medium uppercase tracking-wide text-ink-light dark:text-slate-400 mb-1">
-                {t('Tasa Corrección', 'Correction Rate')}
-              </div>
-              <div className="text-4xl font-bold text-success">{stats.correctionRate}%</div>
-            </div>
-          </div>
-        )}
-
-        {/* Filters Panel */}
-        <div className="card mb-8 p-5 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-            
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="topic-filter" className="label text-sm font-medium text-ink-light dark:text-slate-300">
-                {t('Tema', 'Topic')}
-              </label>
-              <select
-                id="topic-filter"
-                value={topicFilter || ''}
-                onChange={(e) => {
-                  setTopicFilter(e.target.value || null)
-                  setPage(1)
-                }}
-                className="input w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-primary outline-none"
-              >
-                <option value="">{t('Todos los temas', 'All topics')}</option>
-                {topics.map((t) => (
-                  <option key={t.tag} value={t.tag}>{t.tag}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="diff-filter" className="label text-sm font-medium text-ink-light dark:text-slate-300">
-                {t('Dificultad', 'Difficulty')}
-              </label>
-              <select
-                id="diff-filter"
-                value={difficultyFilter || ''}
-                onChange={(e) => {
-                  setDifficultyFilter(e.target.value || null)
-                  setPage(1)
-                }}
-                className="input w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-primary outline-none"
-              >
-                <option value="">{t('Todas', 'All')}</option>
-                <option value="easy">{t('Fácil', 'Easy')}</option>
-                <option value="medium">{t('Medio', 'Medium')}</option>
-                <option value="hard">{t('Difícil', 'Hard')}</option>
-              </select>
-            </div>
-
-            <div className="flex h-[42px] items-center">
-              <label className="flex items-center gap-2.5 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={correctedOnly}
-                  onChange={(e) => {
-                    setCorrectedOnly(e.target.checked)
-                    setPage(1)
-                  }}
-                  className="w-5 h-5 rounded border-slate-300 text-primary focus:ring-primary dark:border-slate-600 dark:bg-slate-800 cursor-pointer"
-                />
-                <span className="text-sm font-medium text-ink dark:text-slate-200 group-hover:text-primary transition-colors">
-                  {t('Ocultar ya corregidos', 'Hide corrected')}
-                </span>
-              </label>
-            </div>
-
-            <button
-              type="button"
-              onClick={handlePracticeMistakes}
-              disabled={mistakes.length === 0 || practiceLoading}
-              className="btn-primary w-full h-[42px] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {practiceLoading ? (
-                <span className="animate-pulse">{t('Preparando...', 'Preparing...')}</span>
-              ) : (
-                <>
-                  <span aria-hidden="true">🎯</span> {t('Practicar Errores', 'Practice Mistakes')}
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Questions List */}
-        <div className="space-y-4 relative min-h-[200px]">
-          
-          {/* Transparent loading overlay when changing pages */}
-          {loading && mistakes.length > 0 && (
-             <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-xl">
-               <div className="text-2xl animate-spin">⏳</div>
-             </div>
-          )}
-
-          {mistakes.length === 0 && !loading ? (
-            <div className="card text-center py-16 bg-white dark:bg-slate-800 border-dashed border-2 border-slate-200 dark:border-slate-700">
-              <div className="text-5xl mb-4" aria-hidden="true">🎉</div>
-              <h3 className="text-xl font-bold text-ink dark:text-white mb-2">{t('¡Todo limpio!', 'All clear!')}</h3>
-              <p className="text-ink-light dark:text-slate-400">
-                {t('No tienes errores que coincidan con estos filtros.', 'You have no mistakes matching these filters.')}
+          {/* ── Page Header ── */}
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-black text-base-content">
+                {t('Banco de Errores', 'Mistake Bank')}
+              </h1>
+              <p className="text-sm text-base-content/50 mt-0.5">
+                {t(
+                  'Revisa y practica tus respuestas incorrectas para dominarlas.',
+                  'Review and practice your incorrect answers to master them.'
+                )}
               </p>
             </div>
-          ) : (
-            mistakes.map((m) => {
-              const isExpanded = expandedId === m.questionId.toString()
-              
-              // Map difficulty to visual colors
-              const diffColors = {
-                easy: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400',
-                medium: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400',
-                hard: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400'
-              }
+            <button
+              onClick={handlePracticeMistakes}
+              disabled={mistakes.length === 0 || practiceLoading}
+              className="btn btn-primary btn-sm h-11 rounded-xl shrink-0 gap-2 px-4"
+            >
+              {practiceLoading
+                ? <span className="loading loading-spinner loading-xs" />
+                : '🎯'}
+              <span className="hidden sm:inline">
+                {t('Practicar', 'Practice')}
+              </span>
+            </button>
+          </div>
 
-              return (
-                <div key={m.questionId.toString()} className="card p-0 overflow-hidden bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-primary/50 transition-colors">
-                  
-                  {/* Collapsed View (Clickable Header) */}
+          {/* ── Stats Row ── */}
+          {stats && (
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                {
+                  label: t('Total', 'Total'),
+                  value: stats.totalMistakes,
+                  color: 'text-error',
+                  bg: 'bg-error/5 border-error/15',
+                  icon: '❌',
+                },
+                {
+                  label: t('Sin corregir', 'Uncorrected'),
+                  value: stats.uncorrectedCount,
+                  color: 'text-warning',
+                  bg: 'bg-warning/5 border-warning/15',
+                  icon: '⚠️',
+                },
+                {
+                  label: t('Corregidos', 'Corrected'),
+                  value: `${stats.correctionRate}%`,
+                  color: 'text-success',
+                  bg: 'bg-success/5 border-success/15',
+                  icon: '✅',
+                },
+              ].map((s, i) => (
+                <div key={i} className={`rounded-2xl border p-3 text-center ${s.bg}`}>
+                  <div className="text-base mb-1">{s.icon}</div>
+                  <div className={`text-xl font-black ${s.color}`}>{s.value}</div>
+                  <div className="text-[10px] text-base-content/50 mt-0.5 leading-tight">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Filter Toggle ── */}
+          <div>
+            <button
+              onClick={() => setShowFilters(p => !p)}
+              className="flex items-center gap-2 text-sm font-semibold text-base-content/70
+                hover:text-base-content transition-colors"
+            >
+              <span className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-colors
+                ${showFilters || activeFiltersCount > 0
+                  ? 'bg-primary/10 border-primary/30 text-primary'
+                  : 'bg-base-200 border-base-300 text-base-content/50'}`}>
+                ⚙
+              </span>
+              {t('Filtros', 'Filters')}
+              {activeFiltersCount > 0 && (
+                <span className="w-5 h-5 rounded-full bg-primary text-white text-[10px] font-black flex items-center justify-center">
+                  {activeFiltersCount}
+                </span>
+              )}
+              <span className="ml-auto text-base-content/30">{showFilters ? '▲' : '▼'}</span>
+            </button>
+
+            {showFilters && (
+              <div className="mt-3 rounded-2xl border border-base-200 bg-base-50 p-4 space-y-4">
+                {/* Topic */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-base-content/50 uppercase tracking-wide">
+                    {t('Tema', 'Topic')}
+                  </label>
+                  <select
+                    value={topicFilter || ''}
+                    onChange={(e) => { setTopicFilter(e.target.value || null); setPage(1) }}
+                    className="select select-bordered select-sm w-full rounded-xl bg-base-100"
+                  >
+                    <option value="">{t('Todos los temas', 'All topics')}</option>
+                    {topics.map((topic) => (
+                      <option key={topic.tag} value={topic.tag}>{topic.tag}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Difficulty */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-base-content/50 uppercase tracking-wide">
+                    {t('Dificultad', 'Difficulty')}
+                  </label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: null,     label: t('Todas', 'All'),       style: 'bg-base-200 border-base-300' },
+                      { value: 'easy',   label: t('Fácil', 'Easy'),      style: 'bg-success/10 border-success/30 text-success' },
+                      { value: 'medium', label: t('Medio', 'Medium'),    style: 'bg-warning/10 border-warning/30 text-warning' },
+                      { value: 'hard',   label: t('Difícil', 'Hard'),    style: 'bg-error/10 border-error/30 text-error' },
+                    ].map((opt) => (
+                      <button
+                        key={String(opt.value)}
+                        onClick={() => { setDifficultyFilter(opt.value); setPage(1) }}
+                        className={`flex-1 py-1.5 rounded-xl border text-xs font-bold transition-all
+                          ${difficultyFilter === opt.value
+                            ? opt.style + ' ring-2 ring-offset-1 ring-primary/30'
+                            : 'bg-base-100 border-base-300 text-base-content/50 hover:border-base-400'}`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Toggle corrected */}
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={correctedOnly}
+                    onChange={(e) => { setCorrectedOnly(e.target.checked); setPage(1) }}
+                    className="toggle toggle-primary toggle-sm"
+                  />
+                  <span className="text-sm font-medium text-base-content/80">
+                    {t('Ocultar ya corregidos', 'Hide corrected')}
+                  </span>
+                </label>
+
+                {/* Clear filters */}
+                {activeFiltersCount > 0 && (
                   <button
-                    className="w-full text-left p-5 flex flex-col gap-3 focus:outline-none focus:bg-slate-50 dark:focus:bg-slate-700/50"
+                    onClick={() => {
+                      setTopicFilter(null)
+                      setDifficultyFilter(null)
+                      setCorrectedOnly(false)
+                      setPage(1)
+                    }}
+                    className="btn btn-ghost btn-xs text-error w-full"
+                  >
+                    {t('Limpiar filtros', 'Clear filters')}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Questions List ── */}
+          <div className="space-y-3 relative">
+            {/* Page-change overlay */}
+            {loading && mistakes.length > 0 && (
+              <div className="absolute inset-0 bg-base-100/70 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
+                <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+              </div>
+            )}
+
+            {/* Empty state */}
+            {mistakes.length === 0 && !loading && (
+              <div className="rounded-2xl border-2 border-dashed border-base-300 p-10 text-center">
+                <div className="text-5xl mb-3">🎉</div>
+                <h3 className="font-bold text-base-content">
+                  {t('¡Todo limpio!', 'All clear!')}
+                </h3>
+                <p className="text-sm text-base-content/50 mt-1">
+                  {t(
+                    'No tienes errores que coincidan con estos filtros.',
+                    'You have no mistakes matching these filters.'
+                  )}
+                </p>
+              </div>
+            )}
+
+            {mistakes.map((m) => {
+              const isExpanded = expandedId === m.questionId.toString()
+              return (
+                <div
+                  key={m.questionId.toString()}
+                  className={`rounded-2xl border overflow-hidden transition-all
+                    ${isExpanded ? 'border-primary/40 shadow-sm' : 'border-base-200 hover:border-base-300'}`}
+                >
+                  {/* ── Collapsed Header ── */}
+                  <button
+                    className="w-full text-left p-4 flex items-start gap-3 bg-base-100 active:bg-base-200 transition-colors"
                     onClick={() => setExpandedId(isExpanded ? null : m.questionId.toString())}
                     aria-expanded={isExpanded}
                   >
-                    <div className="flex items-start gap-3">
-                      <span className={`text-sm mt-0.5 transition-transform duration-200 ${isExpanded ? 'text-primary' : 'text-slate-400'}`}>
-                        {isExpanded ? '▼' : '▶'}
-                      </span>
-                      <h3 className={`text-lg font-semibold leading-snug flex-1 ${isExpanded ? 'text-primary' : 'text-ink dark:text-white'}`}>
+                    {/* Chevron */}
+                    <span className={`mt-0.5 text-xs shrink-0 transition-transform duration-200
+                      ${isExpanded ? 'rotate-90 text-primary' : 'text-base-content/30'}`}>
+                      ▶
+                    </span>
+
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <p className={`text-sm font-semibold leading-snug
+                        ${isExpanded ? 'text-primary' : 'text-base-content'}`}>
                         {m.question.es}
-                      </h3>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 pl-6">
-                      <span className="badge-pill bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold">
-                        {m.topic}
-                      </span>
-                      
-                      {m.difficulty && (
-                        <span className={`badge-pill text-xs font-semibold ${diffColors[m.difficulty] || diffColors.medium}`}>
-                          {m.difficulty.toUpperCase()}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {/* Topic */}
+                        <span className="px-2 py-0.5 rounded-full bg-base-200 text-base-content/60 text-[11px] font-semibold">
+                          {m.topic}
                         </span>
-                      )}
-                      
-                      <span className="badge-pill bg-red-50 dark:bg-red-900/20 text-danger text-xs font-semibold border border-red-100 dark:border-red-800/50">
-                        {t('Fallado', 'Failed')} {m.timesWrong}x
-                      </span>
-
-                      {m.isCorrected && (
-                        <span className="badge-pill bg-success/10 text-success text-xs font-semibold border border-success/20">
-                          ✓ {t('Corregido', 'Corrected')}
+                        {/* Difficulty */}
+                        {m.difficulty && (
+                          <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${diffColors[m.difficulty] || diffColors.medium}`}>
+                            {m.difficulty === 'easy' ? t('Fácil', 'Easy') :
+                             m.difficulty === 'medium' ? t('Medio', 'Medium') :
+                             t('Difícil', 'Hard')}
+                          </span>
+                        )}
+                        {/* Times wrong */}
+                        <span className="px-2 py-0.5 rounded-full bg-error/10 border border-error/20 text-error text-[11px] font-bold">
+                          {t('Fallado', 'Failed')} {m.timesWrong}×
                         </span>
-                      )}
+                        {/* Corrected badge */}
+                        {m.isCorrected && (
+                          <span className="px-2 py-0.5 rounded-full bg-success/10 border border-success/20 text-success text-[11px] font-bold">
+                            ✓ {t('Corregido', 'Corrected')}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </button>
 
-                  {/* Expanded View (Details) */}
+                  {/* ── Expanded Detail ── */}
                   {isExpanded && (
-                    <div className="px-5 pb-5 pt-2 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/20 animate-fade-in">
-                      
+                    <div className="border-t border-base-200 bg-base-50 p-4 space-y-4">
+                      {/* Image */}
                       {m.metadata?.image_url && (
-                        <div className="mb-6 bg-white dark:bg-slate-900 rounded-xl p-2 inline-block border border-slate-200 dark:border-slate-700">
+                        <div className="rounded-xl overflow-hidden border border-base-200">
                           <img
                             src={m.metadata.image_url}
                             alt={t('Imagen de la pregunta', 'Question image')}
-                            className="max-w-full sm:max-w-sm max-h-48 object-contain rounded-lg"
+                            className="w-full max-h-48 object-contain bg-base-100"
                           />
                         </div>
                       )}
 
-                      <div className="mb-6">
-                        <h4 className="font-bold text-sm uppercase tracking-wide text-ink-light dark:text-slate-400 mb-3">
+                      {/* Options */}
+                      <div>
+                        <p className="text-[11px] font-bold text-base-content/40 uppercase tracking-widest mb-2">
                           {t('Opciones', 'Options')}
-                        </h4>
+                        </p>
                         <div className="space-y-2">
                           {m.options.map((opt, i) => {
                             const isCorrect = opt.idx === m.options.find((o) => o.correct)?.idx
-                            
                             return (
                               <div
                                 key={i}
-                                className={`px-4 py-3 rounded-xl border-2 flex items-start gap-3 ${
-                                  isCorrect
-                                    ? 'border-success bg-success/10 text-success dark:text-green-400'
-                                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-ink dark:text-slate-300 opacity-60'
-                                }`}
+                                className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border-2 text-sm
+                                  ${isCorrect
+                                    ? 'border-success bg-success/10 text-success font-semibold'
+                                    : 'border-base-200 bg-base-100 text-base-content/50'}`}
                               >
-                                <span className="font-bold">{String.fromCharCode(65 + i)}.</span> 
-                                <span>{opt.text_es}</span>
-                                {isCorrect && <span className="ml-auto font-bold text-lg" aria-label="Respuesta correcta">✓</span>}
+                                <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                                  ${isCorrect ? 'bg-success text-white' : 'bg-base-200 text-base-content/40'}`}>
+                                  {String.fromCharCode(65 + i)}
+                                </span>
+                                <span className="leading-snug">{opt.text_es}</span>
+                                {isCorrect && (
+                                  <span className="ml-auto shrink-0 text-success font-bold">✓</span>
+                                )}
                               </div>
                             )
                           })}
                         </div>
                       </div>
 
-                      {/* Safely Rendered HTML Explanation */}
+                      {/* Explanation */}
                       {m.metadata?.help_html && (
-                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/50">
-                          <h4 className="font-bold text-sm uppercase tracking-wide text-primary dark:text-blue-400 mb-2 flex items-center gap-2">
-                            <span aria-hidden="true">💡</span> {t('Explicación Oficial DGT', 'Official DGT Explanation')}
-                          </h4>
+                        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                          <p className="text-[11px] font-bold text-primary uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                            💡 {t('Explicación Oficial DGT', 'Official DGT Explanation')}
+                          </p>
                           <div
-                            className="text-sm text-ink-light dark:text-slate-300 leading-relaxed help-html"
+                            className="text-sm text-base-content/80 leading-relaxed"
                             dangerouslySetInnerHTML={{ __html: sanitizeHtml(m.metadata.help_html) }}
                           />
                         </div>
@@ -363,38 +413,33 @@ function MistakeBank() {
                   )}
                 </div>
               )
-            })
-          )}
-        </div>
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="mt-10 flex items-center justify-center gap-4">
-            <button
-              onClick={() => {
-                setPage(Math.max(1, page - 1))
-                window.scrollTo({ top: 0, behavior: 'smooth' })
-              }}
-              disabled={page === 1 || loading}
-              className="btn-secondary px-6 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ← {t('Anterior', 'Previous')}
-            </button>
-            <span className="font-medium text-ink-light dark:text-slate-400">
-              {page} / {totalPages}
-            </span>
-            <button
-              onClick={() => {
-                setPage(Math.min(totalPages, page + 1))
-                window.scrollTo({ top: 0, behavior: 'smooth' })
-              }}
-              disabled={page === totalPages || loading}
-              className="btn-secondary px-6 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {t('Siguiente', 'Next')} →
-            </button>
+            })}
           </div>
-        )}
+
+          {/* ── Pagination ── */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => { setPage(Math.max(1, page - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                disabled={page === 1 || loading}
+                className="btn btn-ghost btn-sm rounded-xl border border-base-300 disabled:opacity-40"
+              >
+                ← {t('Anterior', 'Prev')}
+              </button>
+              <span className="text-sm font-semibold text-base-content/50">
+                {page} / {totalPages}
+              </span>
+              <button
+                onClick={() => { setPage(Math.min(totalPages, page + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                disabled={page === totalPages || loading}
+                className="btn btn-ghost btn-sm rounded-xl border border-base-300 disabled:opacity-40"
+              >
+                {t('Siguiente', 'Next')} →
+              </button>
+            </div>
+          )}
+
+        </div>
       </div>
     </AppShell>
   )
