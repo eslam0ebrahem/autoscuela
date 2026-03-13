@@ -4,6 +4,14 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
+import {
+  AimOutlined,
+  ToolOutlined,
+  ThunderboltOutlined,
+  RocketOutlined,
+  AuditOutlined,
+  CheckCircleOutlined
+} from '@ant-design/icons'
 
 function ExamSetup() {
   const { user, t } = useAuth()
@@ -56,7 +64,7 @@ function ExamSetup() {
 
   const startExam = async () => {
     setLoading(true)
-    setErrorMsg('') // Clear previous errors
+    setErrorMsg('')
 
     try {
       const res = await fetch('/api/exams/generate', {
@@ -85,50 +93,50 @@ function ExamSetup() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 animate-fade-in">
+    <div className="max-w-2xl mx-auto space-y-8 animate-fade-in pb-12">
       <div>
-        <h1 className="text-3xl font-bold text-ink">{t('Configurar Examen', 'Configure Exam')}</h1>
-        <p className="text-ink-light mt-1">{t('Personaliza tu sesión de práctica', 'Customize your practice session')}</p>
+        <h1 className="text-3xl font-black text-ink dark:text-white">{t('Configurar Examen', 'Configure Exam')}</h1>
+        <p className="text-ink-light font-medium mt-1">{t('Personaliza tu sesión de práctica', 'Customize your practice session')}</p>
       </div>
 
       {/* Error Banner */}
       {errorMsg && (
-        <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-xl animate-fade-in">
-          {errorMsg}
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 text-danger border-2 border-red-100 dark:border-red-900/50 rounded-2xl font-bold animate-fade-in">
+          ⚠️ {errorMsg}
         </div>
       )}
 
       {/* Mode selection */}
-      <div className="card space-y-4">
-        <h2 className="font-bold text-ink text-lg">{t('1. Modo de examen', '1. Exam Mode')}</h2>
+      <div className="card glass space-y-4">
+        <h2 className="font-black text-ink dark:text-white text-lg">{t('1. Modo de examen', '1. Exam Mode')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
             {
               val: 'official',
-              icon: '🎯',
+              icon: <AimOutlined />,
               title: t('Simulación Oficial DGT', 'Official DGT Simulation'),
               desc: t('30 preguntas · 30 min · máx. 3 fallos', '30 questions · 30 min · max 3 errors'),
-              color: 'border-primary bg-blue-50',
+              color: 'border-primary bg-primary/5',
             },
             {
               val: 'custom',
-              icon: '🛠️',
+              icon: <ToolOutlined />,
               title: t('Práctica Personalizada', 'Custom Practice'),
               desc: t('Elige temas y número de preguntas', 'Choose topics and number of questions'),
-              color: 'border-secondary bg-purple-50',
+              color: 'border-secondary bg-secondary/5',
             },
           ].map((opt) => (
             <button
               key={opt.val}
               onClick={() => setMode(opt.val)}
               type="button"
-              className={`p-4 rounded-xl border-2 text-left transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary ${
-                mode === opt.val ? opt.color : 'border-slate-200 bg-white hover:border-slate-300'
+              className={`p-5 rounded-3xl border-2 text-left transition-all active:scale-[0.98] focus:outline-none ${
+                mode === opt.val ? opt.color + ' border-primary' : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-primary/30'
               }`}
             >
-              <div className="text-2xl mb-2">{opt.icon}</div>
-              <div className="font-bold text-ink">{opt.title}</div>
-              <div className="text-sm text-ink-light">{opt.desc}</div>
+              <div className="text-2xl mb-3 text-primary">{opt.icon}</div>
+              <div className="font-black text-ink dark:text-white">{opt.title}</div>
+              <div className="text-xs text-ink-light font-medium mt-1">{opt.desc}</div>
             </button>
           ))}
         </div>
@@ -136,21 +144,21 @@ function ExamSetup() {
 
       {/* Topic filter (custom mode) */}
       {mode === 'custom' && (
-        <div className="card space-y-4 animate-slide-up">
+        <div className="card glass space-y-4 animate-scale-in">
           <div className="flex items-center justify-between">
-            <h2 className="font-bold text-ink text-lg">{t('2. Filtrar por Tema', '2. Filter by Topic')}</h2>
+            <h2 className="font-black text-ink dark:text-white text-lg">{t('2. Filtrar por Tema', '2. Filter by Topic')}</h2>
             {selectedTopics.length > 0 && (
-              <span className="badge-pill bg-primary text-white text-xs px-2 py-1 rounded-full">
+              <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-full">
                 {selectedTopics.length} {t('seleccionados', 'selected')}
               </span>
             )}
           </div>
-          <p className="text-sm text-ink-light">{t('Deja vacío para preguntas de todos los temas', 'Leave empty for questions from all topics')}</p>
+          <p className="text-sm text-ink-light font-medium">{t('Deja vacío para preguntas de todos los temas', 'Leave empty for questions from all topics')}</p>
 
           {topicsLoading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="h-10 bg-slate-200 rounded-xl animate-pulse" />
+                <div key={i} className="h-10 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
               ))}
             </div>
           ) : availableTopics.length > 0 ? (
@@ -160,14 +168,14 @@ function ExamSetup() {
                   key={tag}
                   onClick={() => toggleTopic(tag)}
                   type="button"
-                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all border-2 focus:outline-none focus:ring-2 focus:ring-secondary ${
+                  className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all border-2 focus:outline-none ${
                     selectedTopics.includes(tag)
-                      ? 'border-secondary bg-purple-50 text-secondary'
-                      : 'border-slate-200 text-ink hover:border-slate-300'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-slate-100 dark:border-slate-800 text-ink-light hover:border-primary/30'
                   }`}
                 >
                   {tag}
-                  <span className="ml-1 text-xs opacity-70">({count})</span>
+                  <span className="ml-1 opacity-60">({count})</span>
                 </button>
               ))}
             </div>
@@ -178,21 +186,21 @@ function ExamSetup() {
       )}
 
       {/* Assistance mode */}
-      <div className="card space-y-4">
-        <h2 className="font-bold text-ink text-lg">
+      <div className="card glass space-y-4">
+        <h2 className="font-black text-ink dark:text-white text-lg">
           {t('3. Modo de Asistencia', '3. Assistance Mode')}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
             {
               val: 'exam',
-              icon: '🔇',
+              icon: <AuditOutlined />,
               title: t('Modo Examen', 'Exam Mode'),
               desc: t('Resultados al final. Como el DGT real.', 'Results at the end. Just like the real DGT.'),
             },
             {
               val: 'instant',
-              icon: '⚡',
+              icon: <ThunderboltOutlined />,
               title: t('Retroalimentación Inmediata', 'Instant Feedback'),
               desc: t('Ver respuesta correcta tras cada pregunta', 'See correct answer after each question'),
             },
@@ -201,30 +209,30 @@ function ExamSetup() {
               key={opt.val}
               onClick={() => setAssistanceMode(opt.val)}
               type="button"
-              className={`p-4 rounded-xl border-2 text-left transition-all focus:outline-none focus:ring-2 focus:ring-success ${
+              className={`p-5 rounded-3xl border-2 text-left transition-all active:scale-[0.98] focus:outline-none ${
                 assistanceMode === opt.val
-                  ? 'border-success bg-emerald-50'
-                  : 'border-slate-200 bg-white hover:border-slate-300'
+                  ? 'border-success bg-success/5 border-success'
+                  : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-primary/30'
               }`}
             >
-              <div className="text-2xl mb-2">{opt.icon}</div>
-              <div className="font-bold text-ink">{opt.title}</div>
-              <div className="text-sm text-ink-light">{opt.desc}</div>
+              <div className="text-2xl mb-3 text-primary">{opt.icon}</div>
+              <div className="font-black text-ink dark:text-white">{opt.title}</div>
+              <div className="text-xs text-ink-light font-medium mt-1">{opt.desc}</div>
             </button>
           ))}
         </div>
       </div>
 
       {/* Summary + Start */}
-      <div className="card bg-gradient-to-r from-slate-50 to-blue-50 border border-blue-100 rounded-xl p-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="card glass border-0 bg-gradient-to-br from-primary to-indigo-700 text-white shadow-xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div>
-            <h3 className="font-bold text-ink text-lg">
+            <h3 className="font-black text-xl">
               {mode === 'official'
                 ? t('Simulación Oficial DGT', 'Official DGT Simulation')
                 : t('Práctica Personalizada', 'Custom Practice')}
             </h3>
-            <p className="text-sm text-ink-light mt-1">
+            <p className="text-sm font-medium opacity-80 mt-1">
               {mode === 'official' 
                 ? '30Q · 30min' 
                 : `${selectedTopics.length ? selectedTopics.join(', ') : t('Todos los temas', 'All topics')}`}
@@ -235,12 +243,12 @@ function ExamSetup() {
           <button
             onClick={startExam}
             disabled={loading}
-            className="btn-primary text-lg px-8 py-4 disabled:opacity-70 disabled:cursor-not-allowed w-full sm:w-auto flex justify-center"
+            className="px-10 py-4 bg-white text-primary font-black rounded-2xl hover:bg-slate-50 transition-all active:scale-95 shadow-lg shadow-black/10 w-full sm:w-auto flex items-center justify-center gap-2"
           >
             {loading ? (
               <span className="animate-pulse">{t('Cargando...', 'Loading...')}</span>
             ) : (
-              `${t('¡Empezar!', 'Start!')} 🚀`
+              <>{t('¡Empezar!', 'Start!')} <RocketOutlined /></>
             )}
           </button>
         </div>
@@ -253,7 +261,7 @@ function ExamSetup() {
 function ExamSetupFallback() {
   return (
     <div className="max-w-2xl mx-auto space-y-8 p-8 flex justify-center items-center h-64">
-      <div className="animate-pulse text-ink-light">Cargando configuración... / Loading setup...</div>
+      <div className="animate-pulse text-ink-light font-black uppercase tracking-widest text-xs">Cargando configuración...</div>
     </div>
   )
 }
@@ -261,7 +269,6 @@ function ExamSetupFallback() {
 export default function ExamPage() {
   return (
     <AppShell requirePremium>
-      {/* Suspense is REQUIRED here because ExamSetup uses useSearchParams() */}
       <Suspense fallback={<ExamSetupFallback />}>
         <ExamSetup />
       </Suspense>

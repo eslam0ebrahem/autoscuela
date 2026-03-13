@@ -5,6 +5,21 @@ import { useRouter } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 import DOMPurify from 'dompurify'
+import {
+  AimOutlined,
+  CloseCircleOutlined,
+  ExclamationCircleOutlined,
+  CheckCircleOutlined,
+  SettingOutlined,
+  UpOutlined,
+  DownOutlined,
+  SmileOutlined,
+  RightOutlined,
+  BulbOutlined,
+  LeftOutlined,
+  CheckOutlined,
+  FilterOutlined
+} from '@ant-design/icons'
 
 function sanitizeHtml(html) {
   if (typeof window === 'undefined') return ''
@@ -98,7 +113,7 @@ function MistakeBank() {
         <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-base-100">
           <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
           <p className="text-sm text-base-content/50 animate-pulse">
-            {t('Cargando banco de errores...', 'Loading mistake bank...')}
+            {t('Cargando tu panel...', 'Loading your dashboard...')}
           </p>
         </div>
       </AppShell>
@@ -132,11 +147,11 @@ function MistakeBank() {
             <button
               onClick={handlePracticeMistakes}
               disabled={mistakes.length === 0 || practiceLoading}
-              className="btn btn-primary btn-sm h-11 rounded-xl shrink-0 gap-2 px-4"
+              className="btn btn-primary btn-sm h-11 rounded-xl shrink-0 gap-2 px-4 flex items-center justify-center"
             >
               {practiceLoading
                 ? <span className="loading loading-spinner loading-xs" />
-                : '🎯'}
+                : <AimOutlined />}
               <span className="hidden sm:inline">
                 {t('Practicar', 'Practice')}
               </span>
@@ -152,25 +167,25 @@ function MistakeBank() {
                   value: stats.totalMistakes,
                   color: 'text-error',
                   bg: 'bg-error/5 border-error/15',
-                  icon: '❌',
+                  icon: <CloseCircleOutlined />,
                 },
                 {
                   label: t('Sin corregir', 'Uncorrected'),
                   value: stats.uncorrectedCount,
                   color: 'text-warning',
                   bg: 'bg-warning/5 border-warning/15',
-                  icon: '⚠️',
+                  icon: <ExclamationCircleOutlined />,
                 },
                 {
                   label: t('Corregidos', 'Corrected'),
                   value: `${stats.correctionRate}%`,
                   color: 'text-success',
                   bg: 'bg-success/5 border-success/15',
-                  icon: '✅',
+                  icon: <CheckCircleOutlined />,
                 },
               ].map((s, i) => (
                 <div key={i} className={`rounded-2xl border p-3 text-center ${s.bg}`}>
-                  <div className="text-base mb-1">{s.icon}</div>
+                  <div className="text-base mb-1 text-primary">{s.icon}</div>
                   <div className={`text-xl font-black ${s.color}`}>{s.value}</div>
                   <div className="text-[10px] text-base-content/50 mt-0.5 leading-tight">{s.label}</div>
                 </div>
@@ -189,7 +204,7 @@ function MistakeBank() {
                 ${showFilters || activeFiltersCount > 0
                   ? 'bg-primary/10 border-primary/30 text-primary'
                   : 'bg-base-200 border-base-300 text-base-content/50'}`}>
-                ⚙
+                <FilterOutlined />
               </span>
               {t('Filtros', 'Filters')}
               {activeFiltersCount > 0 && (
@@ -197,7 +212,7 @@ function MistakeBank() {
                   {activeFiltersCount}
                 </span>
               )}
-              <span className="ml-auto text-base-content/30">{showFilters ? '▲' : '▼'}</span>
+              <span className="ml-auto text-base-content/30">{showFilters ? <UpOutlined /> : <DownOutlined />}</span>
             </button>
 
             {showFilters && (
@@ -267,9 +282,9 @@ function MistakeBank() {
                       setCorrectedOnly(false)
                       setPage(1)
                     }}
-                    className="btn btn-ghost btn-xs text-error w-full"
+                    className="btn btn-ghost btn-xs text-error w-full flex items-center justify-center gap-2"
                   >
-                    {t('Limpiar filtros', 'Clear filters')}
+                    <CloseCircleOutlined /> {t('Limpiar filtros', 'Clear filters')}
                   </button>
                 )}
               </div>
@@ -288,7 +303,7 @@ function MistakeBank() {
             {/* Empty state */}
             {mistakes.length === 0 && !loading && (
               <div className="rounded-2xl border-2 border-dashed border-base-300 p-10 text-center">
-                <div className="text-5xl mb-3">🎉</div>
+                <div className="text-5xl mb-3 text-primary"><SmileOutlined /></div>
                 <h3 className="font-bold text-base-content">
                   {t('¡Todo limpio!', 'All clear!')}
                 </h3>
@@ -318,7 +333,7 @@ function MistakeBank() {
                     {/* Chevron */}
                     <span className={`mt-0.5 text-xs shrink-0 transition-transform duration-200
                       ${isExpanded ? 'rotate-90 text-primary' : 'text-base-content/30'}`}>
-                      ▶
+                      <RightOutlined />
                     </span>
 
                     <div className="flex-1 min-w-0 space-y-2">
@@ -346,7 +361,7 @@ function MistakeBank() {
                         {/* Corrected badge */}
                         {m.isCorrected && (
                           <span className="px-2 py-0.5 rounded-full bg-success/10 border border-success/20 text-success text-[11px] font-bold">
-                            ✓ {t('Corregido', 'Corrected')}
+                            <CheckOutlined /> {t('Corregido', 'Corrected')}
                           </span>
                         )}
                       </div>
@@ -389,7 +404,7 @@ function MistakeBank() {
                                 </span>
                                 <span className="leading-snug">{opt.text_es}</span>
                                 {isCorrect && (
-                                  <span className="ml-auto shrink-0 text-success font-bold">✓</span>
+                                  <span className="ml-auto shrink-0 text-success font-bold"><CheckOutlined /></span>
                                 )}
                               </div>
                             )
@@ -401,7 +416,7 @@ function MistakeBank() {
                       {m.metadata?.help_html && (
                         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
                           <p className="text-[11px] font-bold text-primary uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                            💡 {t('Explicación Oficial DGT', 'Official DGT Explanation')}
+                            <BulbOutlined /> {t('Explicación Oficial DGT', 'Official DGT Explanation')}
                           </p>
                           <div
                             className="text-sm text-base-content/80 leading-relaxed"
@@ -422,9 +437,9 @@ function MistakeBank() {
               <button
                 onClick={() => { setPage(Math.max(1, page - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                 disabled={page === 1 || loading}
-                className="btn btn-ghost btn-sm rounded-xl border border-base-300 disabled:opacity-40"
+                className="btn btn-ghost btn-sm rounded-xl border border-base-300 disabled:opacity-40 flex items-center justify-center gap-2"
               >
-                ← {t('Anterior', 'Prev')}
+                <LeftOutlined /> {t('Anterior', 'Prev')}
               </button>
               <span className="text-sm font-semibold text-base-content/50">
                 {page} / {totalPages}
@@ -432,9 +447,9 @@ function MistakeBank() {
               <button
                 onClick={() => { setPage(Math.min(totalPages, page + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                 disabled={page === totalPages || loading}
-                className="btn btn-ghost btn-sm rounded-xl border border-base-300 disabled:opacity-40"
+                className="btn btn-ghost btn-sm rounded-xl border border-base-300 disabled:opacity-40 flex items-center justify-center gap-2"
               >
-                {t('Siguiente', 'Next')} →
+                {t('Siguiente', 'Next')} <RightOutlined />
               </button>
             </div>
           )}

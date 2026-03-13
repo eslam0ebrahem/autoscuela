@@ -5,6 +5,19 @@ import { useRouter, useParams } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 import DOMPurify from 'dompurify'
+import {
+  CloseOutlined,
+  ClockCircleOutlined,
+  CheckOutlined,
+  SearchOutlined,
+  StarOutlined,
+  StarFilled,
+  ArrowRightOutlined,
+  BulbOutlined,
+  SmileOutlined,
+  FrownOutlined,
+  ZoomInOutlined
+} from '@ant-design/icons'
 
 function sanitizeHtml(html) {
   if (typeof window === 'undefined') return ''
@@ -78,8 +91,8 @@ function OptionButton({ opt, idx, displayIdx, answered, selected, correct, isIns
         {letter}
       </span>
       <span className="flex-1 font-bold text-lg">{text}</span>
-      {isInstant && answered && feedbackData && idx === correct && <span className="text-2xl">✓</span>}
-      {isInstant && answered && feedbackData && idx === selected && idx !== correct && <span className="text-2xl">✗</span>}
+      {isInstant && answered && feedbackData && idx === correct && <span className="text-2xl"><CheckOutlined /></span>}
+      {isInstant && answered && feedbackData && idx === selected && idx !== correct && <span className="text-2xl"><CloseOutlined /></span>}
     </button>
   )
 }
@@ -253,7 +266,7 @@ function ExamInterface() {
     return (
       <div className="max-w-xl mx-auto space-y-8 animate-scale-in">
         <div className={`card text-center p-12 border-t-8 ${result.passed ? 'border-success' : 'border-danger'}`}>
-          <div className="text-7xl mb-6">{result.passed ? '🎉' : '💔'}</div>
+          <div className="text-7xl mb-6">{result.passed ? <SmileOutlined className="text-success" /> : <FrownOutlined className="text-danger" />}</div>
           <h2 className="text-4xl font-black mb-2">{result.passed ? t('¡APROBADO!', 'PASSED!') : t('¡CASI!', 'NOT YET!')}</h2>
           <p className="text-ink-light font-medium mb-8">
             {result.passed ? t('Has superado el examen con éxito.', 'You passed the exam successfully.') : t('Sigue practicando, te falta poco.', 'Keep practicing, you are almost there.')}
@@ -299,11 +312,15 @@ function ExamInterface() {
 
       {/* Top Bar */}
       <div className="flex items-center gap-4 mb-6">
-        <button onClick={() => { if (confirm(t('¿Salir?', 'Exit?'))) router.push('/exam') }} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-ink-light hover:text-ink">✕</button>
+        <button onClick={() => { if (confirm(t('¿Salir?', 'Exit?'))) router.push('/exam') }} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-ink-light hover:text-ink">
+          <CloseOutlined />
+        </button>
         <div className="flex-1">
            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-ink-light mb-2">
              <span>{t('Pregunta', 'Question')} {currentIdx + 1} / {questions.length}</span>
-             {timeLeft != null && <span className={timeLeft < 60 ? 'text-danger animate-pulse' : ''}>⏱ {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span>}
+             {timeLeft != null && <span className={timeLeft < 60 ? 'text-danger animate-pulse' : ''}>
+               <ClockCircleOutlined /> {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+             </span>}
            </div>
            <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
              <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${questions.length > 0 ? ((currentIdx + 1) / questions.length) * 100 : 0}%` }} />
@@ -348,7 +365,7 @@ function ExamInterface() {
              <div className="sticky top-24 card p-0 overflow-hidden group cursor-zoom-in" onClick={() => setExpandedImage(currentQuestion.metadata.image_url)}>
                 <img src={currentQuestion.metadata.image_url} alt="Question" className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                   <span className="text-white text-3xl">🔍</span>
+                   <span className="text-white text-3xl"><ZoomInOutlined /></span>
                 </div>
              </div>
           </div>
@@ -359,18 +376,18 @@ function ExamInterface() {
       <div className="mt-12 flex items-center justify-between pb-8">
         <div className="flex gap-4">
            {isInstant && answered && feedbackData?.helpHtml && (
-             <button onClick={() => setShowExplanation(!showExplanation)} className="px-6 py-3 rounded-2xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-black text-sm uppercase tracking-widest">
-               {showExplanation ? t('Ocultar', 'Hide') : t('Ayuda', 'Help')}
+             <button onClick={() => setShowExplanation(!showExplanation)} className="px-6 py-3 rounded-2xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-black text-sm uppercase tracking-widest flex items-center gap-2">
+               <BulbOutlined /> {showExplanation ? t('Ocultar', 'Hide') : t('Ayuda', 'Help')}
              </button>
            )}
            <button onClick={() => toggleBookmark(currentQuestion._id)} className={`w-12 h-12 flex items-center justify-center rounded-2xl border-2 transition-all ${bookmarkedQuestions.has(currentQuestion._id) ? 'bg-amber-50 border-amber-200 text-amber-500' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-             {bookmarkedQuestions.has(currentQuestion._id) ? '⭐' : '☆'}
+             {bookmarkedQuestions.has(currentQuestion._id) ? <StarFilled /> : <StarOutlined />}
            </button>
         </div>
         
         {answered && (
-          <button onClick={handleNext} className="btn-primary px-10 py-4 rounded-2xl font-black shadow-2xl shadow-primary/30 animate-scale-in">
-            {currentIdx === questions.length - 1 ? t('Finalizar', 'Finish') : t('Siguiente', 'Next')} →
+          <button onClick={handleNext} className="btn-primary px-10 py-4 rounded-2xl font-black shadow-2xl shadow-primary/30 animate-scale-in flex items-center gap-2">
+            {currentIdx === questions.length - 1 ? t('Finalizar', 'Finish') : t('Siguiente', 'Next')} <ArrowRightOutlined />
           </button>
         )}
       </div>

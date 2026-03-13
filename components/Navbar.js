@@ -5,6 +5,25 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from './AuthContext'
 import { useTheme } from './ThemeProvider'
+import {
+  HomeOutlined,
+  FileTextOutlined,
+  IdcardOutlined,
+  CloseCircleOutlined,
+  BarChartOutlined,
+  StarOutlined,
+  BulbOutlined,
+  SunOutlined,
+  MoonOutlined,
+  DesktopOutlined,
+  FireOutlined,
+  UserOutlined,
+  SettingOutlined,
+  SafetyCertificateOutlined,
+  LogoutOutlined,
+  GlobalOutlined,
+  TranslationOutlined
+} from '@ant-design/icons'
 
 export default function Navbar() {
   const { user, logout, updateLanguage, t } = useAuth()
@@ -35,16 +54,16 @@ export default function Navbar() {
 
   useEffect(() => { setDropdownOpen(false) }, [pathname])
 
-  const themeIcon = theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🖥️'
+  const themeIcon = theme === 'dark' ? <MoonOutlined /> : theme === 'light' ? <SunOutlined /> : <DesktopOutlined />
   const nextTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'
 
   const navLinks = [
-    { href: '/dashboard', label: t('Inicio', 'Home'), icon: '🏠' },
-    { href: '/exam', label: t('Examen', 'Exam'), icon: '📝' },
-    { href: '/flashcards', label: t('Tarjetas', 'Cards'), icon: '🃏' },
-    { href: '/mistakes', label: t('Errores', 'Mistakes'), icon: '❌' },
-    { href: '/stats', label: t('Stats', 'Stats'), icon: '📊' },
-    { href: '/dashboard/bookmarks', label: t('Guardados', 'Saved'), icon: '⭐' },
+    { href: '/dashboard', label: t('Inicio', 'Home'), icon: <HomeOutlined /> },
+    { href: '/exam', label: t('Examen', 'Exam'), icon: <FileTextOutlined /> },
+    { href: '/flashcards', label: t('Tarjetas', 'Cards'), icon: <IdcardOutlined /> },
+    { href: '/mistakes', label: t('Errores', 'Mistakes'), icon: <CloseCircleOutlined /> },
+    { href: '/stats', label: t('Stats', 'Stats'), icon: <BarChartOutlined /> },
+    { href: '/dashboard/bookmarks', label: t('Guardados', 'Saved'), icon: <StarOutlined /> },
   ]
 
   const bottomNavLinks = navLinks.slice(0, 5)
@@ -54,7 +73,9 @@ export default function Navbar() {
       <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
           <Link href="/dashboard" className="flex items-center gap-2 group">
-            <span className="text-2xl transition-transform group-hover:scale-110" role="img" aria-hidden="true">🚗</span>
+            <span className="text-2xl transition-transform group-hover:scale-110 text-primary" role="img" aria-hidden="true">
+              <SafetyCertificateOutlined />
+            </span>
             <span className="font-bold text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
               Autoscuela
             </span>
@@ -74,7 +95,7 @@ export default function Navbar() {
                       : 'text-ink-light dark:text-slate-400 hover:text-ink dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
                 >
-                  <span className="text-lg">{link.icon}</span>
+                  <span className="text-base">{link.icon}</span>
                   {link.label}
                 </Link>
               )
@@ -84,23 +105,23 @@ export default function Navbar() {
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => setTheme(nextTheme)}
-              className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-lg flex items-center justify-center"
               title={t('Cambiar tema', 'Change theme')}
             >
-              <span className="text-lg">{themeIcon}</span>
+              {themeIcon}
             </button>
 
             <button
               onClick={() => updateLanguage(lang === 'es' ? 'en' : 'es')}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold transition-colors"
             >
-              <span>{lang === 'es' ? '🇪🇸' : '🇬🇧'}</span>
+              <TranslationOutlined />
               <span className="text-ink dark:text-slate-200">{lang === 'es' ? 'ES' : 'EN'}</span>
             </button>
 
             {streak > 0 && (
               <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/50">
-                <span className="streak-flame">🔥</span>
+                <FireOutlined className="text-orange-500" />
                 <span className="text-sm font-bold text-orange-600 dark:text-orange-400">{streak}</span>
               </div>
             )}
@@ -111,7 +132,7 @@ export default function Navbar() {
                 className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
-                  {user?.nickname?.[0]?.toUpperCase() || 'U'}
+                  {user?.nickname?.[0]?.toUpperCase() || <UserOutlined />}
                 </div>
               </button>
 
@@ -120,7 +141,7 @@ export default function Navbar() {
                   <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/50 mb-1">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black shrink-0 shadow-sm">
-                        {user?.nickname?.[0]?.toUpperCase() || '?'}
+                        {user?.nickname?.[0]?.toUpperCase() || <UserOutlined />}
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-sm text-ink dark:text-white truncate">{user?.nickname}</p>
@@ -142,7 +163,7 @@ export default function Navbar() {
                       onClick={() => { updateLanguage(lang === 'es' ? 'en' : 'es'); setDropdownOpen(false) }}
                       className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-ink-light dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
                     >
-                      <span>{lang === 'es' ? '🇬🇧' : '🇪🇸'}</span>
+                      <TranslationOutlined />
                       {lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
                     </button>
 
@@ -151,7 +172,7 @@ export default function Navbar() {
                       onClick={() => setDropdownOpen(false)}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-ink-light dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
-                      <span>⚙️</span> {t('Ajustes', 'Settings')}
+                      <SettingOutlined /> {t('Ajustes', 'Settings')}
                     </Link>
 
                     {user?.role === 'admin' && (
@@ -160,7 +181,7 @@ export default function Navbar() {
                         onClick={() => setDropdownOpen(false)}
                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors font-medium"
                       >
-                        <span>🛡️</span> Admin Panel
+                        <SafetyCertificateOutlined /> Admin Panel
                       </Link>
                     )}
                   </div>
@@ -172,7 +193,7 @@ export default function Navbar() {
                       onClick={() => { logout(); setDropdownOpen(false) }}
                       className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-danger hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left font-medium"
                     >
-                      <span>🚪</span> {t('Cerrar sesión', 'Log out')}
+                      <LogoutOutlined /> {t('Cerrar sesión', 'Log out')}
                     </button>
                   </div>
                 </div>

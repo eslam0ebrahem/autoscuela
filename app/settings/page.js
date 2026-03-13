@@ -4,6 +4,16 @@ import { useState } from 'react'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 import { useTheme } from '@/components/ThemeProvider'
+import {
+  UserOutlined,
+  SettingOutlined,
+  FormatPainterOutlined,
+  BarChartOutlined,
+  SunOutlined,
+  MoonOutlined,
+  DesktopOutlined,
+  CrownOutlined
+} from '@ant-design/icons'
 
 function SettingsContent() {
   const { user, t, refreshUser } = useAuth()
@@ -43,9 +53,9 @@ function SettingsContent() {
   }
 
   const themes = [
-    { value: 'light', label: t('Claro', 'Light'), icon: '☀️' },
-    { value: 'dark', label: t('Oscuro', 'Dark'), icon: '🌙' },
-    { value: 'system', label: t('Auto', 'Auto'), icon: '🖥️' },
+    { value: 'light', label: t('Claro', 'Light'), icon: <SunOutlined /> },
+    { value: 'dark', label: t('Oscuro', 'Dark'), icon: <MoonOutlined /> },
+    { value: 'system', label: t('Auto', 'Auto'), icon: <DesktopOutlined /> },
   ]
 
   return (
@@ -53,7 +63,7 @@ function SettingsContent() {
       
       <div className="flex items-center gap-6">
          <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-3xl text-white font-black shadow-xl shadow-blue-500/20">
-           {user?.nickname?.[0]?.toUpperCase()}
+           {user?.nickname?.[0]?.toUpperCase() || <UserOutlined />}
          </div>
          <div>
             <h1 className="text-3xl font-black text-ink dark:text-white">{t('Tu Perfil', 'Your Profile')}</h1>
@@ -63,7 +73,11 @@ function SettingsContent() {
 
       {/* Subscription Hero */}
       <div className={`card border-0 overflow-hidden relative ${user?.isPremium ? 'bg-gradient-to-br from-indigo-600 to-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800'}`}>
-         {user?.isPremium && <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 scale-150"><span className="text-9xl">💎</span></div>}
+         {user?.isPremium && (
+           <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 scale-150 text-white">
+             <CrownOutlined style={{ fontSize: '120px' }} />
+           </div>
+         )}
          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-center md:text-left p-6">
                <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">{t('Tu Plan', 'Your Plan')}</p>
@@ -85,7 +99,9 @@ function SettingsContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Profile Settings */}
         <div className="card glass space-y-4">
-          <h3 className="font-black text-lg flex items-center gap-2"><span>👤</span> {t('Ajustes', 'Settings')}</h3>
+          <h3 className="font-black text-lg flex items-center gap-2">
+            <SettingOutlined className="text-primary" /> {t('Ajustes', 'Settings')}
+          </h3>
           <form onSubmit={handleSaveProfile} className="space-y-4">
              <div className="space-y-1">
                <label className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">{t('Nickname', 'Nickname')}</label>
@@ -99,7 +115,9 @@ function SettingsContent() {
 
         {/* Appearance */}
         <div className="card glass space-y-4">
-          <h3 className="font-black text-lg flex items-center gap-2"><span>🎨</span> {t('Tema', 'Theme')}</h3>
+          <h3 className="font-black text-lg flex items-center gap-2">
+            <FormatPainterOutlined className="text-primary" /> {t('Tema', 'Theme')}
+          </h3>
           <div className="grid grid-cols-3 gap-2">
             {themes.map(t_item => (
               <button
@@ -117,7 +135,9 @@ function SettingsContent() {
 
       {/* Stats Summary */}
       <div className="card glass">
-         <h3 className="font-black text-lg mb-6 flex items-center gap-2"><span>📊</span> {t('Tus Logros', 'Your Stats')}</h3>
+         <h3 className="font-black text-lg mb-6 flex items-center gap-2">
+           <BarChartOutlined className="text-primary" /> {t('Tus Logros', 'Your Stats')}
+         </h3>
          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="text-center">
                <p className="text-2xl font-black text-amber-500">{user?.gamification?.totalXP || 0}</p>

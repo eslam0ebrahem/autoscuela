@@ -3,6 +3,19 @@
 import { useState, useEffect } from 'react'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
+import {
+  IdcardOutlined,
+  ExclamationCircleOutlined,
+  SmileOutlined,
+  CheckCircleOutlined,
+  FlagOutlined,
+  CloseOutlined,
+  ReloadOutlined,
+  CheckOutlined,
+  InteractionOutlined,
+  BookOutlined,
+  ArrowRightOutlined
+} from '@ant-design/icons'
 
 const getLocalizedText = (obj, lang) => {
   if (!obj) return ''
@@ -55,13 +68,13 @@ function FlashcardDeck({ deck, lang, onBack }) {
     }, 200)
   }
 
-  if (loading) return <div className="flex h-96 items-center justify-center animate-pulse text-4xl">🃏</div>
+  if (loading) return <div className="flex h-96 items-center justify-center animate-pulse text-4xl text-primary"><IdcardOutlined /></div>
 
   if (error) {
     return (
       <div className="max-w-md mx-auto text-center space-y-8 animate-scale-in">
         <div className="card glass p-12 space-y-6">
-           <div className="text-5xl">⚠️</div>
+           <div className="text-5xl text-danger"><ExclamationCircleOutlined /></div>
            <h2 className="text-xl font-black">{t('Error al cargar', 'Error loading')}</h2>
            <button onClick={onBack} className="btn-primary w-full py-4 rounded-2xl font-black">{t('Volver', 'Go Back')}</button>
         </div>
@@ -76,7 +89,7 @@ function FlashcardDeck({ deck, lang, onBack }) {
     return (
       <div className="max-w-md mx-auto text-center space-y-8 animate-scale-in">
         <div className="card glass p-12 space-y-6">
-           <div className="text-7xl">{cards.length === 0 ? '🎉' : '🏁'}</div>
+           <div className="text-7xl text-primary">{cards.length === 0 ? <SmileOutlined /> : <FlagOutlined />}</div>
            <h2 className="text-3xl font-black">{cards.length === 0 ? t('¡Todo al día!', 'All caught up!') : t('¡Buen Trabajo!', 'Good Job!')}</h2>
            
            {done && (
@@ -117,7 +130,9 @@ function FlashcardDeck({ deck, lang, onBack }) {
   return (
     <div className="max-w-md mx-auto space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
-         <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-ink-light">✕</button>
+         <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-ink-light hover:text-ink">
+           <CloseOutlined />
+         </button>
          <span className="text-[10px] font-black uppercase tracking-widest text-ink-light">{currentIdx + 1} / {cards.length}</span>
       </div>
 
@@ -149,11 +164,11 @@ function FlashcardDeck({ deck, lang, onBack }) {
 
       <div className={`grid grid-cols-2 gap-4 transition-all duration-300 ${flipped ? 'opacity-100' : 'opacity-0 pointer-events-none translate-y-4'}`}>
         <button onClick={(e) => { e.stopPropagation(); handleReview('needs_practice') }} className="flex flex-col items-center gap-2 p-6 rounded-3xl bg-red-50 dark:bg-red-900/20 text-danger border-2 border-red-100 dark:border-red-900/50">
-           <span className="text-2xl">🔄</span>
+           <span className="text-2xl"><ReloadOutlined /></span>
            <span className="text-[10px] font-black uppercase tracking-widest">{t('Repasar', 'Review')}</span>
         </button>
         <button onClick={(e) => { e.stopPropagation(); handleReview('got_it') }} className="flex flex-col items-center gap-2 p-6 rounded-3xl bg-emerald-50 dark:bg-emerald-900/20 text-success border-2 border-emerald-100 dark:border-emerald-900/50">
-           <span className="text-2xl">✓</span>
+           <span className="text-2xl"><CheckOutlined /></span>
            <span className="text-[10px] font-black uppercase tracking-widest">{t('Lo sé', 'Got it')}</span>
         </button>
       </div>
@@ -187,13 +202,15 @@ function FlashcardsContent() {
 
       <button onClick={() => { setActiveDeck(null); setStarted(true) }} className="card bg-gradient-to-br from-indigo-600 to-blue-700 text-white border-0 shadow-2xl group flex items-center justify-between p-8">
          <div className="flex items-center gap-6">
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">🔀</div>
+            <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+              <InteractionOutlined />
+            </div>
             <div className="text-left">
                <h3 className="text-2xl font-black">{t('Mezcla Global', 'Global Mix')}</h3>
                <p className="text-blue-100 font-medium">{t('Todos los temas en uno.', 'All topics in one.')}</p>
             </div>
          </div>
-         <span className="text-4xl">→</span>
+         <span className="text-4xl"><ArrowRightOutlined /></span>
       </button>
 
       <div className="space-y-6">
@@ -201,7 +218,9 @@ function FlashcardsContent() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {decks.map(({ tag, count }) => (
             <button key={typeof tag === 'string' ? tag : tag.es} onClick={() => { setActiveDeck(typeof tag === 'string' ? tag : tag.es); setStarted(true) }} className="card glass p-6 flex items-center gap-4 group">
-               <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-xl group-hover:bg-primary group-hover:text-white transition-colors">📚</div>
+               <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-xl group-hover:bg-primary group-hover:text-white transition-colors">
+                 <BookOutlined />
+               </div>
                <div className="flex-1 text-left">
                   <h4 className="font-black text-sm leading-tight">{getLocalizedText(tag, lang)}</h4>
                   <p className="text-[10px] font-black uppercase text-ink-light tracking-widest mt-1">{count} {t('tarjetas', 'cards')}</p>
