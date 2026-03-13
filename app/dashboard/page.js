@@ -181,13 +181,22 @@ function DashboardContent() {
     if (startingExam) return
     setStartingExam(true)
     try {
-      const res = await fetch('/api/exams', { method: 'POST' })
-      if (!res.ok) throw new Error('Failed to start exam')
-      const data = await res.json()
+      const res = await fetch('/api/exams/generate', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'official' })
+      })
+      
+      const data = await res.json().catch(() => ({}))
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to start exam')
+      }
+
       router.push(`/exam/${data.sessionId}`)
     } catch (err) {
-      console.error(err)
-      toast.error(t('Error al iniciar el examen', 'Error starting exam'))
+      console.error('Exam start error:', err)
+      toast.error(err.message || t('Error al iniciar el examen', 'Error starting exam'))
       setStartingExam(false)
     }
   }

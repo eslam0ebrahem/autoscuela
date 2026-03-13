@@ -284,7 +284,7 @@ function ReviewInterface() {
                   {/* Options */}
                   <div className="px-4 pb-3 space-y-2">
                     {q.options?.map((opt) => {
-                      const text = lang === 'en' && opt.text_en ? opt.text_en : opt.text_es
+                      const text = lang === 'en' ? (opt.text_en || opt.text_es) : (opt.text_es || opt.text_en)
                       const letter = ['A', 'B', 'C', 'D'][opt.idx]
                       const isCorrect = opt.idx === q.correctIdx
                       const isWrong = opt.idx === q.selectedOptionIdx && !isCorrect

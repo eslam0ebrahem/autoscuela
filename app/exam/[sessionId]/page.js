@@ -50,7 +50,7 @@ function playSound(src) {
 
 // ── Option button ─────────────────────────────────────────
 function OptionButton({ opt, idx, displayIdx, answered, selected, correct, isInstant, feedbackData, lang, onSelect }) {
-  const text  = lang === 'en' && opt.text_en ? opt.text_en : opt.text_es
+  const text = lang === 'en' ? (opt.text_en || opt.text_es) : (opt.text_es || opt.text_en)
   const letter = ['A', 'B', 'C', 'D'][displayIdx]
 
   let state = 'idle'
@@ -135,14 +135,28 @@ function ExamInterface() {
       fetch(`/api/exams/${sessionId}`).then(r => r.json())
     ]).then(([bookmarksData, examData]) => {
       if (bookmarksData?.bookmarks) setBookmarkedQuestions(new Set(bookmarksData.bookmarks))
-      setSession(examData.session)
-      setQuestions(examData.questions || [])
-      if (examData.session.status === 'completed') {
-        setResult({ score: examData.session.score, errors: examData.session.errorCount, passed: examData.session.passed, total: examData.questions?.length })
+      
+      if (examData && examData.session) {
+        setSession(examData.session)
+        setQuestions(examData.questions || [])
+        if (examData.session.status === 'completed') {
+          setResult({ 
+            score: examData.session.score, 
+            errors: examData.session.errorCount, 
+            passed: examData.session.passed, 
+            total: examData.questions?.length || 0 
+          })
+        } else {
+          setCurrentIdx(examData.session.currentQuestionIndex || 0)
+          setStartTime(Date.now())
+        }
       } else {
-        setCurrentIdx(examData.session.currentQuestionIndex || 0)
-        setStartTime(Date.now())
+        console.error('Session not found or error:', examData?.error)
+        router.push('/exam')
       }
+    }).catch(err => {
+      console.error('Error fetching session data:', err)
+      router.push('/exam')
     }).finally(() => setLoading(false))
   }, [sessionId])
 
@@ -332,7 +346,9 @@ function ExamInterface() {
       <div className="flex-1 flex flex-col lg:flex-row gap-8">
         <div className="flex-1 space-y-8">
           <h2 className="text-2xl md:text-3xl font-black leading-tight text-ink dark:text-white">
-            {lang === 'en' ? currentQuestion.question.en : currentQuestion.question.es}
+            {lang === 'en' 
+              ? (currentQuestion.question.en || currentQuestion.question.es) 
+              : (currentQuestion.question.es || currentQuestion.question.en)}
           </h2>
 
           <div className="space-y-3">

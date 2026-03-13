@@ -21,7 +21,9 @@ function ExamSetup() {
   const aiTopics = searchParams.get('topics')?.split(',').filter(Boolean) || []
   const isAI = searchParams.get('ai') === '1'
 
-  const [mode, setMode] = useState(isAI ? 'custom' : 'official')
+  const lang = user?.preferences?.language || 'es'
+  const urlMode = searchParams.get('mode')
+  const [mode, setMode] = useState(urlMode || (isAI ? 'custom' : 'official'))
   const [assistanceMode, setAssistanceMode] = useState('exam')
   const [selectedTopics, setSelectedTopics] = useState(aiTopics)
   const [availableTopics, setAvailableTopics] = useState([])
@@ -77,7 +79,7 @@ function ExamSetup() {
         }),
       })
       
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       
       if (res.ok && data.sessionId) {
         router.push(`/exam/${data.sessionId}`)
@@ -163,21 +165,24 @@ function ExamSetup() {
             </div>
           ) : availableTopics.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {availableTopics.map(({ tag, count }) => (
-                <button
-                  key={tag}
-                  onClick={() => toggleTopic(tag)}
-                  type="button"
-                  className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all border-2 focus:outline-none ${
-                    selectedTopics.includes(tag)
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-slate-100 dark:border-slate-800 text-ink-light hover:border-primary/30'
-                  }`}
-                >
-                  {tag}
-                  <span className="ml-1 opacity-60">({count})</span>
-                </button>
-              ))}
+              {availableTopics.map(({ tag, tagEn, count }) => {
+                const displayTag = lang === 'en' ? (tagEn || tag) : (tag || tagEn)
+                return (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTopic(tag)}
+                    type="button"
+                    className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all border-2 focus:outline-none ${
+                      selectedTopics.includes(tag)
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-slate-100 dark:border-slate-800 text-ink-light hover:border-primary/30'
+                    }`}
+                  >
+                    {displayTag}
+                    <span className="ml-1 opacity-60">({count})</span>
+                  </button>
+                )
+              })}
             </div>
           ) : (
             <p className="text-sm text-ink-light italic">{t('No hay temas disponibles', 'No topics available')}</p>
