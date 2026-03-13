@@ -46,7 +46,7 @@ cp .env.example .env.local
 Fill in your `.env.local`:
 
 ```env
-MONGODB_URI=mongodb://localhost:27017/autoscuela_v4    # Your local DB
+MONGODB_URI=mongodb://localhost:27017/gala_exams    # Your local DB
 JWT_SECRET=your-strong-secret-key
 GROQ_API_KEY=gsk_...                                # From console.groq.com
 STRIPE_SECRET_KEY=sk_test_...                       # From dashboard.stripe.com

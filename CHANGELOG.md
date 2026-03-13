@@ -18,6 +18,6 @@ All notable changes to this project will be documented in this file.
 - Refactored `AppShell` and `Navbar` to support the new mobile navigation strategy.
 
 ### Fixed
-- Updated default MongoDB database name to `autoscuela_v4` for consistency.
+- Updated default MongoDB database name to `gala_exams` for consistency.
 - Removed invalid empty directory `{answer,submit}` from API routes.
 - Improved spacing and responsiveness across all core application screens.
