@@ -11,6 +11,7 @@ function LoginForm() {
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,7 +21,7 @@ function LoginForm() {
     setLoading(true)
     setError('')
     try {
-      const result = await login(email, password)
+      const result = await login(email, password, rememberMe)
       if (result.success) router.replace('/dashboard') 
       else setError(result.error || 'Error al entrar')
     } catch (err) {
@@ -49,16 +50,53 @@ function LoginForm() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" placeholder="email@ejemplo.com" required />
+              <label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Email</label>
+              <input 
+                id="email"
+                name="email"
+                type="email" 
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+                className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" 
+                placeholder="email@ejemplo.com" 
+                autoComplete="email"
+                required 
+              />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">{t('Contraseña', 'Password')}</label>
+              <label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">{t('Contraseña', 'Password')}</label>
               <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} className="w-full p-4 pr-12 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" placeholder="••••••••" required />
+                <input 
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'} 
+                  value={password} 
+                  onChange={e => setPassword(e.target.value)} 
+                  className="w-full p-4 pr-12 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" 
+                  placeholder="••••••••" 
+                  autoComplete="current-password"
+                  required 
+                />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-light hover:text-primary transition-colors">{showPassword ? '👁️' : '🔒'}</button>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between px-1">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div className="relative flex items-center justify-center">
+                  <input 
+                    type="checkbox" 
+                    className="peer sr-only" 
+                    checked={rememberMe}
+                    onChange={e => setRememberMe(e.target.checked)}
+                  />
+                  <div className="w-5 h-5 rounded-lg border-2 border-slate-200 dark:border-slate-700 peer-checked:bg-primary peer-checked:border-primary transition-all" />
+                  <span className="absolute text-white text-[10px] font-black opacity-0 peer-checked:opacity-100 scale-50 peer-checked:scale-100 transition-all">✓</span>
+                </div>
+                <span className="text-sm font-bold text-ink-light group-hover:text-ink transition-colors">{t('Recordarme', 'Remember me')}</span>
+              </label>
+              <Link href="/auth/forgot" className="text-xs font-bold text-primary hover:underline">{t('¿Olvidaste la clave?', 'Forgot password?')}</Link>
             </div>
 
             <button type="submit" disabled={loading} className="btn-primary w-full py-4 rounded-2xl font-black shadow-xl shadow-primary/20 text-lg transition-all active:scale-[0.98]">

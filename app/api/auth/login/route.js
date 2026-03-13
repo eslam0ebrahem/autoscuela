@@ -7,7 +7,7 @@ import { checkRateLimit } from '@/lib/utils'
 
 export async function POST(request) {
   try {
-    const { email, password } = await request.json()
+    const { email, password, rememberMe } = await request.json()
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
@@ -52,7 +52,7 @@ export async function POST(request) {
       },
     })
 
-    setAuthCookie(response, token)
+    setAuthCookie(response, token, rememberMe)
 
     return response
   } catch (error) {

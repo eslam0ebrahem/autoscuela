@@ -45,18 +45,49 @@ function RegisterForm() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Email</label>
-              <input type="email" value={form.email} onChange={e => update('email', e.target.value)} className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" placeholder="tu@email.com" required />
+              <label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Email</label>
+              <input 
+                id="email"
+                name="email"
+                type="email" 
+                value={form.email} 
+                onChange={e => update('email', e.target.value)} 
+                className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" 
+                placeholder="tu@email.com" 
+                autoComplete="email"
+                required 
+              />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Nickname</label>
-              <input type="text" value={form.nickname} onChange={e => update('nickname', e.target.value)} className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" placeholder="Tu apodo" required maxLength={20} />
+              <label htmlFor="nickname" className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Nickname</label>
+              <input 
+                id="nickname"
+                name="nickname"
+                type="text" 
+                value={form.nickname} 
+                onChange={e => update('nickname', e.target.value)} 
+                className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" 
+                placeholder="Tu apodo" 
+                autoComplete="username"
+                required 
+                maxLength={20} 
+              />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Contraseña</label>
-              <input type="password" value={form.password} onChange={e => update('password', e.target.value)} className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" placeholder="Mínimo 8 caracteres" required />
+              <label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Contraseña</label>
+              <input 
+                id="password"
+                name="password"
+                type="password" 
+                value={form.password} 
+                onChange={e => update('password', e.target.value)} 
+                className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" 
+                placeholder="Mínimo 8 caracteres" 
+                autoComplete="new-password"
+                required 
+              />
             </div>
 
             <div className="space-y-1">
