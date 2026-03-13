@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from '@/components/AuthContext'
 
 function LoginForm() {
   const router = useRouter()
-  const { login } = useAuth()
+  const { login, t } = useAuth()
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -78,13 +78,8 @@ function LoginForm() {
   )
 }
 
-function t(es, en) { return es } // Mock t if needed outside AuthContext
 
 
 export default function LoginPage() {
-  return (
-    <AuthProvider>
-      <LoginForm />
-    </AuthProvider>
-  )
+  return <LoginForm />
 }

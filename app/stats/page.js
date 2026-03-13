@@ -85,7 +85,8 @@ function StatsContent() {
   const radius       = 54
   const circumference = 2 * Math.PI * radius
   const score        = insights?.readiness_score
-  const dashoffset   = score != null ? circumference - (score / 100) * circumference : circumference
+  const validScore = typeof score === 'number' && !isNaN(score) ? score : 0
+  const dashoffset   = score != null ? circumference - (validScore / 100) * circumference : circumference
   const scoreColor   = score >= 90 ? '#10B981' : score >= 70 ? '#2563EB' : '#F59E0B'
 
   const mainStats = [

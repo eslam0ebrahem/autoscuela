@@ -34,7 +34,7 @@ function BadgesContent() {
             <span className="text-sm text-ink-light">{earned} / {badges.length}</span>
           </div>
           <div className="progress-bar h-3">
-            <div className="progress-fill bg-gradient-to-r from-primary to-secondary" style={{ width: `${(earned / badges.length) * 100}%` }} />
+            <div className="progress-fill bg-gradient-to-r from-primary to-secondary" style={{ width: `${badges.length > 0 ? (earned / badges.length) * 100 : 0}%` }} />
           </div>
         </div>
       )}

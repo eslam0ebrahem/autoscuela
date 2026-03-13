@@ -10,7 +10,8 @@ import { useToast } from '@/components/Toast'
 function ReadinessRing({ score, t }) {
   const radius = 54
   const circumference = 2 * Math.PI * radius
-  const dashoffset = score != null ? circumference - (score / 100) * circumference : circumference
+  const validScore = typeof score === 'number' && !isNaN(score) ? score : 0
+  const dashoffset = score != null ? circumference - (validScore / 100) * circumference : circumference
 
   const color = score >= 90 ? '#10B981' : score >= 70 ? '#2563EB' : score >= 50 ? '#F59E0B' : '#EF4444'
   
@@ -60,9 +61,10 @@ function StudyTrendsChart({ trends, t }) {
       
       <div className="flex items-end gap-2 h-32 px-1">
         {trends.map((day, i) => {
-          const height = (day.questions / maxQuestions) * 100
-          const date = new Date(day.date)
-          const dayName = date.toLocaleDateString(undefined, { weekday: 'short' }).charAt(0)
+          const height = maxQuestions > 0 ? (day.questions / maxQuestions) * 100 : 0
+          const date = day.date ? new Date(day.date) : new Date()
+          const isInvalidDate = isNaN(date.getTime())
+          const dayName = isInvalidDate ? '?' : date.toLocaleDateString(undefined, { weekday: 'short' }).charAt(0)
           
           return (
             <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
@@ -143,10 +145,15 @@ function DashboardContent() {
         setStreak(dashRes.streak || 0)
         setBadges(dashRes.badges || [])
         setLeaderboard(dashRes.leaderboard || [])
-        setReadinessScore(dashRes.readinessScore)
+        setReadinessScore(Number(dashRes.readinessScore) || 0)
         setTrends(trendsRes?.trends || [])
       } catch (e) {
-        console.error('Failed to fetch dashboard data:', e)
+        console.error('Dashboard Fetch Error:', e)
+        // Check if it's the pattern error and log more info if possible
+        if (e instanceof Error) {
+           console.error('Error Message:', e.message)
+           console.error('Error Stack:', e.stack)
+        }
       } finally {
         setLoading(false)
       }
