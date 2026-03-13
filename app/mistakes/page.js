@@ -26,9 +26,17 @@ function sanitizeHtml(html) {
   return DOMPurify.sanitize(html)
 }
 
+const getLocalizedText = (obj, lang) => {
+  if (!obj) return ''
+  if (typeof obj === 'string') return obj
+  if (lang === 'en' && (obj.en || obj.text_en)) return obj.en || obj.text_en
+  return obj.es || obj.text_es || obj.en || obj.text_en || ''
+}
+
 function MistakeBank() {
   const router = useRouter()
-  const { t } = useAuth()
+  const { user, t } = useAuth()
+  const lang = user?.preferences?.language || 'es'
 
   const [mistakes, setMistakes] = useState([])
   const [stats, setStats] = useState(null)
@@ -229,7 +237,9 @@ function MistakeBank() {
                   >
                     <option value="">{t('Todos los temas', 'All topics')}</option>
                     {topics.map((topic) => (
-                      <option key={topic.tag} value={topic.tag}>{topic.tag}</option>
+                      <option key={topic.tag} value={topic.tag}>
+                        {lang === 'en' ? (topic.tagEn || topic.tag) : (topic.tag || topic.tagEn)}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -339,12 +349,12 @@ function MistakeBank() {
                     <div className="flex-1 min-w-0 space-y-2">
                       <p className={`text-sm font-semibold leading-snug
                         ${isExpanded ? 'text-primary' : 'text-base-content'}`}>
-                        {m.question.es}
+                        {getLocalizedText(m.question, lang)}
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {/* Topic */}
                         <span className="px-2 py-0.5 rounded-full bg-base-200 text-base-content/60 text-[11px] font-semibold">
-                          {m.topic}
+                          {lang === 'en' ? (m.topicEn || m.topic) : (m.topic || m.topicEn)}
                         </span>
                         {/* Difficulty */}
                         {m.difficulty && (
@@ -402,7 +412,7 @@ function MistakeBank() {
                                   ${isCorrect ? 'bg-success text-white' : 'bg-base-200 text-base-content/40'}`}>
                                   {String.fromCharCode(65 + i)}
                                 </span>
-                                <span className="leading-snug">{opt.text_es}</span>
+                                <span className="leading-snug">{getLocalizedText(opt, lang)}</span>
                                 {isCorrect && (
                                   <span className="ml-auto shrink-0 text-success font-bold"><CheckOutlined /></span>
                                 )}
