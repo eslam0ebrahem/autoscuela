@@ -36,9 +36,9 @@ function playSound(src) {
 }
 
 // ── Option button ─────────────────────────────────────────
-function OptionButton({ opt, idx, answered, selected, correct, isInstant, feedbackData, lang, onSelect }) {
+function OptionButton({ opt, idx, displayIdx, answered, selected, correct, isInstant, feedbackData, lang, onSelect }) {
   const text  = lang === 'en' && opt.text_en ? opt.text_en : opt.text_es
-  const letter = ['A', 'B', 'C', 'D'][idx]
+  const letter = ['A', 'B', 'C', 'D'][displayIdx]
 
   let state = 'idle'
   if (answered) {
@@ -93,6 +93,7 @@ function ExamInterface() {
   const [session, setSession] = useState(null)
   const [questions, setQuestions] = useState([])
   const [currentIdx, setCurrentIdx] = useState(0)
+  const currentQuestion = questions[currentIdx]
   
   const [selectedOption, setSelectedOption] = useState(null)
   const [answered, setAnswered] = useState(false)
@@ -229,9 +230,10 @@ function ExamInterface() {
         const keyMap = { '1': 0, '2': 1, '3': 2, '4': 3, 'a': 0, 'b': 1, 'c': 2, 'd': 3 }
         const optIdx = keyMap[e.key.toLowerCase()]
         if (optIdx !== undefined && currentQuestion.options?.[optIdx]) {
-          e.preventDefault(); handleSelectOption(optIdx)
+          e.preventDefault(); handleSelectOption(currentQuestion.options[optIdx].idx)
         }
       }
+
       if (answered) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNext() }
         if (e.key === 'e' || e.key === 'E') setShowExplanation(p => !p)
@@ -281,7 +283,7 @@ function ExamInterface() {
     )
   }
 
-  const currentQuestion = questions[currentIdx]
+
   const isInstant = session?.assistanceMode === 'instant'
   const correctIdx = feedbackData?.correctOptionIdx ?? currentQuestion.correct_option_idx
 
@@ -304,7 +306,7 @@ function ExamInterface() {
              {timeLeft != null && <span className={timeLeft < 60 ? 'text-danger animate-pulse' : ''}>⏱ {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span>}
            </div>
            <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-             <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }} />
+             <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${questions.length > 0 ? ((currentIdx + 1) / questions.length) * 100 : 0}%` }} />
            </div>
         </div>
       </div>
@@ -321,7 +323,8 @@ function ExamInterface() {
               <OptionButton
                 key={i}
                 opt={opt}
-                idx={i}
+                idx={opt.idx}
+                displayIdx={i}
                 answered={answered}
                 selected={selectedOption}
                 correct={correctIdx}

@@ -80,14 +80,7 @@ function LoginForm() {
 
 function t(es, en) { return es } // Mock t if needed outside AuthContext
 
-export default function LoginPage() {
-  return (
-    <AuthProvider>
-      <LoginForm />
-    </AuthProvider>
-  )
-}
-// Ensure the page provides the Auth Context if it's not wrapped globally in this route group
+
 export default function LoginPage() {
   return (
     <AuthProvider>

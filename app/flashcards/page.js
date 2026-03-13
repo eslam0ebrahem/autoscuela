@@ -122,7 +122,7 @@ function FlashcardDeck({ deck, lang, onBack }) {
       </div>
 
       <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-         <div className="h-full bg-primary transition-all duration-500" style={{ width: `${((currentIdx + 1) / cards.length) * 100}%` }} />
+         <div className="h-full bg-primary transition-all duration-500" style={{ width: `${cards.length > 0 ? ((currentIdx + 1) / cards.length) * 100 : 0}%` }} />
       </div>
 
       <div 
