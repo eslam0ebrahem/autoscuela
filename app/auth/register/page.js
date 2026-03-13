@@ -15,114 +15,71 @@ function RegisterForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (form.password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres / Password must be at least 6 characters')
+    if (form.password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres')
       return
     }
     setLoading(true)
     setError('')
     const result = await register(form.email, form.password, form.nickname, form.language)
-    if (result.success) {
-      router.push('/dashboard')
-    } else {
-      setError(result.error || 'Registration failed')
-    }
+    if (result.success) router.push('/dashboard')
+    else setError(result.error || 'Error al registrarse')
     setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md animate-scale-in">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-white text-2xl font-bold">
-            <span className="text-3xl">🚗</span>
-            <span>Autoscuela</span>
+    <div className="min-h-screen bg-canvas flex items-center justify-center p-6 sm:p-12 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-600/10 to-blue-600/10 -z-10" />
+      
+      <div className="w-full max-w-md space-y-8 animate-fade-in">
+        <div className="text-center space-y-2">
+          <Link href="/" className="inline-flex items-center gap-3 group">
+            <span className="text-4xl group-hover:scale-110 transition-transform">🚗</span>
+            <span className="text-3xl font-black tracking-tight text-ink dark:text-white">Autoscuela</span>
           </Link>
-          <p className="text-white/60 mt-2 text-sm">Crea tu cuenta gratis / Create your free account</p>
+          <p className="text-ink-light font-medium">Empieza tu camino hoy gratis</p>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-2xl p-8">
-          <h1 className="text-2xl font-bold text-ink mb-6">Empezar es gratis 🎉</h1>
+        <div className="card glass p-8 sm:p-10 space-y-6">
+          {error && <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 text-danger border-2 border-red-100 dark:border-red-900/50 text-sm font-bold flex items-center gap-2">⚠️ {error}</div>}
 
-          {error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-danger text-sm">
-              ⚠️ {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="label">Email</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => update('email', e.target.value)}
-                className="input"
-                placeholder="tu@email.com"
-                required
-              />
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Email</label>
+              <input type="email" value={form.email} onChange={e => update('email', e.target.value)} className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" placeholder="tu@email.com" required />
             </div>
 
-            <div>
-              <label className="label">Apodo / Nickname</label>
-              <input
-                type="text"
-                value={form.nickname}
-                onChange={(e) => update('nickname', e.target.value)}
-                className="input"
-                placeholder="Para el ranking anónimo"
-                required
-                maxLength={20}
-              />
-              <p className="text-xs text-ink-light mt-1">Solo se mostrará en el ranking · Only shown on leaderboard</p>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Nickname</label>
+              <input type="text" value={form.nickname} onChange={e => update('nickname', e.target.value)} className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" placeholder="Tu apodo" required maxLength={20} />
             </div>
 
-            <div>
-              <label className="label">Contraseña / Password</label>
-              <input
-                type="password"
-                value={form.password}
-                onChange={(e) => update('password', e.target.value)}
-                className="input"
-                placeholder="Mínimo 6 caracteres"
-                required
-              />
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Contraseña</label>
+              <input type="password" value={form.password} onChange={e => update('password', e.target.value)} className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" placeholder="Mínimo 8 caracteres" required />
             </div>
 
-            <div>
-              <label className="label">Idioma preferido / Preferred Language</label>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { val: 'es', flag: '🇪🇸', label: 'Español' },
-                  { val: 'en', flag: '🇬🇧', label: 'English' },
-                ].map((opt) => (
-                  <button
-                    key={opt.val}
-                    type="button"
-                    onClick={() => update('language', opt.val)}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 font-semibold transition-all ${
-                      form.language === opt.val
-                        ? 'border-primary bg-blue-50 text-primary'
-                        : 'border-slate-200 text-ink hover:border-slate-300'
-                    }`}
-                  >
-                    <span className="text-xl">{opt.flag}</span>
-                    <span>{opt.label}</span>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Idioma</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[{v:'es',l:'ES',f:'🇪🇸'},{v:'en',l:'EN',f:'🇬🇧'}].map(o => (
+                  <button key={o.v} type="button" onClick={() => update('language', o.v)} className={`p-3 rounded-2xl border-2 font-bold transition-all flex items-center justify-center gap-2 ${form.language === o.v ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 dark:border-slate-800 text-ink-light'}`}>
+                    <span>{o.f}</span> {o.l}
                   </button>
                 ))}
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full mt-2 text-base">
-              {loading ? 'Creando cuenta...' : '🚀 Crear cuenta gratis'}
+            <button type="submit" disabled={loading} className="btn-primary w-full py-4 rounded-2xl font-black shadow-xl shadow-primary/20 text-lg transition-all active:scale-[0.98]">
+              {loading ? '...' : 'Crear Cuenta Gratis'}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-ink-light">
-            ¿Ya tienes cuenta?{' '}
-            <Link href="/auth/login" className="text-primary font-semibold hover:underline">
-              Iniciar sesión
-            </Link>
+          <div className="text-center pt-4 border-t border-slate-100 dark:border-slate-800">
+            <p className="text-sm text-ink-light font-medium">
+              ¿Ya tienes cuenta?{' '}
+              <Link href="/auth/login" className="text-primary font-black hover:underline">Inicia Sesión</Link>
+            </p>
           </div>
         </div>
       </div>
