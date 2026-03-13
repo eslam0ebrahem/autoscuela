@@ -1,6 +1,6 @@
-# 🚗 Autoscuela — DGT Exam Prep Platform
+# 🚗 Autoscuela v4 — DGT Exam Prep Platform
 
-A modern, AI-powered, bilingual web application to prepare for the **Spanish DGT Type B driving theory exam**. Built with Next.js 14, MongoDB, Groq AI, and Stripe.
+A modern, AI-powered, bilingual web application to prepare for the **Spanish DGT Type B driving theory exam**. Built with Next.js 15, Tailwind CSS 4, MongoDB, Groq AI, and Stripe.
 
 ---
 
@@ -23,6 +23,8 @@ A modern, AI-powered, bilingual web application to prepare for the **Spanish DGT
 | 💳 Stripe Subscription paywall | ✅ |
 | 🛡️ Admin Panel (questions CRUD + user management) | ✅ |
 | 📥 JSON bulk import from MongoDB export | ✅ |
+| 📱 **Mobile-First Design** (Sticky bottom navigation) | ✅ |
+| 🎨 **Glassmorphic UI** (Premium aesthetic) | ✅ |
 
 ---
 
@@ -44,7 +46,7 @@ cp .env.example .env.local
 Fill in your `.env.local`:
 
 ```env
-MONGODB_URI=mongodb://localhost:27017/gala_exams    # Your local DB
+MONGODB_URI=mongodb://localhost:27017/autoscuela_v4    # Your local DB
 JWT_SECRET=your-strong-secret-key
 GROQ_API_KEY=gsk_...                                # From console.groq.com
 STRIPE_SECRET_KEY=sk_test_...                       # From dashboard.stripe.com
