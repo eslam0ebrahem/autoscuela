@@ -71,8 +71,8 @@ function StudyTrendsChart({ trends, t }) {
               <div
                 className="w-full rounded-t-lg transition-all duration-300 group-hover:brightness-110 shadow-sm"
                 style={{
-                  height: `${Math.max(height, 5)}%`,
-                  backgroundColor: day.accuracy >= 80 ? '#10B981' : day.accuracy >= 60 ? '#F59E0B' : '#EF4444',
+                  height: `${Math.max(Number(height) || 0, 5)}%`,
+                  backgroundColor: (day.accuracy || 0) >= 80 ? '#10B981' : (day.accuracy || 0) >= 60 ? '#F59E0B' : '#EF4444',
                 }}
               />
               <span className="text-[10px] font-bold text-ink-light dark:text-slate-500 uppercase">

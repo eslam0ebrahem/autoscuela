@@ -32,7 +32,7 @@ function TopicBar({ tag, accuracy, attempted, lang }) {
       <div className="h-2 rounded-full bg-base-200 overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-700 ease-out ${barColor}`}
-          style={{ width: `${accuracy}%` }}
+          style={{ width: `${Number(accuracy) || 0}%` }}
           role="progressbar"
           aria-valuenow={accuracy}
           aria-valuemin={0}
@@ -87,7 +87,7 @@ function StatsContent() {
   const score        = insights?.readiness_score
   const validScore = typeof score === 'number' && !isNaN(score) ? score : 0
   const dashoffset   = score != null ? circumference - (validScore / 100) * circumference : circumference
-  const scoreColor   = score >= 90 ? '#10B981' : score >= 70 ? '#2563EB' : '#F59E0B'
+  const scoreColor   = score >= 90 ? '#10B981' : score >= 70 ? '#2563EB' : score >= 50 ? '#F59E0B' : '#EF4444'
 
   const mainStats = [
     { val: stats?.total_exams    || 0,    label: t('Exámenes', 'Exams'),       icon: '📝', color: 'text-primary'  },
