@@ -177,6 +177,11 @@ autoscuela/
 | GET | `/api/admin/users` | User list |
 | PATCH | `/api/admin/users/:id` | Grant/revoke premium |
 
+### System
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/keep-alive` | Health check (keeps Render awake) |
+
 ---
 
 ## 🎮 Gamification
@@ -245,6 +250,12 @@ vercel
 Set all environment variables in Vercel dashboard.
 
 **Stripe Webhook:** Update to your production URL in Stripe dashboard.
+
+### Render (Keep-Alive)
+To prevent the Render free tier from sleeping after 15 minutes of inactivity:
+- The app includes an internal "pinger" that calls `/api/keep-alive` every 10 minutes.
+- Ensure `NEXT_PUBLIC_APP_URL` is set to your production URL in the Render Environment Variables.
+- Render's `RENDER_EXTERNAL_URL` is also supported automatically.
 
 ---
 
