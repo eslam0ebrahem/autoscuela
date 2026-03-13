@@ -4,11 +4,11 @@
 
 @layer base {
   :root {
-    --primary: #2563EB;
-    --primary-light: #3B82F6;
-    --secondary: #8B5CF6;
+    --primary: #6366F1;
+    --primary-light: #818CF8;
+    --secondary: #10B981;
     --success: #10B981;
-    --danger: #EF4444;
+    --danger: #F43F5E;
     --warning: #F59E0B;
     --canvas: #F8FAFC;
     --surface: #FFFFFF;
@@ -18,11 +18,11 @@
   }
 
   .dark {
-    --canvas: #0F172A;
-    --surface: #1E293B;
-    --ink: #F1F5F9;
-    --ink-light: #94A3B8;
-    --border: #334155;
+    --canvas: #0B0F14;
+    --surface: #151B28;
+    --ink: #F9FAFB;
+    --ink-light: #9CA3AF;
+    --border: #1F2937;
   }
 
   * {
@@ -162,7 +162,7 @@
   }
 
   .bg-gradient-primary {
-    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
   }
 
   .bg-gradient-success {
@@ -178,7 +178,7 @@
   }
 
   .glass {
-    @apply bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-white/20 dark:border-slate-700/50;
+    @apply bg-white/70 dark:bg-slate-900/40 backdrop-blur-md border border-white/20 dark:border-white/5;
   }
 
   .hide-scrollbar::-webkit-scrollbar {

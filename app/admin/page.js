@@ -45,7 +45,7 @@ function AdminContent() {
         </div>
         <div>
           <h1 className="text-3xl font-bold text-ink">{t('Panel de Administración', 'Admin Panel')}</h1>
-          <p className="text-ink-light">{t('Gestiona el contenido y usuarios de Autoscuela', 'Manage Autoscuela content and users')}</p>
+          <p className="text-ink-light">{t('Gestiona el contenido y usuarios de Vialia', 'Manage Vialia content and users')}</p>
         </div>
       </div>
 

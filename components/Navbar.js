@@ -77,9 +77,9 @@ export default function Navbar() {
               <SafetyCertificateOutlined />
             </span>
             <span className="font-bold text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
-              Autoscuela
+              Vialia
             </span>
-            <span className="hidden sm:inline text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-md">v4</span>
+            <span className="hidden sm:inline text-[10px] font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-400 px-1.5 py-0.5 rounded-md">AI</span>
           </Link>
 
           <nav className="hidden lg:flex items-center gap-1">
@@ -131,7 +131,7 @@ export default function Navbar() {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shadow-md">
                   {user?.nickname?.[0]?.toUpperCase() || <UserOutlined />}
                 </div>
               </button>
@@ -140,7 +140,7 @@ export default function Navbar() {
                 <div className="absolute right-0 mt-2 w-64 glass rounded-2xl shadow-xl py-2 z-50 animate-scale-in origin-top-right">
                   <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/50 mb-1">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black shrink-0 shadow-sm">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-white font-black shrink-0 shadow-sm">
                         {user?.nickname?.[0]?.toUpperCase() || <UserOutlined />}
                       </div>
                       <div className="min-w-0">

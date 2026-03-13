@@ -13,7 +13,7 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     setMounted(true)
     try {
-      const saved = localStorage.getItem('autoscuela-theme') || 'system'
+      const saved = localStorage.getItem('vialia-theme') || 'system'
       setTheme(saved)
     } catch {
       setTheme('system')
@@ -41,7 +41,7 @@ export function ThemeProvider({ children }) {
   const setThemeAndSave = useCallback((newTheme) => {
     setTheme(newTheme)
     try {
-      localStorage.setItem('autoscuela-theme', newTheme)
+      localStorage.setItem('vialia-theme', newTheme)
     } catch {
       console.warn('Failed to save theme to localStorage')
     }

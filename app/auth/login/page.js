@@ -33,14 +33,14 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen bg-canvas flex items-center justify-center p-6 sm:p-12 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/10 to-indigo-600/10 -z-10" />
+      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-indigo-600/5 to-emerald-600/5 -z-10" />
       <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
       
       <div className="w-full max-w-md space-y-8 animate-fade-in">
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-3 group">
-            <span className="text-4xl group-hover:scale-110 transition-transform">🚗</span>
-            <span className="text-3xl font-black tracking-tight text-ink dark:text-white">Autoscuela</span>
+            <span className="text-4xl group-hover:scale-110 transition-transform">✨</span>
+            <span className="text-3xl font-black tracking-tight text-ink dark:text-white">Vialia</span>
           </Link>
           <p className="text-ink-light font-medium">{t('Inicia sesión para continuar', 'Sign in to continue')}</p>
         </div>

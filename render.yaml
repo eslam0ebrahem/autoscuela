@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: autoscuela-eslam
+    name: vialia-app
     runtime: node
     plan: free
     autoDeploy: true

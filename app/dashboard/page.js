@@ -28,7 +28,7 @@ function ReadinessRing({ score, t }) {
   const validScore = typeof score === 'number' && !isNaN(score) ? score : 0
   const dashoffset = score != null ? circumference - (validScore / 100) * circumference : circumference
 
-  const color = score >= 90 ? '#10B981' : score >= 70 ? '#2563EB' : score >= 50 ? '#F59E0B' : '#EF4444'
+  const color = score >= 90 ? '#10B981' : score >= 70 ? '#6366F1' : score >= 50 ? '#F59E0B' : '#F43F5E'
   
   const label = score >= 90
     ? t('¡Listo!', 'Ready!')
@@ -240,7 +240,7 @@ function DashboardContent() {
 
       {/* Hero: AI Status & Quick Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 card bg-gradient-to-br from-indigo-600 to-blue-700 text-white border-0 shadow-2xl relative overflow-hidden group">
+        <div className="lg:col-span-2 card bg-gradient-to-br from-indigo-600 via-indigo-500 to-emerald-600 text-white border-0 shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-700">
              <BulbOutlined style={{ fontSize: '120px' }} />
           </div>
@@ -256,7 +256,7 @@ function DashboardContent() {
               {insights?.recommended_action && (
                 <Link
                   href={insights.recommended_action}
-                  className="inline-flex items-center gap-3 px-6 py-3 bg-white text-blue-700 font-black rounded-xl hover:bg-blue-50 transition-all active:scale-95 shadow-lg shadow-black/10"
+                  className="inline-flex items-center gap-3 px-6 py-3 bg-white text-indigo-700 font-black rounded-xl hover:bg-slate-50 transition-all active:scale-95 shadow-lg shadow-black/10"
                 >
                   ⚡ {t('Iniciar estudio recomendado', 'Start Recommended Study')}
                 </Link>
@@ -367,7 +367,7 @@ function DashboardContent() {
           </div>
           <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-center md:text-left">
-              <h3 className="text-xl font-black">{t('Desbloquea Autoscuela PRO', 'Unlock Autoscuela PRO')}</h3>
+              <h3 className="text-xl font-black">{t('Desbloquea Vialia Premium', 'Unlock Vialia Premium')}</h3>
               <p className="text-orange-100 font-medium text-sm mt-1">
                 {t('Acceso ilimitado a todos los exámenes e IA.', 'Unlimited access to all exams and AI.')}
               </p>

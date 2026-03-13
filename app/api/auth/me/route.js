@@ -39,7 +39,7 @@ export async function GET(request) {
 export async function DELETE(request) {
   // Logout
   const response = NextResponse.json({ message: 'Logged out' })
-  response.cookies.set('autoscuela_token', '', {
+  response.cookies.set('vialia_token', '', {
     httpOnly: true,
     maxAge: 0,
     path: '/',

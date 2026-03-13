@@ -62,7 +62,7 @@ function SettingsContent() {
     <div className="max-w-2xl mx-auto space-y-8 animate-fade-in pb-12 px-4">
       
       <div className="flex items-center gap-6">
-         <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-3xl text-white font-black shadow-xl shadow-blue-500/20">
+         <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-3xl text-white font-black shadow-xl shadow-indigo-500/20">
            {user?.nickname?.[0]?.toUpperCase() || <UserOutlined />}
          </div>
          <div>
@@ -72,7 +72,7 @@ function SettingsContent() {
       </div>
 
       {/* Subscription Hero */}
-      <div className={`card border-0 overflow-hidden relative ${user?.isPremium ? 'bg-gradient-to-br from-indigo-600 to-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800'}`}>
+      <div className={`card border-0 overflow-hidden relative ${user?.isPremium ? 'bg-gradient-to-br from-indigo-600 via-indigo-500 to-emerald-600 text-white shadow-2xl' : 'bg-slate-100 dark:bg-slate-800'}`}>
          {user?.isPremium && (
            <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 scale-150 text-white">
              <CrownOutlined style={{ fontSize: '120px' }} />
@@ -81,16 +81,16 @@ function SettingsContent() {
          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-center md:text-left p-6">
                <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">{t('Tu Plan', 'Your Plan')}</p>
-               <h2 className="text-2xl font-black">{user?.isPremium ? 'Autoscuela PRO' : 'Autoscuela FREE'}</h2>
+                <h2 className="text-2xl font-black">{user?.isPremium ? 'Vialia Premium' : 'Vialia Free'}</h2>
                <p className="mt-2 text-sm font-medium opacity-80 max-w-sm">
                  {user?.isPremium ? t('Disfrutas de acceso ilimitado a IA y exámenes.', 'You have full access to AI and exams.') : t('Suscríbete para desbloquear el análisis IA y exámenes ilimitados.', 'Subscribe to unlock AI analysis and unlimited exams.')}
                </p>
             </div>
             {!user?.isPremium && (
                <div className="p-6">
-                 <button onClick={() => {}} className="px-8 py-3 bg-blue-600 text-white font-black rounded-2xl hover:bg-blue-700 transition-all shadow-xl active:scale-95">
-                   {t('Subir a PRO', 'Upgrade to PRO')}
-                 </button>
+                  <button onClick={() => {}} className="px-8 py-3 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all shadow-xl active:scale-95">
+                    {t('Saber más', 'Learn More')}
+                  </button>
                </div>
             )}
          </div>

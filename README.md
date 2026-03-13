@@ -1,4 +1,4 @@
-# 🚗 Autoscuela v4 — DGT Exam Prep Platform
+# ✨ Vialia v4 — AI Driving Prep Platform
 
 A modern, AI-powered, bilingual web application to prepare for the **Spanish DGT Type B driving theory exam**. Built with Next.js 15, Tailwind CSS 4, MongoDB, Groq AI, and Stripe.
 
@@ -65,7 +65,7 @@ node scripts/seed.js
 This will:
 - ✅ Read all questions from your local `gala_exams` MongoDB
 - ✅ Auto-map topic tags based on content keywords
-- ✅ Create an admin user (`admin@autoscuela.com` / `admin123`)
+- ✅ Create an admin user (`admin@vialia.com` / `admin123`)
 
 > **Note:** The seed script auto-detects your question document structure.
 > Supported field names: `question.es`, `pregunta`, `text_es`, `options`, `opciones`, `correct_option_idx`, etc.
@@ -227,7 +227,7 @@ The AI Readiness Score is powered by **Groq's llama-3.1-8b-instant** model.
 
 After running the seed script:
 - URL: `http://localhost:3000/admin`
-- Email: `admin@autoscuela.com`
+- Email: `admin@vialia.com`
 - Password: `admin123`
 
 **Change the admin password immediately in production!**
@@ -291,4 +291,4 @@ The seed script normalizes many common field name variations automatically.
 
 ## 📄 License
 
-MIT — Build something great! 🚗
+MIT — Build something great! ✨
