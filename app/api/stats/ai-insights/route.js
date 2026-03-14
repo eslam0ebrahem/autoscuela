@@ -5,61 +5,112 @@ import UserAnswer from '@/models/UserAnswer'
 import { getCurrentUser } from '@/lib/auth'
 import { getAIInsights } from '@/lib/groq'
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 const MIN_QUESTIONS_FOR_AI = 60
 const CACHE_HOURS = 8
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Milliseconds since a Date object. */
+const hoursSince = (date) => (Date.now() - new Date(date).getTime()) / 3_600_000
+
+/**
+ * Map snake_case AI insight keys to the camelCase schema stored in MongoDB.
+ * Storing all fields keeps the cached copy fully usable on the client.
+ * @param {object} insights
+ * @returns {object}
+ */
+function insightsToDoc(insights) {
+  return {
+    'aiInsights.readinessScore': insights.readiness_score,
+    'aiInsights.weakTopics': insights.weak_topics,
+    'aiInsights.coachMessage': insights.coach_message,
+    'aiInsights.recommendedAction': insights.recommended_action,
+    'aiInsights.predictedReadyDate': insights.predicted_ready_date,
+    'aiInsights.improvementRate': insights.improvement_rate,
+    'aiInsights.studyTips': insights.study_tips,
+    'aiInsights.topicPriorityOrder': insights.topic_priority_order,
+    'aiInsights.lastUpdated': new Date(),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
+
 export async function GET(request) {
   try {
+    // ── Auth ────────────────────────────────────────────────────────────────
     const tokenData = await getCurrentUser(request)
-    if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!tokenData) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     await connectDB()
 
     const user = await User.findById(tokenData.userId)
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
 
+    const lang = user.preferences?.language ?? 'en'
+
+    // ── Minimum questions gate ───────────────────────────────────────────────
     const totalAnswered = await UserAnswer.countDocuments({ userId: user._id })
 
     if (totalAnswered < MIN_QUESTIONS_FOR_AI) {
+      const message =
+        lang === 'es'
+          ? `Responde al menos ${MIN_QUESTIONS_FOR_AI} preguntas para desbloquear el análisis IA. Has respondido ${totalAnswered} hasta ahora.`
+          : `Answer at least ${MIN_QUESTIONS_FOR_AI} questions to unlock AI insights. You've answered ${totalAnswered} so far.`
+
       return NextResponse.json({
         insights: null,
-        message:
-          user.preferences.language === 'es'
-            ? `Responde al menos ${MIN_QUESTIONS_FOR_AI} preguntas para desbloquear el análisis IA. Has respondido ${totalAnswered} hasta ahora.`
-            : `Answer at least ${MIN_QUESTIONS_FOR_AI} questions to unlock AI insights. You've answered ${totalAnswered} so far.`,
+        message,
         progress: totalAnswered,
         required: MIN_QUESTIONS_FOR_AI,
       })
     }
 
-    // Check cache
-    if (user.aiInsights?.lastUpdated) {
-      const hoursSinceUpdate = (Date.now() - new Date(user.aiInsights.lastUpdated).getTime()) / (1000 * 60 * 60)
-      if (hoursSinceUpdate < CACHE_HOURS) {
-        return NextResponse.json({ insights: user.aiInsights, cached: true })
+    // ── Cache check (skip with ?force=true during dev / manual refresh) ──────
+    const { searchParams } = new URL(request.url)
+    const forceRefresh = searchParams.get('force') === 'true'
+
+    if (!forceRefresh && user.aiInsights?.lastUpdated) {
+      if (hoursSince(user.aiInsights.lastUpdated) < CACHE_HOURS) {
+        return NextResponse.json({
+          insights: user.aiInsights,
+          cached: true,
+          cachedAt: user.aiInsights.lastUpdated,
+        })
       }
     }
 
-    // Aggregate data for AI
+    // ── Aggregate & call Groq ────────────────────────────────────────────────
     const aggregatedData = await UserAnswer.aggregateForAI(user._id)
 
-    // Call Groq
-    const insights = await getAIInsights(user.preferences.language, aggregatedData)
+    if (!aggregatedData || Object.keys(aggregatedData).length === 0) {
+      return NextResponse.json(
+        { error: 'Not enough data to generate insights. Keep practicing!' },
+        { status: 422 }
+      )
+    }
 
-    // Cache in user document
-    await User.findByIdAndUpdate(user._id, {
-      $set: {
-        'aiInsights.readinessScore': insights.readiness_score,
-        'aiInsights.weakTopics': insights.weak_topics,
-        'aiInsights.coachMessage': insights.coach_message,
-        'aiInsights.recommendedAction': insights.recommended_action,
-        'aiInsights.lastUpdated': new Date(),
-      },
-    })
+    const insights = await getAIInsights(lang, aggregatedData)
+
+    // ── Persist to cache ─────────────────────────────────────────────────────
+    await User.findByIdAndUpdate(user._id, { $set: insightsToDoc(insights) })
 
     return NextResponse.json({ insights, cached: false })
   } catch (error) {
-    console.error('AI insights error:', error)
-    return NextResponse.json({ error: 'Failed to generate insights' }, { status: 500 })
+    console.error('[ai-insights] Unhandled error:', error)
+    return NextResponse.json(
+      { error: 'Failed to generate insights. Please try again later.' },
+      { status: 500 }
+    )
   }
 }
