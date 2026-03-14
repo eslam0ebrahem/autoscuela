@@ -178,7 +178,7 @@ function AIInsightsContent() {
         setRefreshing(force)
         const forceParam = force ? '?force=true' : ''
 
-        const res = await fetch(`/api/ai-insights${forceParam}`)
+        const res = await fetch(`/api/stats/ai-insights${forceParam}`)
         const data = await res.json()
 
         if (!res.ok) {

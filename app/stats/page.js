@@ -273,10 +273,10 @@ function StatsContent() {
               </div>
             </div>
             <div className="p-4 space-y-4">
-              {stats.topic_stats.map((topic) => (
+              {stats.topic_stats.map((topic, i) => (
                 <TopicBar
-                  key={topic.tag}
-                  tag={topic.tag || t('Sin etiqueta', 'Untagged')}
+                  key={i}
+                  tag={topic.tag}
                   accuracy={topic.accuracy}
                   attempted={topic.attempted}
                   lang={lang}

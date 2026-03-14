@@ -290,7 +290,8 @@ function FlashcardDeck({ deck, lang, onBack }) {
   // ── Active flashcard view ──────────────────────────────────────────────
   const currentCard = cards[currentIdx]
   const questionText = getLocalizedText(currentCard.question, lang)
-  const answerText = getLocalizedText(currentCard.answer, lang)
+  const answerOpt = currentCard.options?.find(o => o.idx === currentCard.correct_option_idx)
+  const answerText = answerOpt ? getLocalizedText({ es: answerOpt.text_es, en: answerOpt.text_en }, lang) : '...'
   const progress = ((currentIdx + 1) / cards.length) * 100
 
   return (
@@ -520,10 +521,10 @@ function FlashcardsContent() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-black text-ink dark:text-white mb-1 truncate">
-                    {deck.name || deck.tag}
+                    {t(deck.tag, deck.tagEn)}
                   </h3>
                   <p className="text-xs text-ink-light dark:text-slate-400">
-                    {deck.cardCount || 0} {t('tarjetas', 'cards')}
+                    {deck.count || 0} {t('tarjetas', 'cards')}
                   </p>
                 </div>
                 <ArrowRightOutlined className="text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />

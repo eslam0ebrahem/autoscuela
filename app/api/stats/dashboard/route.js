@@ -61,13 +61,14 @@ export async function GET(request) {
       {
         $group: {
           _id: '$topic_tag.es',
+          tagEn: { $first: '$topic_tag.en' },
           attempted: { $sum: 1 },
           correct: { $sum: { $cond: ['$is_correct', 1, 0] } },
         },
       },
       {
         $project: {
-          tag: '$_id',
+          tag: { es: '$_id', en: '$tagEn' },
           attempted: 1,
           correct: 1,
           accuracy: {

@@ -203,7 +203,7 @@ function TopicSelector({ topics, selected, onToggle, loading, t }) {
                 : 'bg-slate-100 dark:bg-slate-800 text-ink dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            {topic.name || topic.tag}
+            {t(topic.tag, topic.tagEn || topic.tag)}
           </button>
         )
       })}
@@ -248,8 +248,21 @@ function ExamSetup() {
 
         const data = await res.json()
         if (isMounted) {
-          setAvailableTopics(data.decks || [])
+          const decks = data.decks || []
+          setAvailableTopics(decks)
           setTopicsLoading(false)
+
+          // Normalize selectedTopics: if a value from URL matches a tagEn, convert it to the Spanish tag
+          setSelectedTopics((prev) =>
+            prev.map((t) => {
+              const found = decks.find(
+                (d) =>
+                  d.tagEn?.toLowerCase() === t.toLowerCase() ||
+                  d.tag?.toLowerCase() === t.toLowerCase()
+              )
+              return found ? found.tag : t
+            })
+          )
         }
       } catch (err) {
         console.error('[exam-setup] Topics fetch error:', err)
@@ -339,8 +352,19 @@ function ExamSetup() {
     const topicText =
       selectedTopics.length > 0
         ? selectedTopics.length <= MAX_TOPIC_DISPLAY
-          ? selectedTopics.join(', ')
-          : `${selectedTopics.slice(0, MAX_TOPIC_DISPLAY).join(', ')} +${selectedTopics.length - MAX_TOPIC_DISPLAY}`
+          ? selectedTopics
+              .map((tag) => {
+                const topic = availableTopics.find((at) => at.tag === tag)
+                return topic ? t(topic.tag, topic.tagEn) : tag
+              })
+              .join(', ')
+          : `${selectedTopics
+              .slice(0, MAX_TOPIC_DISPLAY)
+              .map((tag) => {
+                const topic = availableTopics.find((at) => at.tag === tag)
+                return topic ? t(topic.tag, topic.tagEn) : tag
+              })
+              .join(', ')} +${selectedTopics.length - MAX_TOPIC_DISPLAY}`
         : t('Todos los temas', 'All topics')
 
     const modeText =
@@ -349,7 +373,7 @@ function ExamSetup() {
         : t('Retroalimentación inmediata', 'Instant feedback')
 
     return `${topicText} · ${modeText}`
-  }, [mode, selectedTopics, assistanceMode, t])
+  }, [mode, selectedTopics, assistanceMode, t, availableTopics])
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
