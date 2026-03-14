@@ -200,63 +200,66 @@ function ExamInterface() {
   }, [session, result, handleSubmitExam])
 
 
-  // FIX 3: wrapped in useCallback so the keyboard effect gets a stable reference
-  const handleSelectOption = useCallback((optIdx) => {
-    if (answered || submitting) return
+const handleSelectOption = useCallback((optIdx) => {
+  if (answered || submitting) return
 
-    // Cancel any previous stale answer fetch
-    answerFetchRef.current?.abort()
-    const controller = new AbortController()
-    answerFetchRef.current = controller
+  answerFetchRef.current?.abort()
+  const controller = new AbortController()
+  answerFetchRef.current = controller
 
-    setSelectedOption(optIdx)
-    setAnswered(true)
-    const timeTaken = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0
+  setSelectedOption(optIdx)
+  setAnswered(true)
+  const timeTaken = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0
 
-    if (session?.assistanceMode === 'instant' && soundEnabled) {
-      const localCorrect = currentQuestion?.correct_option_idx
-      if (localCorrect != null)
-        playSound(optIdx === localCorrect ? '/sounds/correct-answer.mp3' : '/sounds/wrong-answer.mp3')
-    }
+  if (session?.assistanceMode === 'instant' && soundEnabled) {
+    const localCorrect = currentQuestion?.correct_option_idx
+    if (localCorrect != null)
+      playSound(optIdx === localCorrect ? '/sounds/correct-answer.mp3' : '/sounds/wrong-answer.mp3')
+  }
 
-    fetch(`/api/exams/${sessionId}/answer`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        question_id: currentQuestion?._id,
-        selected_option_idx: optIdx,
-        time_taken: timeTaken,
-      }),
-      signal: controller.signal, // 👈 attach the abort signal
+  fetch(`/api/exams/${sessionId}/answer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      question_id:         currentQuestion?._id,
+      selected_option_idx: optIdx,
+      time_taken:          timeTaken,
+    }),
+    signal: controller.signal,
+  })
+    .then(r => r.json())
+    .then(data => {
+      // ✅ THE KEY FIX: discard if this is no longer the active fetch
+      // AbortController alone doesn't catch responses that already arrived on the wire
+      if (answerFetchRef.current !== controller) return
+
+      setFeedbackData(data)
+      if (soundEnabled && session?.assistanceMode === 'instant' && currentQuestion?.correct_option_idx == null) {
+        playSound(data.isCorrect ? '/sounds/correct-answer.mp3' : '/sounds/wrong-answer.mp3')
+      }
     })
-      .then(r => r.json())
-      .then(data => {
-        setFeedbackData(data)
-        if (soundEnabled && session?.assistanceMode === 'instant' && currentQuestion?.correct_option_idx == null) {
-          playSound(data.isCorrect ? '/sounds/correct-answer.mp3' : '/sounds/wrong-answer.mp3')
-        }
-      })
-      .catch(err => {
-        if (err.name !== 'AbortError') console.error('Answer fetch error:', err)
-        // AbortError is expected and safe to ignore
-      })
-  }, [answered, submitting, startTime, session, soundEnabled, currentQuestion, sessionId])
-  // FIX 3
+    .catch(err => {
+      if (err.name !== 'AbortError') console.error('Answer fetch error:', err)
+    })
+}, [answered, submitting, startTime, session, soundEnabled, currentQuestion, sessionId])
 
 
-  // FIX 3: wrapped in useCallback
-  const handleNext = useCallback(() => {
-    if (currentIdx < questions.length - 1) {
-      setCurrentIdx(i => i + 1)
-      setSelectedOption(null)
-      setAnswered(false)
-      setFeedbackData(null)
-      setShowExplanation(false)
-      setStartTime(Date.now())
-    } else {
-      handleSubmitExam()
-    }
-  }, [currentIdx, questions.length, handleSubmitExam]) // FIX 3
+const handleNext = useCallback(() => {
+  answerFetchRef.current?.abort()
+  answerFetchRef.current = null // ← null means "no active fetch", so any late arrival is discarded
+
+  if (currentIdx < questions.length - 1) {
+    setCurrentIdx(i => i + 1)
+    setSelectedOption(null)
+    setAnswered(false)
+    setFeedbackData(null)
+    setShowExplanation(false)
+    setStartTime(Date.now())
+  } else {
+    handleSubmitExam()
+  }
+}, [currentIdx, questions.length, handleSubmitExam])
+
 
 
   // FIX 3: wrapped in useCallback
