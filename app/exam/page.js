@@ -15,6 +15,8 @@ import {
   BulbOutlined,
   WarningOutlined,
   StarFilled,
+  RobotOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons'
 
 // ---------------------------------------------------------------------------
@@ -221,6 +223,92 @@ function TopicSelector({ topics, selected, onToggle, loading, t }) {
   )
 }
 
+/**
+ * AI RECOMMENDATION BANNER
+ */
+function AIRecommendBanner({ lang, t, onApply }) {
+  const [rec, setRec] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => {
+    fetch(`/api/ai/recommend?lang=${lang}`)
+      .then((r) => r.json())
+      .then((d) => setRec(d.recommendation))
+      .catch((err) => console.error('[setup/recommend]', err))
+      .finally(() => setLoading(false))
+  }, [lang])
+
+  if (dismissed || (!loading && !rec)) return null
+
+  const urgencyColors = {
+    high: 'border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-900/20',
+    medium: 'border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20',
+    low: 'border-green-400 dark:border-green-600 bg-green-50 dark:bg-green-900/20',
+  }
+  const urgencyBadge = {
+    high: 'bg-red-100 text-red-700',
+    medium: 'bg-amber-100 text-amber-700',
+    low: 'bg-green-100 text-green-700',
+  }
+
+  const borderClass = urgencyColors[rec?.urgency] ?? urgencyColors.medium
+  const badgeClass = urgencyBadge[rec?.urgency] ?? urgencyBadge.medium
+
+  return (
+    <div className={`mb-6 p-4 rounded-2xl border-2 ${borderClass} transition-all`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 flex-1">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center flex-shrink-0">
+            <RobotOutlined className="text-white text-lg" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="font-bold text-ink dark:text-white text-sm">
+                {t('Recomendación IA', 'AI Recommendation')}
+              </span>
+              {rec?.urgency && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${badgeClass}`}>
+                  {rec.urgency === 'high' ? t('Alta prioridad', 'High priority') :
+                   rec.urgency === 'medium' ? t('Prioridad media', 'Medium priority') :
+                   t('Baja prioridad', 'Low priority')}
+                </span>
+              )}
+            </div>
+
+            {loading ? (
+              <div className="flex items-center gap-2 text-ink-light dark:text-slate-400">
+                <LoadingOutlined className="animate-spin" />
+                <span className="text-sm">{t('Analizando tu historial...', 'Analyzing your history...')}</span>
+              </div>
+            ) : rec ? (
+              <>
+                <p className="text-sm text-ink dark:text-white leading-relaxed mb-2">{rec.reason}</p>
+                {rec.tip && (
+                  <p className="text-xs text-ink-light dark:text-slate-400 italic mb-3">💡 {rec.tip}</p>
+                )}
+                <button
+                  onClick={() => onApply?.(rec)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-indigo-600 text-white text-sm font-bold rounded-xl hover:opacity-90 transition-opacity"
+                >
+                  <ThunderboltOutlined />
+                  {t('Aplicar recomendación', 'Apply recommendation')}
+                </button>
+              </>
+            ) : null}
+          </div>
+        </div>
+        <button
+          onClick={() => setDismissed(true)}
+          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 flex-shrink-0 mt-1"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
@@ -400,6 +488,16 @@ function ExamSetup() {
           )}
         </p>
       </div>
+
+      <AIRecommendBanner
+        lang={user?.preferences?.language || 'es'}
+        t={t}
+        onApply={(rec) => {
+          if (rec.recommended_mode) setMode(rec.recommended_mode)
+          if (rec.suggested_topics?.length) setSelectedTopics(rec.suggested_topics)
+          // Note: questionCount state doesn't exist in original code, ignoring per original instruction
+        }}
+      />
 
       {/* ── Mode Selection ──────────────────────────────────────────── */}
       <div className="card">

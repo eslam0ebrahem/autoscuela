@@ -32,6 +32,11 @@ const examSessionSchema = new mongoose.Schema(
 
     // Total time tracking
     totalTimeTakenSeconds: { type: Number },
+
+    // ✨ AI-powered additions
+    aiSessionTip:        { type: String },
+    aiCoachFeedback:    { type: Object }, // { headline, summary, strengths, weaknesses, next_step, confidence_boost, verdict }
+    aiCoachGeneratedAt: { type: Date },
   },
   { timestamps: true }
 )

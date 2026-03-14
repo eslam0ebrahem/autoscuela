@@ -5,10 +5,141 @@ import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthContext'
 import AppShell from '@/components/AppShell'
 import DOMPurify from 'dompurify'
+import { RobotOutlined, LoadingOutlined, ThunderboltOutlined, TrophyOutlined } from '@ant-design/icons'
 
 function sanitizeHtml(html) {
   if (typeof window === 'undefined') return ''
   return DOMPurify.sanitize(html)
+}
+
+/**
+ * AI COACH CARD COMPONENT
+ */
+function AICoachCard({ sessionId, lang, t }) {
+  const [feedback, setFeedback] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [open, setOpen] = useState(true)
+
+  useEffect(() => {
+    if (!sessionId) return
+    fetch('/api/ai/coach', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, lang }),
+    })
+      .then((r) => r.json())
+      .then((d) => setFeedback(d.feedback))
+      .catch((err) => console.error('[review/coach]', err))
+      .finally(() => setLoading(false))
+  }, [sessionId, lang])
+
+  const verdictColors = {
+    passed: 'from-green-500 to-emerald-600',
+    failed: 'from-red-500 to-orange-600',
+    close: 'from-amber-500 to-yellow-600',
+  }
+  const gradient = verdictColors[feedback?.verdict] ?? 'from-primary to-indigo-600'
+
+  return (
+    <div className="mb-6 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-lg">
+      {/* Header */}
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className={`w-full flex items-center justify-between p-4 bg-gradient-to-r ${gradient} text-white`}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+            <RobotOutlined className="text-xl" />
+          </div>
+          <div className="text-left">
+            <p className="font-black text-lg leading-tight">
+              {loading
+                ? t('Analizando con IA...', 'Analyzing with AI...')
+                : feedback?.headline ?? t('Análisis IA', 'AI Analysis')}
+            </p>
+            <p className="text-white/80 text-sm">{t('Coach personalizado', 'Personalized coach')}</p>
+          </div>
+        </div>
+        <span className="text-white/70 text-xl">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {/* Body */}
+      {open && (
+        <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+          {loading ? (
+            <div className="flex items-center gap-3 py-4 text-primary">
+              <LoadingOutlined className="text-2xl animate-spin" />
+              <p className="text-sm text-ink-light dark:text-slate-400">
+                {t('La IA está revisando tu examen...', 'AI is reviewing your exam...')}
+              </p>
+            </div>
+          ) : feedback ? (
+            <>
+              {/* Summary */}
+              {feedback.summary && (
+                <p className="text-ink dark:text-white text-sm leading-relaxed">{feedback.summary}</p>
+              )}
+
+              {/* Strengths & Weaknesses */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {feedback.strengths?.length > 0 && (
+                  <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                    <p className="text-xs font-bold text-green-700 dark:text-green-400 mb-2 uppercase tracking-wide">
+                      ✅ {t('Puntos fuertes', 'Strengths')}
+                    </p>
+                    <ul className="space-y-1">
+                      {feedback.strengths.map((s, i) => (
+                        <li key={i} className="text-sm text-ink dark:text-white">• {s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {feedback.weaknesses?.length > 0 && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                    <p className="text-xs font-bold text-red-700 dark:text-red-400 mb-2 uppercase tracking-wide">
+                      ⚠️ {t('A mejorar', 'To improve')}
+                    </p>
+                    <ul className="space-y-1">
+                      {feedback.weaknesses.map((w, i) => (
+                        <li key={i} className="text-sm text-ink dark:text-white">• {w}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* Next Step */}
+              {feedback.next_step && (
+                <div className="p-3 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl flex items-start gap-3">
+                  <ThunderboltOutlined className="text-primary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold text-primary mb-1 uppercase tracking-wide">
+                      {t('Próximo paso', 'Next step')}
+                    </p>
+                    <p className="text-sm text-ink dark:text-white">{feedback.next_step}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Confidence Boost */}
+              {feedback.confidence_boost && (
+                <div className="text-center p-3 bg-gradient-to-r from-primary/5 to-indigo-600/5 rounded-xl">
+                  <TrophyOutlined className="text-amber-500 text-xl mb-1" />
+                  <p className="text-sm text-ink-light dark:text-slate-400 italic">
+                    "{feedback.confidence_boost}"
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-ink-light dark:text-slate-400 py-2">
+              {t('No se pudo generar el análisis.', 'Could not generate analysis.')}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function ReviewInterface() {
@@ -184,6 +315,9 @@ function ReviewInterface() {
               </div>
             ))}
           </div>
+
+          {/* ── AI Coach ── */}
+          <AICoachCard sessionId={sessionId} lang={lang} t={t} />
 
           {/* ── Filter Tabs ── */}
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">

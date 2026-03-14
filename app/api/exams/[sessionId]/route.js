@@ -3,7 +3,12 @@ import connectDB from '@/lib/db'
 import ExamSession from '@/models/ExamSession'
 import Question from '@/models/Question'
 import { getCurrentUser } from '@/lib/auth'
+import { getSmartHint } from '@/lib/groq'
 
+/**
+ * GET /api/exams/[sessionId]
+ * Returns the session data and the full question documents.
+ */
 export async function GET(request, { params }) {
   try {
     const { sessionId } = await params
@@ -15,55 +20,81 @@ export async function GET(request, { params }) {
     const session = await ExamSession.findOne({
       _id: sessionId,
       userId: tokenData.userId,
-    })
+    }).lean()
 
     if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
 
-    // Fetch full question data (without revealing correct answer in exam mode)
-    const questions = await Question.find(
-      { _id: { $in: session.questionIds } },
-      {
-        'question.es': 1,
-        'question.en': 1,
-        'metadata.image_url': 1,
-        'options.idx': 1,
-        'options.text_es': 1,
-        'options.text_en': 1,
-        topic_tag: 1,
-        // Only include correct_option_idx if assistance mode is instant OR if exam is completed
-        ...(session.assistanceMode === 'instant' || session.status === 'completed'
-          ? { correct_option_idx: 1, 'metadata.help_html': 1 }
-          : {}),
-      }
-    )
+    // Fetch full question documents
+    const questions = await Question.find({ _id: { $in: session.questionIds } }).lean()
 
-    // Reorder questions to match session order
-    const questionMap = {}
-    questions.forEach((q) => {
-      questionMap[q._id.toString()] = q
-    })
-    const orderedQuestions = session.questionIds.map((id) => questionMap[id.toString()]).filter(Boolean)
+    // Sort questions to match the order in questionIds
+    const questionsOrdered = session.questionIds.map(id =>
+      questions.find(q => q._id.toString() === id.toString())
+    ).filter(Boolean)
 
     return NextResponse.json({
-      session: {
-        id: session._id,
-        mode: session.mode,
-        status: session.status,
-        language: session.language,
-        assistanceMode: session.assistanceMode,
-        currentQuestionIndex: session.currentQuestionIndex,
-        totalQuestions: session.questionIds.length,
-        answers: session.answers,
-        score: session.score,
-        errorCount: session.errorCount,
-        passed: session.passed,
-        expiresAt: session.expiresAt,
-        completedAt: session.completedAt,
-      },
-      questions: orderedQuestions,
+      session,
+      questions: questionsOrdered
     })
   } catch (error) {
-    console.error('Get session error:', error)
+    console.error('[get-session] Error:', error)
     return NextResponse.json({ error: 'Failed to fetch session' }, { status: 500 })
+  }
+}
+
+/**
+ * PATCH /api/exams/[sessionId]/flag
+ * Toggle flag on a question. When flagging (not unflagging), returns an AI
+ * contextual tip to help the user remember why this question was tricky.
+ */
+export async function PATCH(request, { params }) {
+  try {
+    const { sessionId } = await params
+    const tokenData = await getCurrentUser(request)
+    if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    await connectDB()
+
+    const { questionId, flagged } = await request.json()
+
+    const session = await ExamSession.findOne({
+      _id: sessionId,
+      userId: tokenData.userId,
+      status: 'in_progress',
+    })
+    if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+
+    const answerIndex = session.answers.findIndex(
+      (a) => a.questionId.toString() === questionId.toString()
+    )
+    if (answerIndex === -1) return NextResponse.json({ error: 'Answer not found' }, { status: 404 })
+
+    session.answers[answerIndex].flagged = flagged
+    await session.save()
+
+    // ── AI: When flagging (not unflagging), provide a quick "why tricky" tip ──
+    let aiTip = null
+    if (flagged) {
+      const question = await Question.findById(questionId).select('question options topic_tag correct_option_idx').lean()
+      if (question) {
+        const lang = session.language || 'es'
+        aiTip = await getSmartHint({
+          question: question.question,
+          options:  question.options,
+          correctIdx: question.correct_option_idx -1,
+          lang,
+        }).catch(() => null)
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      flagged: session.answers[answerIndex].flagged,
+      // ✨ AI tip explaining why this question is tricky (only when flagging)
+      aiTip: aiTip ?? null,
+    })
+  } catch (error) {
+    console.error('[flag] Error:', error)
+    return NextResponse.json({ error: 'Failed to flag question' }, { status: 500 })
   }
 }

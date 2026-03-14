@@ -4,6 +4,9 @@ import User from '@/models/User'
 import { getCurrentUser } from '@/lib/auth'
 import { escapeRegex, parsePositiveInt } from '@/lib/utils'
 
+// ---------------------------------------------------------------------------
+// GET /api/admin/users - List users with pagination
+// ---------------------------------------------------------------------------
 export async function GET(request) {
   try {
     const tokenData = await getCurrentUser(request)
@@ -20,6 +23,7 @@ export async function GET(request) {
     const role = url.searchParams.get('role') || ''
     const sort = url.searchParams.get('sort') || '-createdAt'
 
+    // Build query
     const query = {}
     if (search) {
       const escaped = escapeRegex(search)
@@ -32,6 +36,7 @@ export async function GET(request) {
       query.role = role
     }
 
+    // Build sort object
     const sortObj = {}
     if (sort.startsWith('-')) {
       sortObj[sort.slice(1)] = -1
@@ -39,6 +44,7 @@ export async function GET(request) {
       sortObj[sort] = 1
     }
 
+    // Parallel fetch
     const [users, total] = await Promise.all([
       User.find(query)
         .select('-passwordHash')
@@ -48,9 +54,17 @@ export async function GET(request) {
       User.countDocuments(query),
     ])
 
-    return NextResponse.json({ users, total, page, totalPages: Math.ceil(total / limit) })
+    return NextResponse.json({
+      users,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    })
   } catch (error) {
-    console.error('Admin users error:', error)
-    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
+    console.error('[admin/users] GET error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch users' },
+      { status: 500 }
+    )
   }
 }

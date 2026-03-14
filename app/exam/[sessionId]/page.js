@@ -17,6 +17,9 @@ import {
   SmileOutlined,
   FrownOutlined,
   ZoomInOutlined,
+  RobotOutlined,
+  LoadingOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons'
 
 
@@ -101,6 +104,125 @@ function OptionButton({ opt, idx, displayIdx, answered, selected, correct, isIns
 }
 
 
+/**
+ * TYPEWRITER HOOK
+ */
+function useTypewriter(text, speed = 18) {
+  const [displayed, setDisplayed] = useState('')
+  const [done, setDone] = useState(false)
+  useEffect(() => {
+    if (!text) { setDisplayed(''); setDone(false); return }
+    setDisplayed('')
+    setDone(false)
+    let i = 0
+    const id = setInterval(() => {
+      i++
+      setDisplayed(text.slice(0, i))
+      if (i >= text.length) { clearInterval(id); setDone(true) }
+    }, speed)
+    return () => clearInterval(id)
+  }, [text, speed])
+  return { displayed, done }
+}
+
+/**
+ * AI HINT PANEL COMPONENT
+ */
+function AIHintPanel({ hint, loading, onClose, t }) {
+  const { displayed } = useTypewriter(hint?.hint || '')
+  if (!loading && !hint) return null
+  return (
+    <div className="mt-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-700 rounded-2xl">
+      <div className="flex items-center justify-between mb-2">
+        <span className="flex items-center gap-2 text-sm font-bold text-indigo-700 dark:text-indigo-300">
+          <RobotOutlined />
+          {t('Pista IA', 'AI Hint')}
+          {hint?.difficulty && (
+            <span className={`px-2 py-0.5 rounded-full text-xs ${
+              hint.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+              hint.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
+              'bg-amber-100 text-amber-700'
+            }`}>{hint.difficulty}</span>
+          )}
+        </span>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+          <CloseOutlined />
+        </button>
+      </div>
+      {loading ? (
+        <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+          <LoadingOutlined className="animate-spin" />
+          <span className="text-sm">{t('Generando pista...', 'Generating hint...')}</span>
+        </div>
+      ) : (
+        <>
+          {hint?.concept && (
+            <p className="text-xs text-indigo-500 dark:text-indigo-400 mb-1 font-medium uppercase tracking-wide">
+              {hint.concept}
+            </p>
+          )}
+          <p className="text-sm text-ink dark:text-white leading-relaxed">{displayed}</p>
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * AI EXPLANATION PANEL COMPONENT
+ */
+function AIExplanationPanel({ explanation, loading, t }) {
+  const { displayed: summaryText } = useTypewriter(explanation?.summary || '')
+  const { displayed: correctText } = useTypewriter(explanation?.correct_explanation || '')
+  const { displayed: tipText } = useTypewriter(explanation?.memory_tip || '')
+
+  if (!loading && !explanation) return null
+
+  return (
+    <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-700 rounded-2xl space-y-3">
+      <div className="flex items-center gap-2 text-sm font-bold text-blue-700 dark:text-blue-300">
+        <RobotOutlined />
+        {t('Explicación IA', 'AI Explanation')}
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+          <LoadingOutlined className="animate-spin" />
+          <span className="text-sm">{t('Analizando con IA...', 'Analyzing with AI...')}</span>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {explanation?.summary && (
+            <p className="text-sm font-semibold text-ink dark:text-white">{summaryText}</p>
+          )}
+          {explanation?.correct_explanation && (
+            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-blue-100 dark:border-blue-800">
+              <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mb-1 uppercase tracking-wide">
+                {t('¿Por qué es correcta?', 'Why is it correct?')}
+              </p>
+              <p className="text-sm text-ink dark:text-white leading-relaxed">{correctText}</p>
+            </div>
+          )}
+          {explanation?.memory_tip && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+              <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mb-1 uppercase tracking-wide">
+                💡 {t('Tip para recordar', 'Memory tip')}
+              </p>
+              <p className="text-sm text-ink dark:text-white leading-relaxed">{tipText}</p>
+            </div>
+          )}
+          {explanation?.law_reference && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+              📋 {explanation.law_reference}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 function ExamInterface() {
   const { user, t } = useAuth()
   const params = useParams()
@@ -128,10 +250,61 @@ function ExamInterface() {
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState(new Set())
   const [showShortcuts, setShowShortcuts] = useState(false)
 
+  // ── AI States ──
+  const [aiHint, setAiHint] = useState(null)
+  const [loadingHint, setLoadingHint] = useState(false)
+  const [showHint, setShowHint] = useState(false)
+  const [aiExplanation, setAiExplanation] = useState(null)
+  const [loadingExplanation, setLoadingExplanation] = useState(false)
+  const [hintUsed, setHintUsed] = useState(false)
+
   const lang = user?.preferences?.language || 'es'
   const soundEnabled = user?.preferences?.soundEnabled !== false
   const timerRef = useRef(null)
   const answerFetchRef = useRef(null)
+
+  // ── AI Handlers ──
+  const handleRequestHint = useCallback(async () => {
+    if (!currentQuestion || loadingHint || hintUsed) return
+    setLoadingHint(true)
+    setShowHint(true)
+    setHintUsed(true)
+    try {
+      const res = await fetch('/api/ai/hint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId: currentQuestion._id, lang }),
+      })
+      const data = await res.json()
+      setAiHint(data.hint)
+    } catch (err) {
+      console.error('[exam] hint error:', err)
+    } finally {
+      setLoadingHint(false)
+    }
+  }, [currentQuestion, lang, loadingHint, hintUsed])
+
+  const handleRequestExplanation = useCallback(async () => {
+    if (!currentQuestion || !feedbackData || loadingExplanation) return
+    setLoadingExplanation(true)
+    try {
+      const res = await fetch('/api/ai/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId: currentQuestion._id,
+          selectedIdx: selectedOption,
+          lang,
+        }),
+      })
+      const data = await res.json()
+      setAiExplanation(data.explanation)
+    } catch (err) {
+      console.error('[exam] explanation error:', err)
+    } finally {
+      setLoadingExplanation(false)
+    }
+  }, [currentQuestion, feedbackData, selectedOption, lang, loadingExplanation])
 
 
   // FIX 4: added `router` to dependency array
@@ -254,6 +427,10 @@ const handleNext = useCallback(() => {
     setAnswered(false)
     setFeedbackData(null)
     setShowExplanation(false)
+    setAiHint(null)
+    setShowHint(false)
+    setHintUsed(false)
+    setAiExplanation(null)
     setStartTime(Date.now())
   } else {
     handleSubmitExam()
@@ -452,6 +629,25 @@ const handleNext = useCallback(() => {
           </h2>
 
           <div className="space-y-3">
+            {!answered && !hintUsed && (
+              <button
+                onClick={handleRequestHint}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-indigo-600 dark:text-indigo-400
+                           bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700
+                           rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+              >
+                <ExperimentOutlined />
+                {t('Pedir pista IA', 'Ask AI for hint')}
+              </button>
+            )}
+
+            <AIHintPanel
+              hint={aiHint}
+              loading={loadingHint}
+              onClose={() => setShowHint(false)}
+              t={t}
+            />
+
             {currentQuestion.options.map((opt, i) => (
               <OptionButton
                 key={i}
@@ -473,6 +669,27 @@ const handleNext = useCallback(() => {
             <div className="p-6 bg-blue-50 dark:bg-blue-900/10 rounded-3xl border border-blue-100 dark:border-blue-800/50 animate-fade-in">
               <div className="help-html" dangerouslySetInnerHTML={{ __html: sanitizeHtml(feedbackData.helpHtml) }} />
             </div>
+          )}
+
+          {answered && session?.assistanceMode === 'instant' && (
+            <>
+              {!aiExplanation && !loadingExplanation && (
+                <button
+                  onClick={handleRequestExplanation}
+                  className="mt-3 flex items-center gap-2 px-4 py-2 text-sm text-blue-600 dark:text-blue-400
+                             bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700
+                             rounded-xl hover:bg-blue-100 transition-colors"
+                >
+                  <RobotOutlined />
+                  {t('Explicación detallada IA', 'Detailed AI Explanation')}
+                </button>
+              )}
+              <AIExplanationPanel
+                explanation={aiExplanation}
+                loading={loadingExplanation}
+                t={t}
+              />
+            </>
           )}
         </div>
 
