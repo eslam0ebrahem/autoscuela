@@ -35,6 +35,7 @@ export async function GET(request) {
           is_correct: false,
         },
       },
+      { $sort: { createdAt: 1 } }, // Ensure $last gets the actual last one
       {
         $group: {
           _id: '$questionId',
@@ -42,6 +43,7 @@ export async function GET(request) {
           topicEn: { $first: '$topic_tag.en' },
           timesWrong: { $sum: 1 },
           lastWrong: { $max: '$createdAt' },
+          lastWrongAnswerIdx: { $last: '$selected_option_idx' },
         },
       },
       {
@@ -51,6 +53,7 @@ export async function GET(request) {
           topicEn: 1,
           timesWrong: 1,
           lastWrong: 1,
+          lastWrongAnswerIdx: 1,
           _id: 0,
         },
       },
@@ -117,7 +120,7 @@ export async function GET(request) {
     const pageFiltered = filtered.slice(skip, skip + limit)
     const questionDetails = await Question.find({
       _id: { $in: pageFiltered.map((m) => m.questionId) },
-    }).select('_id difficulty topic_tag question options metadata')
+    }).select('_id difficulty topic_tag question options metadata correct_option_idx')
 
     const questionMap = new Map()
     for (const q of questionDetails) {
@@ -139,6 +142,8 @@ export async function GET(request) {
           timesWrong: m.timesWrong,
           isCorrected: m.isCorrected,
           lastWrong: m.lastWrong,
+          lastWrongAnswerIdx: m.lastWrongAnswerIdx,
+          correct_option_idx: q.correct_option_idx,
           options: q.options,
           metadata: q.metadata,
         }

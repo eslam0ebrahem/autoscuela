@@ -160,7 +160,7 @@ function DashboardContent() {
       setStreak(dashRes.streak ?? 0)
       setBadges(dashRes.badges ?? [])
       setLeaderboard(dashRes.leaderboard ?? [])
-      setReadinessScore(Number(dashRes.readinessScore) ?? 0)
+      setReadinessScore(dashRes.readinessScore != null ? Number(dashRes.readinessScore) : 0)
       setTrends(trendsRes?.trends ?? [])
     } catch (e) {
       console.error('[dashboard] Fetch error:', e)
@@ -197,7 +197,7 @@ function DashboardContent() {
       }
 
       if (data.examId) {
-        router.push(`/exams/${data.examId}`)
+        router.push(`/exam/${data.examId}`)
       } else {
         throw new Error(t('ID de examen no recibido', 'No exam ID received'))
       }
@@ -294,7 +294,7 @@ function DashboardContent() {
           title={t('Progreso', 'Progress')}
           desc={t('Ver estadísticas', 'View stats')}
           color="from-green-400 to-emerald-600"
-          onClick={() => router.push('/progress')}
+          onClick={() => router.push('/stats')}
         />
         <QuickActionCard
           icon={<RobotOutlined />}
@@ -308,7 +308,7 @@ function DashboardContent() {
           title={t('Temas', 'Topics')}
           desc={t('Practicar por tema', 'Practice by topic')}
           color="from-amber-400 to-orange-600"
-          onClick={() => router.push('/topics')}
+          onClick={() => router.push('/exam?mode=custom')}
         />
       </div>
 

@@ -1,473 +1,539 @@
 'use client'
-
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import DOMPurify from 'dompurify'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
-import DOMPurify from 'dompurify'
-import {
-  AimOutlined,
-  CloseCircleOutlined,
-  ExclamationCircleOutlined,
-  CheckCircleOutlined,
-  SettingOutlined,
-  UpOutlined,
-  DownOutlined,
-  SmileOutlined,
-  RightOutlined,
-  BulbOutlined,
-  LeftOutlined,
-  CheckOutlined,
-  FilterOutlined
-} from '@ant-design/icons'
+import { useToast } from '@/components/Toast'
 
 function sanitizeHtml(html) {
   if (typeof window === 'undefined') return ''
   return DOMPurify.sanitize(html)
 }
+import {
+  CloseCircleOutlined,
+  CheckCircleOutlined,
+  FilterOutlined,
+  ReloadOutlined,
+  RocketOutlined,
+  EyeOutlined,
+  BulbOutlined,
+  ClockCircleOutlined,
+} from '@ant-design/icons'
 
-const getLocalizedText = (obj, lang) => {
-  if (!obj) return ''
-  if (typeof obj === 'string') return obj
-  if (lang === 'en' && (obj.en || obj.text_en)) return obj.en || obj.text_en
-  return obj.es || obj.text_es || obj.en || obj.text_en || ''
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+const API_ENDPOINTS = {
+  MISTAKES: '/api/mistakes',
+  TOPICS: '/api/flashcards/decks',
 }
 
-function MistakeBank() {
-  const router = useRouter()
-  const { user, t } = useAuth()
-  const lang = user?.preferences?.language || 'es'
+const FILTER_OPTIONS = {
+  ALL: 'all',
+  RECENT: 'recent',
+  FREQUENT: 'frequent',
+}
 
-  const [mistakes, setMistakes] = useState([])
-  const [stats, setStats] = useState(null)
-  const [topics, setTopics] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [practiceLoading, setPracticeLoading] = useState(false)
-  const [expandedId, setExpandedId] = useState(null)
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [topicFilter, setTopicFilter] = useState(null)
-  const [difficultyFilter, setDifficultyFilter] = useState(null)
-  const [correctedOnly, setCorrectedOnly] = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
+// ---------------------------------------------------------------------------
+// Components
+// ---------------------------------------------------------------------------
 
-  const limit = 15
+/**
+ * Mistake card component
+ */
+function MistakeCard({ mistake, onReview, onClear, t, lang = 'es' }) {
+  const [expanded, setExpanded] = useState(false)
 
-  useEffect(() => {
-    fetch('/api/flashcards/decks')
-      .then((r) => r.ok ? r.json() : { decks: [] })
-      .then((d) => setTopics(d.decks || []))
-      .catch(console.error)
+  const questionText = mistake?.question?.[lang] || mistake?.question?.es || ''
+  
+  const correctOption = mistake?.options?.find(o => o.idx === mistake?.correct_option_idx)
+  const userOption = mistake?.options?.find(o => o.idx === mistake?.lastWrongAnswerIdx)
+  
+  const correctAnswer = correctOption ? (correctOption['text_' + lang] || correctOption.text_es) : ''
+  const userAnswer = userOption ? (userOption['text_' + lang] || userOption.text_es) : ''
+  
+  const explanation = mistake.metadata?.help_html || ''
+  const topic = mistake?.topic || t('Desconocido', 'Unknown')
+  const timesIncorrect = mistake?.timesWrong || 1
+  const lastAttempt = mistake?.lastWrong ? new Date(mistake.lastWrong) : null
+
+  const toggleExpanded = useCallback(() => {
+    setExpanded((prev) => !prev)
   }, [])
 
-  useEffect(() => {
-    setLoading(true)
-    const query = new URLSearchParams({
-      page,
-      limit,
-      ...(topicFilter && { topic: topicFilter }),
-      ...(difficultyFilter && { difficulty: difficultyFilter }),
-      ...(correctedOnly !== null && { corrected: !correctedOnly }),
-    })
-    fetch(`/api/mistakes?${query}`)
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed to fetch mistakes')
-        return r.json()
-      })
-      .then((d) => {
-        setMistakes(d.mistakes || [])
-        setStats(d.stats || null)
-        setTotalPages(d.totalPages || 1)
-      })
-      .catch((err) => {
-        console.error('Error loading mistake bank:', err)
-        setMistakes([])
-      })
-      .finally(() => setLoading(false))
-  }, [page, topicFilter, difficultyFilter, correctedOnly])
-
-  const handlePracticeMistakes = async () => {
-    setPracticeLoading(true)
-    try {
-      const res = await fetch('/api/mistakes/practice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic_filter: topicFilter,
-          difficulty_filter: difficultyFilter,
-          count: 30,
-        }),
-      })
-      const data = await res.json()
-      if (res.ok && data.sessionId) {
-        router.push(`/exam/${data.sessionId}`)
-      } else {
-        alert(data.error || t('Error al iniciar práctica', 'Error starting practice session'))
-      }
-    } catch (err) {
-      console.error(err)
-      alert(t('Hubo un problema de conexión', 'Connection error'))
-    } finally {
-      setPracticeLoading(false)
-    }
-  }
-
-  const activeFiltersCount = [topicFilter, difficultyFilter, correctedOnly].filter(Boolean).length
-
-  // ── LOADING ──
-  if (loading && !mistakes.length) {
-    return (
-      <AppShell>
-        <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-base-100">
-          <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-          <p className="text-sm text-base-content/50 animate-pulse">
-            {t('Cargando tu panel...', 'Loading your dashboard...')}
-          </p>
+  return (
+    <div className="card hover:shadow-lg transition-shadow">
+      {/* Header */}
+      <div className="flex items-start gap-3 mb-3">
+        <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+          <CloseCircleOutlined className="text-xl text-red-600 dark:text-red-400" />
         </div>
-      </AppShell>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold rounded">
+              {topic}
+            </span>
+            {timesIncorrect > 1 && (
+              <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs font-bold rounded">
+                {timesIncorrect}x {t('errores', 'mistakes')}
+              </span>
+            )}
+          </div>
+          <h3 className="text-sm font-semibold text-ink dark:text-white leading-snug">
+            {questionText}
+          </h3>
+          {mistake.metadata?.image_url && (
+            <div className="mt-2 rounded-lg overflow-hidden border border-slate-100 dark:border-slate-700 max-w-[240px]">
+              <img src={mistake.metadata.image_url} alt="Question" className="w-full h-auto object-cover" />
+            </div>
+          )}
+          {lastAttempt && (
+            <p className="text-xs text-ink-light dark:text-slate-400 mt-1 flex items-center gap-1">
+              <ClockCircleOutlined />
+              {t('Último intento:', 'Last attempt:')}{' '}
+              {lastAttempt.toLocaleDateString(lang === 'es' ? 'es-ES' : 'en-US')}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Answers */}
+      <div className="space-y-2 mb-3">
+        <div className="flex items-start gap-2 p-2 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-800">
+          <CloseCircleOutlined className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-red-800 dark:text-red-300 mb-0.5">
+              {t('Tu respuesta:', 'Your answer:')}
+            </p>
+            <p className="text-sm text-red-900 dark:text-red-200">{userAnswer}</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-2 p-2 bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-200 dark:border-green-800">
+          <CheckCircleOutlined className="text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-green-800 dark:text-green-300 mb-0.5">
+              {t('Respuesta correcta:', 'Correct answer:')}
+            </p>
+            <p className="text-sm text-green-900 dark:text-green-200">{correctAnswer}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Explanation (expandable) */}
+      {explanation && (
+        <div className="mb-3">
+          <button
+            onClick={toggleExpanded}
+            className="w-full text-left px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors flex items-center justify-between"
+          >
+            <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
+              <BulbOutlined />
+              {t('Explicación', 'Explanation')}
+            </span>
+            <span className={`text-indigo-600 dark:text-indigo-400 transition-transform ${expanded ? 'rotate-180' : ''}`}>
+              ▼
+            </span>
+          </button>
+          {expanded && (
+            <div className="mt-2 p-4 bg-white dark:bg-slate-800 rounded-lg border border-indigo-200 dark:border-indigo-800">
+              <div 
+                className="text-sm text-ink dark:text-white leading-relaxed help-html"
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(explanation) }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => onReview(mistake)}
+          className="flex-1 px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+        >
+          <EyeOutlined />
+          {t('Revisar', 'Review')}
+        </button>
+        <button
+          onClick={() => onClear(mistake.questionId)}
+          className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-ink-light dark:text-slate-400 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+          title={t('Marcar como dominada', 'Mark as mastered')}
+        >
+          <CheckCircleOutlined />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Filter button component
+ */
+function FilterButton({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${active
+          ? 'bg-primary text-white shadow-md'
+          : 'bg-slate-100 dark:bg-slate-800 text-ink dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
+        }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main Component
+// ---------------------------------------------------------------------------
+function MistakeReviewContent() {
+  const { user, t } = useAuth()
+  const router = useRouter()
+  const toast = useToast()
+
+  const lang = user?.preferences?.language || 'es'
+
+  // ── State ──────────────────────────────────────────────────────────────
+  const [mistakes, setMistakes] = useState([])
+  const [topics, setTopics] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [filter, setFilter] = useState(FILTER_OPTIONS.ALL)
+  const [selectedTopic, setSelectedTopic] = useState(null)
+
+  // ── Fetch mistakes ─────────────────────────────────────────────────────
+  const fetchMistakes = useCallback(
+    async (force = false) => {
+      try {
+        setRefreshing(force)
+
+        const params = new URLSearchParams()
+        if (filter === FILTER_OPTIONS.RECENT) params.append('sort', 'recent')
+        if (filter === FILTER_OPTIONS.FREQUENT) params.append('sort', 'frequent')
+        if (selectedTopic) params.append('topic', selectedTopic)
+        if (force) params.append('force', 'true')
+
+        const res = await fetch(`${API_ENDPOINTS.MISTAKES}?${params}`)
+        if (!res.ok) throw new Error(t('Error al cargar errores', 'Failed to load mistakes'))
+
+        const data = await res.json()
+        setMistakes(data.mistakes || [])
+      } catch (err) {
+        console.error('[mistakes] Fetch error:', err)
+        toast?.error?.(t('Error', 'Error'), err.message)
+      } finally {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    },
+    [filter, selectedTopic, t, toast]
+  )
+
+  // ── Fetch topics ───────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchTopics = async () => {
+      try {
+        const res = await fetch(API_ENDPOINTS.TOPICS)
+        if (!res.ok) return
+
+        const data = await res.json()
+        setTopics(data.decks || [])
+      } catch (err) {
+        console.error('[mistakes] Topics fetch error:', err)
+      }
+    }
+
+    fetchTopics()
+  }, [])
+
+  // ── Fetch mistakes when filters change ────────────────────────────────
+  useEffect(() => {
+    fetchMistakes()
+  }, [fetchMistakes])
+
+  // ── Clear mistake ──────────────────────────────────────────────────────
+  const handleClearMistake = useCallback(
+    async (mistakeId) => {
+      try {
+        const res = await fetch(`${API_ENDPOINTS.MISTAKES}/${mistakeId}`, {
+          method: 'DELETE',
+        })
+
+        if (!res.ok) throw new Error(t('Error al eliminar', 'Failed to delete'))
+
+        setMistakes((prev) => prev.filter((m) => m._id !== mistakeId))
+        toast?.success?.(
+          t('Eliminado', 'Deleted'),
+          t('Error marcado como dominado', 'Mistake marked as mastered')
+        )
+      } catch (err) {
+        console.error('[mistakes] Delete error:', err)
+        toast?.error?.(t('Error', 'Error'), err.message)
+      }
+    },
+    [t, toast]
+  )
+
+  // ── Review mistake ─────────────────────────────────────────────────────
+  const handleReviewMistake = useCallback(
+    (mistake) => {
+      // Navigate to practice exam with this specific question
+      // Navigate to practice exam with this specific question
+      if (mistake.questionId) {
+        router.push(`/question/${mistake.questionId}`)
+      } else if (mistake.topic) {
+        router.push(`/exam?mode=custom&topics=${encodeURIComponent(mistake.topic)}`)
+      }
+    },
+    [router]
+  )
+
+  // ── Practice all mistakes ──────────────────────────────────────────────
+  const handlePracticeAll = useCallback(() => {
+    router.push('/exam?mode=mistakes')
+  }, [router])
+
+  // ── Filtered mistakes ──────────────────────────────────────────────────
+  const filteredMistakes = useMemo(() => {
+    let result = [...mistakes]
+
+    // Already filtered by API, but keep for local state management
+    return result
+  }, [mistakes])
+
+  // ── Stats ──────────────────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const totalMistakes = mistakes.length
+    const topicCounts = {}
+
+    mistakes.forEach((m) => {
+      const topic = m.topic || t('Desconocido', 'Unknown')
+      topicCounts[topic] = (topicCounts[topic] || 0) + 1
+    })
+
+    const mostCommonTopic = Object.entries(topicCounts).sort((a, b) => b[1] - a[1])[0]
+
+    return {
+      total: totalMistakes,
+      mostCommonTopic: mostCommonTopic ? mostCommonTopic[0] : null,
+      mostCommonCount: mostCommonTopic ? mostCommonTopic[1] : 0,
+    }
+  }, [mistakes, t])
+
+  // ── Loading state ──────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-ink-light dark:text-slate-400 text-sm">
+          {t('Cargando errores...', 'Loading mistakes...')}
+        </p>
+      </div>
     )
   }
 
-  const diffColors = {
-    easy:   'bg-success/10 text-success border-success/25',
-    medium: 'bg-warning/10 text-warning border-warning/25',
-    hard:   'bg-error/10 text-error border-error/25',
-  }
-
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <AppShell>
-      <div className="min-h-screen bg-base-100">
-        <div className="max-w-2xl mx-auto px-4 pt-6 pb-24 space-y-5">
+    <div className="container-wrapper space-y-6 max-w-5xl mx-auto">
+      {/* ── Header ──────────────────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-ink dark:text-white">
+            {t('Repaso de Errores', 'Mistake Review')}
+          </h1>
+          <p className="text-sm text-ink-light dark:text-slate-400 mt-1">
+            {t(
+              'Revisa y practica tus respuestas incorrectas para dominarlas',
+              'Review and practice your incorrect answers to master them'
+            )}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => fetchMistakes(true)}
+            disabled={refreshing}
+            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-ink dark:text-white rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            <ReloadOutlined className={refreshing ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline font-semibold">
+              {refreshing ? t('Actualizando...', 'Refreshing...') : t('Actualizar', 'Refresh')}
+            </span>
+          </button>
+        </div>
+      </div>
 
-          {/* ── Page Header ── */}
-          <div className="flex items-start justify-between gap-3">
+      {/* ── Stats Cards ────────────────────────────────────────────── */}
+      {stats.total > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="card text-center hover:shadow-lg transition-shadow">
+            <div className="text-3xl font-black text-red-600 dark:text-red-400">{stats.total}</div>
+            <p className="text-xs text-ink-light dark:text-slate-400 mt-1 font-semibold">
+              {t('Errores totales', 'Total mistakes')}
+            </p>
+          </div>
+          {stats.mostCommonTopic && (
+            <>
+              <div className="card text-center hover:shadow-lg transition-shadow">
+                <div className="text-lg font-black text-ink dark:text-white truncate">
+                  {stats.mostCommonTopic}
+                </div>
+                <p className="text-xs text-ink-light dark:text-slate-400 mt-1 font-semibold">
+                  {t('Tema con más errores', 'Most common topic')}
+                </p>
+              </div>
+              <div className="card text-center hover:shadow-lg transition-shadow">
+                <div className="text-3xl font-black text-orange-600 dark:text-orange-400">
+                  {stats.mostCommonCount}
+                </div>
+                <p className="text-xs text-ink-light dark:text-slate-400 mt-1 font-semibold">
+                  {t('Errores en ese tema', 'Mistakes in that topic')}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Filters ─────────────────────────────────────────────────── */}
+      <div className="card">
+        <h2 className="text-lg font-black text-ink dark:text-white mb-4 flex items-center gap-2">
+          <FilterOutlined />
+          {t('Filtros', 'Filters')}
+        </h2>
+
+        {/* Filter buttons */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <FilterButton
+            active={filter === FILTER_OPTIONS.ALL}
+            onClick={() => setFilter(FILTER_OPTIONS.ALL)}
+          >
+            {t('Todos', 'All')}
+          </FilterButton>
+          <FilterButton
+            active={filter === FILTER_OPTIONS.RECENT}
+            onClick={() => setFilter(FILTER_OPTIONS.RECENT)}
+          >
+            {t('Recientes', 'Recent')}
+          </FilterButton>
+          <FilterButton
+            active={filter === FILTER_OPTIONS.FREQUENT}
+            onClick={() => setFilter(FILTER_OPTIONS.FREQUENT)}
+          >
+            {t('Más frecuentes', 'Most frequent')}
+          </FilterButton>
+        </div>
+
+        {/* Topic filter */}
+        {topics.length > 0 && (
+          <div>
+            <label className="text-sm font-semibold text-ink dark:text-white mb-2 block">
+              {t('Filtrar por tema:', 'Filter by topic:')}
+            </label>
+            <select
+              value={selectedTopic || ''}
+              onChange={(e) => setSelectedTopic(e.target.value || null)}
+              className="w-full md:w-auto px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-ink dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="">{t('Todos los temas', 'All topics')}</option>
+              {topics.map((topic, index) => (
+                <option key={`topic-${topic.tag || index}`} value={topic.tag || topic.name}>
+                  {topic.name || topic.tag}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* ── Practice All Button ─────────────────────────────────────── */}
+      {filteredMistakes.length > 0 && (
+        <div className="card bg-gradient-to-r from-primary to-indigo-600 text-white border-0">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-black text-base-content">
-                {t('Banco de Errores', 'Mistake Bank')}
-              </h1>
-              <p className="text-sm text-base-content/50 mt-0.5">
+              <h3 className="text-lg font-black mb-1">
+                {t('¿Listo para mejorar?', 'Ready to improve?')}
+              </h3>
+              <p className="text-sm text-indigo-100">
                 {t(
-                  'Revisa y practica tus respuestas incorrectas para dominarlas.',
-                  'Review and practice your incorrect answers to master them.'
+                  'Practica un examen enfocado en tus errores',
+                  'Practice an exam focused on your mistakes'
                 )}
               </p>
             </div>
             <button
-              onClick={handlePracticeMistakes}
-              disabled={mistakes.length === 0 || practiceLoading}
-              className="btn btn-primary btn-sm h-11 rounded-xl shrink-0 gap-2 px-4 flex items-center justify-center"
+              onClick={handlePracticeAll}
+              className="px-8 py-3 bg-white text-primary font-black rounded-xl hover:bg-indigo-50 transition-all shadow-lg active:scale-95 flex items-center gap-2 whitespace-nowrap"
             >
-              {practiceLoading
-                ? <span className="loading loading-spinner loading-xs" />
-                : <AimOutlined />}
-              <span className="hidden sm:inline">
-                {t('Practicar', 'Practice')}
-              </span>
+              <RocketOutlined />
+              {t('Practicar Errores', 'Practice Mistakes')}
             </button>
           </div>
-
-          {/* ── Stats Row ── */}
-          {stats && (
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                {
-                  label: t('Total', 'Total'),
-                  value: stats.totalMistakes,
-                  color: 'text-error',
-                  bg: 'bg-error/5 border-error/15',
-                  icon: <CloseCircleOutlined />,
-                },
-                {
-                  label: t('Sin corregir', 'Uncorrected'),
-                  value: stats.uncorrectedCount,
-                  color: 'text-warning',
-                  bg: 'bg-warning/5 border-warning/15',
-                  icon: <ExclamationCircleOutlined />,
-                },
-                {
-                  label: t('Corregidos', 'Corrected'),
-                  value: `${stats.correctionRate}%`,
-                  color: 'text-success',
-                  bg: 'bg-success/5 border-success/15',
-                  icon: <CheckCircleOutlined />,
-                },
-              ].map((s, i) => (
-                <div key={i} className={`rounded-2xl border p-3 text-center ${s.bg}`}>
-                  <div className="text-base mb-1 text-primary">{s.icon}</div>
-                  <div className={`text-xl font-black ${s.color}`}>{s.value}</div>
-                  <div className="text-[10px] text-base-content/50 mt-0.5 leading-tight">{s.label}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* ── Filter Toggle ── */}
-          <div>
-            <button
-              onClick={() => setShowFilters(p => !p)}
-              className="flex items-center gap-2 text-sm font-semibold text-base-content/70
-                hover:text-base-content transition-colors"
-            >
-              <span className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-colors
-                ${showFilters || activeFiltersCount > 0
-                  ? 'bg-primary/10 border-primary/30 text-primary'
-                  : 'bg-base-200 border-base-300 text-base-content/50'}`}>
-                <FilterOutlined />
-              </span>
-              {t('Filtros', 'Filters')}
-              {activeFiltersCount > 0 && (
-                <span className="w-5 h-5 rounded-full bg-primary text-white text-[10px] font-black flex items-center justify-center">
-                  {activeFiltersCount}
-                </span>
-              )}
-              <span className="ml-auto text-base-content/30">{showFilters ? <UpOutlined /> : <DownOutlined />}</span>
-            </button>
-
-            {showFilters && (
-              <div className="mt-3 rounded-2xl border border-base-200 bg-base-50 p-4 space-y-4">
-                {/* Topic */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-base-content/50 uppercase tracking-wide">
-                    {t('Tema', 'Topic')}
-                  </label>
-                  <select
-                    value={topicFilter || ''}
-                    onChange={(e) => { setTopicFilter(e.target.value || null); setPage(1) }}
-                    className="select select-bordered select-sm w-full rounded-xl bg-base-100"
-                  >
-                    <option value="">{t('Todos los temas', 'All topics')}</option>
-                    {topics.map((topic) => (
-                      <option key={topic.tag} value={topic.tag}>
-                        {lang === 'en' ? (topic.tagEn || topic.tag) : (topic.tag || topic.tagEn)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Difficulty */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-base-content/50 uppercase tracking-wide">
-                    {t('Dificultad', 'Difficulty')}
-                  </label>
-                  <div className="flex gap-2">
-                    {[
-                      { value: null,     label: t('Todas', 'All'),       style: 'bg-base-200 border-base-300' },
-                      { value: 'easy',   label: t('Fácil', 'Easy'),      style: 'bg-success/10 border-success/30 text-success' },
-                      { value: 'medium', label: t('Medio', 'Medium'),    style: 'bg-warning/10 border-warning/30 text-warning' },
-                      { value: 'hard',   label: t('Difícil', 'Hard'),    style: 'bg-error/10 border-error/30 text-error' },
-                    ].map((opt) => (
-                      <button
-                        key={String(opt.value)}
-                        onClick={() => { setDifficultyFilter(opt.value); setPage(1) }}
-                        className={`flex-1 py-1.5 rounded-xl border text-xs font-bold transition-all
-                          ${difficultyFilter === opt.value
-                            ? opt.style + ' ring-2 ring-offset-1 ring-primary/30'
-                            : 'bg-base-100 border-base-300 text-base-content/50 hover:border-base-400'}`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Toggle corrected */}
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={correctedOnly}
-                    onChange={(e) => { setCorrectedOnly(e.target.checked); setPage(1) }}
-                    className="toggle toggle-primary toggle-sm"
-                  />
-                  <span className="text-sm font-medium text-base-content/80">
-                    {t('Ocultar ya corregidos', 'Hide corrected')}
-                  </span>
-                </label>
-
-                {/* Clear filters */}
-                {activeFiltersCount > 0 && (
-                  <button
-                    onClick={() => {
-                      setTopicFilter(null)
-                      setDifficultyFilter(null)
-                      setCorrectedOnly(false)
-                      setPage(1)
-                    }}
-                    className="btn btn-ghost btn-xs text-error w-full flex items-center justify-center gap-2"
-                  >
-                    <CloseCircleOutlined /> {t('Limpiar filtros', 'Clear filters')}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ── Questions List ── */}
-          <div className="space-y-3 relative">
-            {/* Page-change overlay */}
-            {loading && mistakes.length > 0 && (
-              <div className="absolute inset-0 bg-base-100/70 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
-                <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-              </div>
-            )}
-
-            {/* Empty state */}
-            {mistakes.length === 0 && !loading && (
-              <div className="rounded-2xl border-2 border-dashed border-base-300 p-10 text-center">
-                <div className="text-5xl mb-3 text-primary"><SmileOutlined /></div>
-                <h3 className="font-bold text-base-content">
-                  {t('¡Todo limpio!', 'All clear!')}
-                </h3>
-                <p className="text-sm text-base-content/50 mt-1">
-                  {t(
-                    'No tienes errores que coincidan con estos filtros.',
-                    'You have no mistakes matching these filters.'
-                  )}
-                </p>
-              </div>
-            )}
-
-            {mistakes.map((m) => {
-              const isExpanded = expandedId === m.questionId.toString()
-              return (
-                <div
-                  key={m.questionId.toString()}
-                  className={`rounded-2xl border overflow-hidden transition-all
-                    ${isExpanded ? 'border-primary/40 shadow-sm' : 'border-base-200 hover:border-base-300'}`}
-                >
-                  {/* ── Collapsed Header ── */}
-                  <button
-                    className="w-full text-left p-4 flex items-start gap-3 bg-base-100 active:bg-base-200 transition-colors"
-                    onClick={() => setExpandedId(isExpanded ? null : m.questionId.toString())}
-                    aria-expanded={isExpanded}
-                  >
-                    {/* Chevron */}
-                    <span className={`mt-0.5 text-xs shrink-0 transition-transform duration-200
-                      ${isExpanded ? 'rotate-90 text-primary' : 'text-base-content/30'}`}>
-                      <RightOutlined />
-                    </span>
-
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <p className={`text-sm font-semibold leading-snug
-                        ${isExpanded ? 'text-primary' : 'text-base-content'}`}>
-                        {getLocalizedText(m.question, lang)}
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {/* Topic */}
-                        <span className="px-2 py-0.5 rounded-full bg-base-200 text-base-content/60 text-[11px] font-semibold">
-                          {lang === 'en' ? (m.topicEn || m.topic) : (m.topic || m.topicEn)}
-                        </span>
-                        {/* Difficulty */}
-                        {m.difficulty && (
-                          <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${diffColors[m.difficulty] || diffColors.medium}`}>
-                            {m.difficulty === 'easy' ? t('Fácil', 'Easy') :
-                             m.difficulty === 'medium' ? t('Medio', 'Medium') :
-                             t('Difícil', 'Hard')}
-                          </span>
-                        )}
-                        {/* Times wrong */}
-                        <span className="px-2 py-0.5 rounded-full bg-error/10 border border-error/20 text-error text-[11px] font-bold">
-                          {t('Fallado', 'Failed')} {m.timesWrong}×
-                        </span>
-                        {/* Corrected badge */}
-                        {m.isCorrected && (
-                          <span className="px-2 py-0.5 rounded-full bg-success/10 border border-success/20 text-success text-[11px] font-bold">
-                            <CheckOutlined /> {t('Corregido', 'Corrected')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* ── Expanded Detail ── */}
-                  {isExpanded && (
-                    <div className="border-t border-base-200 bg-base-50 p-4 space-y-4">
-                      {/* Image */}
-                      {m.metadata?.image_url && (
-                        <div className="rounded-xl overflow-hidden border border-base-200">
-                          <img
-                            src={m.metadata.image_url}
-                            alt={t('Imagen de la pregunta', 'Question image')}
-                            className="w-full max-h-48 object-contain bg-base-100"
-                          />
-                        </div>
-                      )}
-
-                      {/* Options */}
-                      <div>
-                        <p className="text-[11px] font-bold text-base-content/40 uppercase tracking-widest mb-2">
-                          {t('Opciones', 'Options')}
-                        </p>
-                        <div className="space-y-2">
-                          {m.options.map((opt, i) => {
-                            const isCorrect = opt.idx === m.options.find((o) => o.correct)?.idx
-                            return (
-                              <div
-                                key={i}
-                                className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border-2 text-sm
-                                  ${isCorrect
-                                    ? 'border-success bg-success/10 text-success font-semibold'
-                                    : 'border-base-200 bg-base-100 text-base-content/50'}`}
-                              >
-                                <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
-                                  ${isCorrect ? 'bg-success text-white' : 'bg-base-200 text-base-content/40'}`}>
-                                  {String.fromCharCode(65 + i)}
-                                </span>
-                                <span className="leading-snug">{getLocalizedText(opt, lang)}</span>
-                                {isCorrect && (
-                                  <span className="ml-auto shrink-0 text-success font-bold"><CheckOutlined /></span>
-                                )}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Explanation */}
-                      {m.metadata?.help_html && (
-                        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-                          <p className="text-[11px] font-bold text-primary uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                            <BulbOutlined /> {t('Explicación Oficial DGT', 'Official DGT Explanation')}
-                          </p>
-                          <div
-                            className="text-sm text-base-content/80 leading-relaxed"
-                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(m.metadata.help_html) }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* ── Pagination ── */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <button
-                onClick={() => { setPage(Math.max(1, page - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                disabled={page === 1 || loading}
-                className="btn btn-ghost btn-sm rounded-xl border border-base-300 disabled:opacity-40 flex items-center justify-center gap-2"
-              >
-                <LeftOutlined /> {t('Anterior', 'Prev')}
-              </button>
-              <span className="text-sm font-semibold text-base-content/50">
-                {page} / {totalPages}
-              </span>
-              <button
-                onClick={() => { setPage(Math.min(totalPages, page + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                disabled={page === totalPages || loading}
-                className="btn btn-ghost btn-sm rounded-xl border border-base-300 disabled:opacity-40 flex items-center justify-center gap-2"
-              >
-                {t('Siguiente', 'Next')} <RightOutlined />
-              </button>
-            </div>
-          )}
-
         </div>
-      </div>
-    </AppShell>
+      )}
+
+      {/* ── Mistakes List ───────────────────────────────────────────── */}
+      {filteredMistakes.length === 0 ? (
+        <div className="card text-center py-12">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+              <CheckCircleOutlined className="text-5xl text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-ink dark:text-white mb-2">
+                {filter !== FILTER_OPTIONS.ALL || selectedTopic
+                  ? t('No hay errores que coincidan', 'No matching mistakes')
+                  : t('¡Excelente trabajo!', 'Excellent work!')}
+              </h3>
+              <p className="text-sm text-ink-light dark:text-slate-400 max-w-md mx-auto">
+                {filter !== FILTER_OPTIONS.ALL || selectedTopic
+                  ? t(
+                    'No tienes errores que coincidan con estos filtros',
+                    'You have no mistakes matching these filters'
+                  )
+                  : t(
+                    'No has cometido errores aún. ¡Sigue así!',
+                    "You haven't made any mistakes yet. Keep it up!"
+                  )}
+              </p>
+            </div>
+            <button
+              onClick={() => router.push('/exam')}
+              className="px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
+            >
+              <RocketOutlined />
+              {t('Tomar Examen', 'Take Exam')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {filteredMistakes.map((mistake, index) => (
+            mistake && (
+              <MistakeCard
+                key={mistake.questionId || `mistake-${index}`}
+                mistake={mistake}
+                onReview={handleReviewMistake}
+                onClear={handleClearMistake}
+                t={t}
+                lang={lang}
+              />
+            )
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
-export default MistakeBank
+// ---------------------------------------------------------------------------
+// Page Export
+// ---------------------------------------------------------------------------
+export default function MistakeReviewPage() {
+  return (
+    <AppShell>
+      <MistakeReviewContent />
+    </AppShell>
+  )
+}
