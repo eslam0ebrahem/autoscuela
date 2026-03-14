@@ -596,7 +596,18 @@ const handleNext = useCallback(() => {
       {/* Top Bar */}
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => { if (confirm(t('¿Salir?', 'Exit?'))) router.push('/exam') }}
+          onClick={async () => {
+            if (confirm(t('¿Seguro que quieres salir? El examen se guardará como completado.', 'Are you sure you want to exit? The exam will be saved as completed.'))) {
+              try {
+                // Submit the exam as-is to make it "completed"
+                await fetch(`/api/exams/${sessionId}/submit`, { method: 'POST' })
+                router.push('/exam')
+              } catch (err) {
+                console.error('Failed to submit exam on exit:', err)
+                router.push('/exam')
+              }
+            }
+          }}
           className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-ink-light hover:text-ink"
         >
           <CloseOutlined />
