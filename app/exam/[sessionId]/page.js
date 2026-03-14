@@ -138,7 +138,7 @@ function ExamInterface() {
   useEffect(() => {
     if (!sessionId) return
     Promise.all([
-      fetch('/api/users/bookmarks').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+      fetch('/api/bookmarks?idsOnly=true').then(r => r.ok ? r.json() : {}).catch(() => ({})),
       fetch(`/api/exams/${sessionId}`).then(r => r.json()),
     ]).then(([bookmarksData, examData]) => {
       if (bookmarksData?.bookmarks) setBookmarkedQuestions(new Set(bookmarksData.bookmarks))
@@ -265,7 +265,7 @@ const handleNext = useCallback(() => {
   // FIX 3: wrapped in useCallback
   const toggleBookmark = useCallback(async (questionId) => {
     try {
-      const res = await fetch('/api/users/bookmarks', {
+      const res = await fetch('/api/bookmarks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questionId }),

@@ -43,7 +43,7 @@ export default function SingleQuestionReviewPage() {
       setQuestion(data.question)
       
       // Check bookmark status
-      const bookRes = await fetch('/api/users/bookmarks').then(r => r.json())
+      const bookRes = await fetch('/api/bookmarks?idsOnly=true').then(r => r.json())
       if (bookRes.bookmarks?.includes(questionId)) {
         setBookmarked(true)
       }
@@ -61,7 +61,7 @@ export default function SingleQuestionReviewPage() {
 
   const toggleBookmark = async () => {
     try {
-      const res = await fetch('/api/users/bookmarks', {
+      const res = await fetch('/api/bookmarks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questionId }),

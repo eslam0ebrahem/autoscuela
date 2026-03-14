@@ -14,7 +14,7 @@ const OFFICIAL_EXAM_QUESTIONS = 30
 const OFFICIAL_EXAM_DURATION_MIN = 30
 const ABANDONED_SESSION_HOURS = 2
 
-const VALID_MODES = ['official', 'custom', 'mistakes', 'weak_topics']
+const VALID_MODES = ['official', 'custom', 'mistakes', 'weak_topics', 'bookmarks']
 const VALID_ASSISTANCE_MODES = ['instant', 'exam']
 
 const QUESTION_LIMITS = {
@@ -28,6 +28,7 @@ const DURATIONS = {
   custom: 60,
   mistakes: 45,
   weak_topics: 45,
+  bookmarks: 45,
 }
 
 // ---------------------------------------------------------------------------
@@ -231,6 +232,21 @@ export async function POST(request) {
           QUESTION_LIMITS.MAX
         )
 
+    // ── Handle Bookmarks Mode ───────────────────────────────────────────────
+    let bookmarkIds = []
+    if (mode === 'bookmarks') {
+      bookmarkIds = user.bookmarkedQuestions || []
+      if (bookmarkIds.length === 0) {
+        return NextResponse.json(
+          { 
+            error: 'No bookmarks found',
+            message: "You haven't bookmarked any questions yet. Save some during exams to practice them here!"
+          },
+          { status: 404 }
+        )
+      }
+    }
+
     // ── Prepare filters and adaptive options ────────────────────────────────
     const topicFilters = normalizeTopicFilters(topic_filter)
     const adaptiveOptions = buildAdaptiveOptions(mode, topicFilters)
@@ -241,7 +257,10 @@ export async function POST(request) {
       questionIds = await selectAdaptiveQuestions(
         tokenData.userId,
         requestedCount,
-        adaptiveOptions
+        {
+          ...adaptiveOptions,
+          mistakeQuestionIds: mode === 'bookmarks' ? bookmarkIds : null
+        }
       )
     } catch (error) {
       console.error('[exam-generate] Adaptive selection failed:', error)

@@ -30,7 +30,7 @@ function ReviewInterface() {
 
   useEffect(() => {
     if (!sessionId) return
-    fetch('/api/users/bookmarks')
+    fetch('/api/bookmarks?idsOnly=true')
       .then(r => r.ok ? r.json() : {})
       .then(data => { if (data.bookmarks) setBookmarkedQuestions(new Set(data.bookmarks)) })
       .catch(console.error)
@@ -47,7 +47,7 @@ function ReviewInterface() {
 
   const toggleBookmark = async (questionId) => {
     try {
-      const res = await fetch('/api/users/bookmarks', {
+      const res = await fetch('/api/bookmarks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questionId }),

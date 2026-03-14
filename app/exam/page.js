@@ -13,7 +13,8 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   BulbOutlined,
-  WarningOutlined
+  WarningOutlined,
+  StarFilled,
 } from '@ant-design/icons'
 
 // ---------------------------------------------------------------------------
@@ -56,6 +57,15 @@ const EXAM_MODES = {
     descKey: 'Mejora donde más lo necesitas',
     descEn: 'Improve where you need it most',
     color: 'from-amber-500 to-orange-600',
+  },
+  bookmarks: {
+    id: 'bookmarks',
+    icon: StarFilled,
+    titleKey: 'Preguntas Guardadas',
+    titleEn: 'Bookmarked Questions',
+    descKey: 'Repasa tus favoritos',
+    descEn: 'Review your favorites',
+    color: 'from-amber-400 to-yellow-600',
   },
 }
 
