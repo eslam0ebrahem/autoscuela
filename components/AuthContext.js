@@ -3,17 +3,28 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
 const AuthContext = createContext(null)
 
+// ---------------------------------------------------------------------------
+// Provider Component
+// ---------------------------------------------------------------------------
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
 
+  // ── Fetch current user session ─────────────────────────────────────────
   const fetchUser = useCallback(async () => {
     try {
-      const res = await fetch('/api/auth/me', { headers: { 'Cache-Control': 'no-cache' } })
+      const res = await fetch('/api/auth/me', {
+        headers: { 'Cache-Control': 'no-cache' },
+        credentials: 'same-origin',
+      })
+
       if (res.ok) {
         const data = await res.json()
         setUser(data.user)
@@ -21,111 +32,174 @@ export function AuthProvider({ children }) {
         setUser(null)
       }
     } catch (err) {
-      console.error('Failed to fetch user session:', err)
+      console.error('[auth] Failed to fetch user session:', err)
       setUser(null)
     } finally {
       setLoading(false)
     }
   }, [])
 
-  useEffect(() => { fetchUser() }, [fetchUser])
+  // Initial user fetch
+  useEffect(() => {
+    fetchUser()
+  }, [fetchUser])
 
-  // Cross-tab logout sync
+  // ── Cross-tab auth sync ────────────────────────────────────────────────
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === 'auth_sync_event' && e.newValue === 'logout') {
-        setUser(null)
-        if (pathname !== '/' && !pathname.startsWith('/auth')) {
-          router.push('/auth/login')
+      if (e.key === 'auth_sync_event') {
+        if (e.newValue === 'logout') {
+          setUser(null)
+          // Redirect to login if on protected page
+          if (pathname !== '/' && !pathname.startsWith('/auth')) {
+            router.push('/auth/login')
+          }
+        } else if (e.newValue?.startsWith('login-')) {
+          // Another tab logged in, refresh user
+          fetchUser()
         }
       }
     }
+
     window.addEventListener('storage', handleStorageChange)
     return () => window.removeEventListener('storage', handleStorageChange)
-  }, [router, pathname])
+  }, [router, pathname, fetchUser])
 
-  const login = async (email, password, rememberMe = true) => {
+  // ── Login ──────────────────────────────────────────────────────────────
+  const login = useCallback(async (email, password, rememberMe = true) => {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, rememberMe }),
+        credentials: 'same-origin',
       })
+
       const data = await res.json()
+
       if (res.ok) {
         setUser(data.user)
-        localStorage.setItem('auth_sync_event', 'login-' + Date.now())
+        localStorage.setItem('auth_sync_event', `login-${Date.now()}`)
         return { success: true }
       }
+
+      // Return specific error message from server
       return { success: false, error: data.error || 'Login failed' }
     } catch (err) {
-      console.error('Login error:', err)
-      return { success: false, error: 'Hubo un problema de conexión. Inténtalo de nuevo.' }
+      console.error('[auth] Login error:', err)
+      return {
+        success: false,
+        error: 'Connection problem. Please try again.',
+      }
     }
-  }
+  }, [])
 
-  const register = async (email, password, nickname, language) => {
+  // ── Register ───────────────────────────────────────────────────────────
+  const register = useCallback(async (email, password, nickname, language = 'es') => {
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, nickname, language }),
+        credentials: 'same-origin',
       })
+
       const data = await res.json()
+
       if (res.ok) {
         setUser(data.user)
-        localStorage.setItem('auth_sync_event', 'login-' + Date.now())
+        localStorage.setItem('auth_sync_event', `login-${Date.now()}`)
         return { success: true }
       }
+
       return { success: false, error: data.error || 'Registration failed' }
     } catch (err) {
-      console.error('Registration error:', err)
-      return { success: false, error: 'Hubo un problema de conexión. Inténtalo de nuevo.' }
+      console.error('[auth] Registration error:', err)
+      return {
+        success: false,
+        error: 'Connection problem. Please try again.',
+      }
     }
-  }
+  }, [])
 
-  const logout = async () => {
+  // ── Logout ─────────────────────────────────────────────────────────────
+  const logout = useCallback(async () => {
     try {
-      await fetch('/api/auth/me', { method: 'DELETE' })
+      await fetch('/api/auth/me', {
+        method: 'DELETE',
+        credentials: 'same-origin',
+      })
     } catch (err) {
-      console.error('Error during logout:', err)
+      console.error('[auth] Error during logout:', err)
     } finally {
       setUser(null)
       localStorage.setItem('auth_sync_event', 'logout')
       router.push('/')
     }
-  }
+  }, [router])
 
-  const updateLanguage = async (lang) => {
-    setUser((prev) => prev ? { ...prev, preferences: { ...prev.preferences, language: lang } } : prev)
+  // ── Update language preference ─────────────────────────────────────────
+  const updateLanguage = useCallback(async (lang) => {
+    // Optimistic update
+    setUser((prev) =>
+      prev
+        ? { ...prev, preferences: { ...prev.preferences, language: lang } }
+        : prev
+    )
+
     try {
       const res = await fetch('/api/users/preferences', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ language: lang }),
+        credentials: 'same-origin',
       })
-      if (!res.ok) console.error('Failed to save language preference')
+
+      if (!res.ok) {
+        console.error('[auth] Failed to save language preference')
+        // Revert on error
+        await fetchUser()
+      }
     } catch (err) {
-      console.error('Network error saving language preference:', err)
+      console.error('[auth] Network error saving language preference:', err)
+      // Revert on error
+      await fetchUser()
     }
-  }
+  }, [fetchUser])
 
-  const refreshUser = fetchUser
+  // ── Refresh user data ──────────────────────────────────────────────────
+  const refreshUser = useCallback(() => {
+    return fetchUser()
+  }, [fetchUser])
 
+  // ── Translation helper ─────────────────────────────────────────────────
   const t = useCallback(
     (es, en) => (user?.preferences?.language === 'en' ? en : es),
     [user?.preferences?.language]
   )
 
-  return (
-    <AuthContext.Provider value={{ user, loading, login, logout, register, updateLanguage, refreshUser, t }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  // ── Context value ──────────────────────────────────────────────────────
+  const value = {
+    user,
+    loading,
+    login,
+    register,
+    logout,
+    updateLanguage,
+    refreshUser,
+    t,
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
 export function useAuth() {
   const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within an AuthProvider')
+  if (!ctx) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
   return ctx
 }
