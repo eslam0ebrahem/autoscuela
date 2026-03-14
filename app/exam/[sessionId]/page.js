@@ -46,7 +46,7 @@ function playSound(src) {
   const audio = audioCache[src]
   if (audio) {
     audio.currentTime = 0
-    audio.play().catch(() => {})
+    audio.play().catch(() => { })
   }
 }
 
@@ -59,29 +59,29 @@ function OptionButton({ opt, idx, displayIdx, answered, selected, correct, isIns
   let state = 'idle'
   if (answered) {
     if (isInstant && feedbackData) {
-      if (idx === correct)        state = 'correct'
-      else if (idx === selected)  state = 'wrong'
-      else                        state = 'dimmed'
+      if (idx === correct) state = 'correct'
+      else if (idx === selected) state = 'wrong'
+      else state = 'dimmed'
     } else {
       if (idx === selected) state = 'selected'
-      else                  state = 'dimmed'
+      else state = 'dimmed'
     }
   }
 
   const stateClasses = {
-    idle:     'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 hover:border-primary/50 hover:bg-primary/5 active:scale-[0.98]',
-    correct:  'border-success bg-success/10 text-success shadow-sm shadow-success/20',
-    wrong:    'border-danger   bg-danger/10   text-danger   shadow-sm shadow-danger/20',
+    idle: 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 hover:border-primary/50 hover:bg-primary/5 active:scale-[0.98]',
+    correct: 'border-success bg-success/10 text-success shadow-sm shadow-success/20',
+    wrong: 'border-danger   bg-danger/10   text-danger   shadow-sm shadow-danger/20',
     selected: 'border-primary bg-primary/10 text-primary shadow-sm shadow-primary/20',
-    dimmed:   'border-slate-50 dark:border-slate-900 bg-slate-50 dark:bg-slate-900 opacity-45',
+    dimmed: 'border-slate-50 dark:border-slate-900 bg-slate-50 dark:bg-slate-900 opacity-45',
   }
 
   const letterClasses = {
-    idle:     'bg-slate-100 dark:bg-slate-700 text-ink-light',
-    correct:  'bg-success text-white',
-    wrong:    'bg-danger   text-white',
+    idle: 'bg-slate-100 dark:bg-slate-700 text-ink-light',
+    correct: 'bg-success text-white',
+    wrong: 'bg-danger   text-white',
     selected: 'bg-primary text-white',
-    dimmed:   'bg-slate-100 dark:bg-slate-700 text-ink-light/30',
+    dimmed: 'bg-slate-100 dark:bg-slate-700 text-ink-light/30',
   }
 
   return (
@@ -94,7 +94,7 @@ function OptionButton({ opt, idx, displayIdx, answered, selected, correct, isIns
         {letter}
       </span>
       <span className="flex-1 font-bold text-lg">{text}</span>
-      {isInstant && answered && feedbackData && idx === correct  && <span className="text-2xl"><CheckOutlined /></span>}
+      {isInstant && answered && feedbackData && idx === correct && <span className="text-2xl"><CheckOutlined /></span>}
       {isInstant && answered && feedbackData && idx === selected && idx !== correct && <span className="text-2xl"><CloseOutlined /></span>}
     </button>
   )
@@ -103,34 +103,35 @@ function OptionButton({ opt, idx, displayIdx, answered, selected, correct, isIns
 
 function ExamInterface() {
   const { user, t } = useAuth()
-  const params  = useParams()
-  const router  = useRouter()
+  const params = useParams()
+  const router = useRouter()
   const sessionId = params?.sessionId
 
-  const [session,             setSession]             = useState(null)
-  const [questions,           setQuestions]           = useState([])
-  const [currentIdx,          setCurrentIdx]          = useState(0)
+  const [session, setSession] = useState(null)
+  const [questions, setQuestions] = useState([])
+  const [currentIdx, setCurrentIdx] = useState(0)
   const currentQuestion = questions[currentIdx]
 
-  const [selectedOption,      setSelectedOption]      = useState(null)
-  const [answered,            setAnswered]            = useState(false)
-  const [feedbackData,        setFeedbackData]        = useState(null)
-  const [showExplanation,     setShowExplanation]     = useState(false)
-  const [expandedImage,       setExpandedImage]       = useState(null)
+  const [selectedOption, setSelectedOption] = useState(null)
+  const [answered, setAnswered] = useState(false)
+  const [feedbackData, setFeedbackData] = useState(null)
+  const [showExplanation, setShowExplanation] = useState(false)
+  const [expandedImage, setExpandedImage] = useState(null)
 
-  const [timeLeft,            setTimeLeft]            = useState(null)
-  const [timerWarning,        setTimerWarning]        = useState(false)
-  const [loading,             setLoading]             = useState(true)
-  const [submitting,          setSubmitting]          = useState(false)
-  const [result,              setResult]              = useState(null)
-  const [startTime,           setStartTime]           = useState(null)
-  const [confetti,            setConfetti]            = useState(false)
+  const [timeLeft, setTimeLeft] = useState(null)
+  const [timerWarning, setTimerWarning] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [result, setResult] = useState(null)
+  const [startTime, setStartTime] = useState(null)
+  const [confetti, setConfetti] = useState(false)
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState(new Set())
-  const [showShortcuts,       setShowShortcuts]       = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
-  const lang         = user?.preferences?.language    || 'es'
+  const lang = user?.preferences?.language || 'es'
   const soundEnabled = user?.preferences?.soundEnabled !== false
-  const timerRef     = useRef(null)
+  const timerRef = useRef(null)
+  const answerFetchRef = useRef(null)
 
 
   // FIX 4: added `router` to dependency array
@@ -147,10 +148,10 @@ function ExamInterface() {
         setQuestions(examData.questions || [])
         if (examData.session.status === 'completed') {
           setResult({
-            score:  examData.session.score,
+            score: examData.session.score,
             errors: examData.session.errorCount,
             passed: examData.session.passed,
-            total:  examData.questions?.length || 0,
+            total: examData.questions?.length || 0,
           })
         } else {
           setCurrentIdx(examData.session.currentQuestionIndex || 0)
@@ -170,7 +171,7 @@ function ExamInterface() {
   const handleSubmitExam = useCallback(async () => {
     setSubmitting(true)
     try {
-      const res  = await fetch(`/api/exams/${sessionId}/submit`, { method: 'POST' })
+      const res = await fetch(`/api/exams/${sessionId}/submit`, { method: 'POST' })
       const data = await res.json()
       if (data.result) {
         setResult(data.result)
@@ -189,9 +190,9 @@ function ExamInterface() {
     const checkTime = () => {
       const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000))
       setTimeLeft(remaining)
-      if (remaining <= 0)       { clearInterval(timerRef.current); handleSubmitExam() }
+      if (remaining <= 0) { clearInterval(timerRef.current); handleSubmitExam() }
       else if (remaining === 300) setTimerWarning('5min')
-      else if (remaining === 60)  setTimerWarning('1min')
+      else if (remaining === 60) setTimerWarning('1min')
     }
     checkTime()
     timerRef.current = setInterval(checkTime, 1000)
@@ -202,6 +203,12 @@ function ExamInterface() {
   // FIX 3: wrapped in useCallback so the keyboard effect gets a stable reference
   const handleSelectOption = useCallback((optIdx) => {
     if (answered || submitting) return
+
+    // Cancel any previous stale answer fetch
+    answerFetchRef.current?.abort()
+    const controller = new AbortController()
+    answerFetchRef.current = controller
+
     setSelectedOption(optIdx)
     setAnswered(true)
     const timeTaken = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0
@@ -216,10 +223,11 @@ function ExamInterface() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        question_id:          currentQuestion?._id,
-        selected_option_idx:  optIdx,
-        time_taken:           timeTaken,
+        question_id: currentQuestion?._id,
+        selected_option_idx: optIdx,
+        time_taken: timeTaken,
       }),
+      signal: controller.signal, // 👈 attach the abort signal
     })
       .then(r => r.json())
       .then(data => {
@@ -228,7 +236,12 @@ function ExamInterface() {
           playSound(data.isCorrect ? '/sounds/correct-answer.mp3' : '/sounds/wrong-answer.mp3')
         }
       })
-  }, [answered, submitting, startTime, session, soundEnabled, currentQuestion, sessionId]) // FIX 3
+      .catch(err => {
+        if (err.name !== 'AbortError') console.error('Answer fetch error:', err)
+        // AbortError is expected and safe to ignore
+      })
+  }, [answered, submitting, startTime, session, soundEnabled, currentQuestion, sessionId])
+  // FIX 3
 
 
   // FIX 3: wrapped in useCallback
@@ -249,7 +262,7 @@ function ExamInterface() {
   // FIX 3: wrapped in useCallback
   const toggleBookmark = useCallback(async (questionId) => {
     try {
-      const res  = await fetch('/api/users/bookmarks', {
+      const res = await fetch('/api/users/bookmarks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questionId }),
@@ -314,11 +327,11 @@ function ExamInterface() {
                 key={i}
                 className="absolute animate-bounce"
                 style={{
-                  left:              `${Math.random() * 100}%`,
-                  top:               `-${10 + Math.random() * 10}%`,
-                  animationDelay:    `${Math.random() * 2}s`,
+                  left: `${Math.random() * 100}%`,
+                  top: `-${10 + Math.random() * 10}%`,
+                  animationDelay: `${Math.random() * 2}s`,
                   animationDuration: `${1.5 + Math.random() * 2}s`,
-                  fontSize:          `${14 + Math.random() * 14}px`,
+                  fontSize: `${14 + Math.random() * 14}px`,
                 }}
               >
                 {['🎉', '⭐', '✨', '🏆', '🎊'][Math.floor(Math.random() * 5)]}
@@ -378,7 +391,7 @@ function ExamInterface() {
     </div>
   )
 
-  const isInstant  = session?.assistanceMode === 'instant'
+  const isInstant = session?.assistanceMode === 'instant'
   // FIX 2: now safe — currentQuestion is guaranteed non-null here
   const correctIdx = feedbackData?.correctOptionIdx ?? currentQuestion.correct_option_idx
 
@@ -431,8 +444,8 @@ function ExamInterface() {
         <div className="flex-1 space-y-8">
           <h2 className="text-2xl md:text-3xl font-black leading-tight text-ink dark:text-white">
             {lang === 'en'
-              ? (currentQuestion.question.en  || currentQuestion.question.es)
-              : (currentQuestion.question.es  || currentQuestion.question.en)}
+              ? (currentQuestion.question.en || currentQuestion.question.es)
+              : (currentQuestion.question.es || currentQuestion.question.en)}
           </h2>
 
           <div className="space-y-3">
@@ -543,12 +556,12 @@ function ExamInterface() {
             </div>
             <div className="space-y-3 text-sm">
               {[
-                ['1–4 / A–D', t('Seleccionar opción',          'Select option')],
-                ['Enter / Space', t('Siguiente pregunta',       'Next question')],
-                ['E',             t('Mostrar/ocultar ayuda',    'Toggle explanation')],
-                ['S',             t('Guardar marcador',         'Toggle bookmark')],
-                ['Esc',           t('Cerrar modal',             'Close modal')],
-                ['?',             t('Mostrar atajos',           'Show shortcuts')],
+                ['1–4 / A–D', t('Seleccionar opción', 'Select option')],
+                ['Enter / Space', t('Siguiente pregunta', 'Next question')],
+                ['E', t('Mostrar/ocultar ayuda', 'Toggle explanation')],
+                ['S', t('Guardar marcador', 'Toggle bookmark')],
+                ['Esc', t('Cerrar modal', 'Close modal')],
+                ['?', t('Mostrar atajos', 'Show shortcuts')],
               ].map(([key, desc]) => (
                 <div key={key} className="flex items-center justify-between gap-4">
                   <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded-lg font-mono text-xs font-bold shrink-0">
