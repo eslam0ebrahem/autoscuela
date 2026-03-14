@@ -211,7 +211,7 @@ function AIInsightsContent() {
   // ── Practice weak topic ────────────────────────────────────────────────
   const handlePracticeTopic = useCallback(
     (topic) => {
-      router.push(`/exam-setup?mode=custom&topics=${encodeURIComponent(topic)}`)
+      router.push(`/exam?mode=custom&topics=${encodeURIComponent(topic)}`)
     },
     [router]
   )
@@ -224,11 +224,11 @@ function AIInsightsContent() {
 
     if (action.type === 'custom_exam' && action.filters?.length > 0) {
       const topics = action.filters.join(',')
-      router.push(`/exam-setup?mode=custom&topics=${encodeURIComponent(topics)}&ai=1`)
+      router.push(`/exam?mode=custom&topics=${encodeURIComponent(topics)}&ai=1`)
     } else if (action.type === 'official_exam') {
-      router.push('/exam-setup?mode=official')
+      router.push('/exam?mode=official')
     } else {
-      router.push('/exam-setup')
+      router.push('/exam')
     }
   }, [insights, router])
 
@@ -320,7 +320,7 @@ function AIInsightsContent() {
             </div>
 
             <button
-              onClick={() => router.push('/exam-setup')}
+              onClick={() => router.push('/exam')}
               className="px-8 py-3 bg-primary text-white font-black rounded-xl hover:bg-indigo-700 transition-all shadow-lg active:scale-95 flex items-center gap-2"
             >
               <RocketOutlined />
