@@ -1,0 +1,4 @@
+{
+  "*.{js,jsx}": "next lint --fix",
+  "*.{js,jsx,json,md}": "prettier --write"
+}

@@ -3,6 +3,8 @@ import { getCurrentUser } from '@/lib/auth'
 import { getExamRecommendation } from '@/lib/groq'
 import ExamSession from '@/models/ExamSession'
 import connectDB from '@/lib/db'
+import { checkRateLimit } from '@/lib/utils'
+import { AIRecommendSchema, parseQueryParams } from '@/lib/schemas'
 
 export const runtime = 'nodejs'
 export const maxDuration = 15
@@ -14,8 +16,25 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const url = new URL(request.url)
-    const lang = url.searchParams.get('lang') || 'es'
+    // ── Rate limiting (10 recommendations per hour) ─────────────────────
+    const rateCheck = checkRateLimit(`ai:recommend:${tokenData.userId}`, 10, 3600000)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Too many recommendation requests. Please try later.' },
+        { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter || 3600) } }
+      )
+    }
+
+    // ── Parse and validate query params ────────────────────────────────
+    const { data: queryParams, error: queryError } = parseQueryParams(request, AIRecommendSchema)
+    if (queryError) {
+      return NextResponse.json(
+        { error: 'Invalid query parameters', details: queryError.messages },
+        { status: queryError.status }
+      )
+    }
+
+    const { lang } = queryParams
 
     await connectDB()
 

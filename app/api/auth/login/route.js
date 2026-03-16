@@ -3,26 +3,45 @@ import bcrypt from 'bcryptjs'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
 import { signToken, setAuthCookie } from '@/lib/auth'
+import { checkCSRF } from '@/lib/csrf'
 import { checkRateLimit } from '@/lib/utils'
+import { LoginSchema, parseSchema } from '@/lib/schemas'
 
 // ---------------------------------------------------------------------------
 // POST /api/auth/login - User login
 // ---------------------------------------------------------------------------
 export async function POST(request) {
   try {
-    const { email, password, rememberMe = true } = await request.json()
+    // ── CSRF Protection ────────────────────────────────────────────────
+    const csrfError = checkCSRF('POST', request)
+    if (csrfError) {
+      return NextResponse.json(csrfError, { status: csrfError.status })
+    }
 
-    // ── Validation ─────────────────────────────────────────────────────
-    if (!email || !password) {
+    // ── Parse and validate body ────────────────────────────────────────
+    let body
+    try {
+      body = await request.json()
+    } catch {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Invalid JSON body' },
         { status: 400 }
       )
     }
 
+    const { data: validated, error: validationError } = parseSchema(LoginSchema, body)
+    if (validationError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationError.messages },
+        { status: validationError.status }
+      )
+    }
+
+    const { email, password, rememberMe = true } = validated
+
     // ── Rate limiting ──────────────────────────────────────────────────
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-    const rateLimitKey = `login:${ip}:${email.toLowerCase()}`
+    const rateLimitKey = `login:${ip}:${email}`
     const rateCheck = checkRateLimit(rateLimitKey, 5, 300000) // 5 attempts per 5 min
 
     if (!rateCheck.allowed) {
@@ -42,7 +61,7 @@ export async function POST(request) {
     // ── Database lookup ────────────────────────────────────────────────
     await connectDB()
 
-    const user = await User.findOne({ email: email.toLowerCase() }).select(
+    const user = await User.findOne({ email }).select(
       '+passwordHash'
     )
 
@@ -64,6 +83,14 @@ export async function POST(request) {
       )
     }
 
+    // ── Check email verification status ────────────────────────────────
+    // Note: Users can still log in with unverified emails, but with restricted access
+    // This is a business decision - you can enforce verification here if desired
+    if (!user.emailVerified) {
+      // Optional warning or limited access
+      // For now, allow login but flag unverified status
+    }
+
     // ── Update last login ──────────────────────────────────────────────
     user.lastLoginAt = new Date()
     await user.save()
@@ -82,6 +109,7 @@ export async function POST(request) {
         email: user.email,
         nickname: user.nickname,
         role: user.role,
+        emailVerified: user.emailVerified,
         preferences: user.preferences,
         subscription: user.subscription,
         gamification: user.gamification,

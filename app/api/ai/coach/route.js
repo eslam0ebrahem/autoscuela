@@ -3,7 +3,8 @@ import { getCurrentUser } from '@/lib/auth'
 import { getExamCoachFeedback } from '@/lib/groq'
 import ExamSession from '@/models/ExamSession'
 import connectDB from '@/lib/db'
-import { isValidObjectId } from '@/lib/utils'
+import { isValidObjectId, checkRateLimit } from '@/lib/utils'
+import { AICoachSchema, parseSchema } from '@/lib/schemas'
 
 export const runtime = 'nodejs'
 export const maxDuration = 25
@@ -15,11 +16,38 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { sessionId, lang = 'es' } = await request.json()
-
-    if (!sessionId || !isValidObjectId(sessionId)) {
-      return NextResponse.json({ error: 'Invalid sessionId' }, { status: 400 })
+    // ── Rate limiting (2 coach calls per minute) ───────────────────────
+    const rateCheck = checkRateLimit(`ai:coach:${tokenData.userId}`, 2, 60000)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Too many coach requests. Please slow down.' },
+        { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter || 60) } }
+      )
     }
+
+    // ── Parse and validate body ────────────────────────────────────────
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 }
+      )
+    }
+
+    const { data: validated, error: validationError } = parseSchema(
+      AICoachSchema.omit({ statsContext: true }),
+      body
+    )
+    if (validationError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationError.messages },
+        { status: validationError.status }
+      )
+    }
+
+    const { sessionId, lang } = validated
 
     await connectDB()
     const session = await ExamSession.findById(sessionId).lean()

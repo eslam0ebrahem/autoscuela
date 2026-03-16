@@ -3,6 +3,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AuthProvider, useAuth } from '@/components/AuthContext'
+import Input from '@/components/ui/Input'
+import Button from '@/components/ui/Button'
 
 function RegisterForm() {
   const [form, setForm] = useState({ email: '', password: '', nickname: '', language: 'es' })
@@ -44,51 +46,40 @@ function RegisterForm() {
           {error && <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 text-danger border-2 border-red-100 dark:border-red-900/50 text-sm font-bold flex items-center gap-2">⚠️ {error}</div>}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-1">
-              <label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Email</label>
-              <input 
-                id="email"
-                name="email"
-                type="email" 
-                value={form.email} 
-                onChange={e => update('email', e.target.value)} 
-                className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" 
-                placeholder="tu@email.com" 
-                autoComplete="email"
-                required 
-              />
-            </div>
+            <Input
+              id="email"
+              label="Email"
+              type="email"
+              value={form.email}
+              onChange={e => update('email', e.target.value)}
+              placeholder="tu@email.com"
+              autoComplete="email"
+              required
+            />
 
-            <div className="space-y-1">
-              <label htmlFor="nickname" className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Nickname</label>
-              <input 
-                id="nickname"
-                name="nickname"
-                type="text" 
-                value={form.nickname} 
-                onChange={e => update('nickname', e.target.value)} 
-                className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" 
-                placeholder="Tu apodo" 
-                autoComplete="username"
-                required 
-                maxLength={20} 
-              />
-            </div>
+            <Input
+              id="nickname"
+              label="Nickname"
+              type="text"
+              value={form.nickname}
+              onChange={e => update('nickname', e.target.value)}
+              placeholder="Tu apodo"
+              autoComplete="username"
+              maxLength={20}
+              required
+            />
 
-            <div className="space-y-1">
-              <label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Contraseña</label>
-              <input 
-                id="password"
-                name="password"
-                type="password" 
-                value={form.password} 
-                onChange={e => update('password', e.target.value)} 
-                className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" 
-                placeholder="Mínimo 8 caracteres" 
-                autoComplete="new-password"
-                required 
-              />
-            </div>
+            <Input
+              id="password"
+              label="Contraseña"
+              type="password"
+              value={form.password}
+              onChange={e => update('password', e.target.value)}
+              placeholder="Mínimo 8 caracteres"
+              autoComplete="new-password"
+              required
+              helperText="Mínimo 8 caracteres"
+            />
 
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Idioma</label>
@@ -101,9 +92,15 @@ function RegisterForm() {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full py-4 rounded-2xl font-black shadow-xl shadow-primary/20 text-lg transition-all active:scale-[0.98]">
-              {loading ? '...' : 'Crear Cuenta Gratis'}
-            </button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
+            >
+              Crear Cuenta Gratis
+            </Button>
           </form>
 
           <div className="text-center pt-4 border-t border-slate-100 dark:border-slate-800">

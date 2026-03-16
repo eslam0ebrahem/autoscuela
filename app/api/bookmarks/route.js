@@ -3,6 +3,9 @@ import connectDB from '@/lib/db'
 import User from '@/models/User'
 import Question from '@/models/Question'
 import { getCurrentUser } from '@/lib/auth'
+import { checkCSRF } from '@/lib/csrf'
+import { checkRateLimit } from '@/lib/utils'
+import { BookmarkToggleSchema, BookmarkQuerySchema, parseSchema, parseQueryParams } from '@/lib/schemas'
 import mongoose from 'mongoose'
 
 /**
@@ -14,6 +17,27 @@ export async function GET(request) {
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // ── Rate limiting ──────────────────────────────────────────────────
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const rateCheck = checkRateLimit(`bookmarks:${tokenData.userId}:get`, 30, 60000)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter || 60) } }
+      )
+    }
+
+    // ── Parse query params ─────────────────────────────────────────────
+    const { data: queryParams, error: queryError } = parseQueryParams(request, BookmarkQuerySchema)
+    if (queryError) {
+      return NextResponse.json(
+        { error: 'Invalid query parameters', details: queryError.messages },
+        { status: queryError.status }
+      )
+    }
+
+    const { idsOnly } = queryParams
+
     await connectDB()
 
     const user = await User.findById(tokenData.userId)
@@ -24,9 +48,6 @@ export async function GET(request) {
       .lean()
 
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-
-    const { searchParams } = new URL(request.url)
-    const idsOnly = searchParams.get('idsOnly') === 'true'
 
     if (idsOnly) {
       return NextResponse.json({ bookmarks: user.bookmarkedQuestions?.map(q => q._id.toString()) || [] })
@@ -57,11 +78,45 @@ export async function GET(request) {
  */
 export async function POST(request) {
   try {
+    // ── CSRF Protection ────────────────────────────────────────────────
+    const csrfError = checkCSRF('POST', request)
+    if (csrfError) {
+      return NextResponse.json(csrfError, { status: csrfError.status })
+    }
+
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { questionId } = await request.json()
-    if (!questionId) return NextResponse.json({ error: 'Missing questionId' }, { status: 400 })
+    // ── Rate limiting ──────────────────────────────────────────────────
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const rateCheck = checkRateLimit(`bookmarks:${tokenData.userId}:post`, 20, 60000)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Too many bookmark changes' },
+        { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter || 60) } }
+      )
+    }
+
+    // ── Parse and validate body ────────────────────────────────────────
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 }
+      )
+    }
+
+    const { data: validated, error: validationError } = parseSchema(BookmarkToggleSchema, body)
+    if (validationError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationError.messages },
+        { status: validationError.status }
+      )
+    }
+
+    const { questionId } = validated
 
     await connectDB()
 
@@ -78,9 +133,9 @@ export async function POST(request) {
 
     await user.save()
 
-    return NextResponse.json({ 
-      success: true, 
-      isBookmarked: !isBookmarked 
+    return NextResponse.json({
+      success: true,
+      isBookmarked: !isBookmarked
     })
   } catch (error) {
     console.error('[api/bookmarks] POST error:', error)

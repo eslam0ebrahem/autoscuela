@@ -4,8 +4,10 @@ import ExamSession from '@/models/ExamSession'
 import Question from '@/models/Question'
 import UserAnswer from '@/models/UserAnswer'
 import { getCurrentUser } from '@/lib/auth'
-import { isValidObjectId, clamp } from '@/lib/utils'
+import { isValidObjectId, clamp, checkRateLimit } from '@/lib/utils'
 import { getQuestionExplanation } from '@/lib/groq'
+import { ExamAnswerSchema, parseSchema } from '@/lib/schemas'
+import DOMPurify from 'isomorphic-dompurify'
 
 // Max ms to wait for AI explanation before returning without it
 const AI_EXPLANATION_TIMEOUT_MS = 4000
@@ -16,12 +18,35 @@ export async function POST(request, { params }) {
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { question_id, selected_option_idx, time_taken } = await request.json()
+    // ── Rate limiting (15 per 60 sec = one answer every 4 sec) ──────────
+    const rateCheck = checkRateLimit(`exam:answer:${tokenData.userId}`, 15, 60000)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Too many answer submissions' },
+        { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter || 60) } }
+      )
+    }
 
-    if (!question_id || !isValidObjectId(question_id))
-      return NextResponse.json({ error: 'Invalid question ID' }, { status: 400 })
-    if (selected_option_idx == null || selected_option_idx < 0 || selected_option_idx > 3)
-      return NextResponse.json({ error: 'Invalid option selection' }, { status: 400 })
+    // ── Parse and validate body ────────────────────────────────────────
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 }
+      )
+    }
+
+    const { data: validated, error: validationError } = parseSchema(ExamAnswerSchema, body)
+    if (validationError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationError.messages },
+        { status: validationError.status }
+      )
+    }
+
+    const { question_id, selected_option_idx, time_taken } = validated
 
     await connectDB()
 
@@ -100,7 +125,10 @@ export async function POST(request, { params }) {
 
     if (session.assistanceMode === 'instant') {
       response.correctOptionIdx = question.correct_option_idx
+      // ── Sanitize help_html server-side to prevent XSS ──────────────
       response.helpHtml = question.metadata?.help_html
+        ? DOMPurify.sanitize(question.metadata.help_html)
+        : null
 
       // ── Wait for AI explanation (with timeout) ──────────────────────
       if (aiExplanationPromise) {

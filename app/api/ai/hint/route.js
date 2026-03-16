@@ -3,7 +3,8 @@ import { getCurrentUser } from '@/lib/auth'
 import { getSmartHint } from '@/lib/groq'
 import Question from '@/models/Question'
 import connectDB from '@/lib/db'
-import { isValidObjectId } from '@/lib/utils'
+import { isValidObjectId, checkRateLimit } from '@/lib/utils'
+import { AIHintSchema, parseSchema } from '@/lib/schemas'
 
 export const runtime = 'nodejs'
 export const maxDuration = 15
@@ -15,11 +16,38 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { questionId, lang = 'es' } = await request.json()
-
-    if (!questionId || !isValidObjectId(questionId)) {
-      return NextResponse.json({ error: 'Invalid questionId' }, { status: 400 })
+    // ── Rate limiting (3 hints per minute to control Groq cost) ────────
+    const rateCheck = checkRateLimit(`ai:hint:${tokenData.userId}`, 3, 60000)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Too many hint requests. Please slow down.' },
+        { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter || 60) } }
+      )
     }
+
+    // ── Parse and validate body ────────────────────────────────────────
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 }
+      )
+    }
+
+    const { data: validated, error: validationError } = parseSchema(
+      AIHintSchema.omit({ sessionId: true }),
+      body
+    )
+    if (validationError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationError.messages },
+        { status: validationError.status }
+      )
+    }
+
+    const { questionId, lang } = validated
 
     await connectDB()
     const question = await Question.findById(questionId).lean()

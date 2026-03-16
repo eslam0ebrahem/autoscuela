@@ -6,10 +6,12 @@ const nextConfig = {
         protocol: 'http',
         hostname: 'localhost',
       },
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
+      // Add specific CDN domains here instead of allowing all HTTPS domains
+      // Example:
+      // {
+      //   protocol: 'https',
+      //   hostname: 'cdn.example.com',
+      // },
     ],
   },
 }

@@ -1,10 +1,12 @@
 'use client'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 import { useToast } from '@/components/Toast'
+import { useFetch } from '@/lib/useFetch'
+import Spinner from '@/components/ui/Spinner'
 import {
   LineChartOutlined,
   RobotOutlined,
@@ -39,9 +41,9 @@ const READINESS_COLORS = {
 }
 
 // ---------------------------------------------------------------------------
-// ReadinessRing Component
+// ReadinessRing Component (Memoized)
 // ---------------------------------------------------------------------------
-function ReadinessRing({ score, t }) {
+const ReadinessRing = memo(function ReadinessRing({ score, t }) {
   const radius = 54
   const circumference = 2 * Math.PI * radius
   const validScore = typeof score === 'number' && !isNaN(score) ? score : 0
@@ -99,12 +101,12 @@ function ReadinessRing({ score, t }) {
       </div>
     </div>
   )
-}
+})
 
 // ---------------------------------------------------------------------------
-// QuickActionCard Component
+// QuickActionCard Component (Memoized)
 // ---------------------------------------------------------------------------
-function QuickActionCard({ icon, title, desc, color, onClick, loading = false }) {
+const QuickActionCard = memo(function QuickActionCard({ icon, title, desc, color, onClick, loading = false }) {
   return (
     <button
       onClick={onClick}
@@ -118,7 +120,7 @@ function QuickActionCard({ icon, title, desc, color, onClick, loading = false })
       <p className="text-xs text-ink-light dark:text-slate-400 mt-1">{desc}</p>
     </button>
   )
-}
+})
 
 // ---------------------------------------------------------------------------
 // Main Dashboard Content
@@ -127,6 +129,7 @@ function DashboardContent() {
   const { user, t } = useAuth()
   const router = useRouter()
   const toast = useToast()
+  const abortController = useFetch()
 
   // ── State ──────────────────────────────────────────────────────────────
   const [insights, setInsights] = useState(null)
@@ -148,8 +151,8 @@ function DashboardContent() {
       const forceParam = force ? '?force=true' : ''
 
       const [dashRes, trendsRes] = await Promise.all([
-        fetch(`/api/dashboard${forceParam}`).then(r => r.json()),
-        fetch('/api/stats/trends?days=7').then(r => r.json())
+        fetch(`/api/dashboard${forceParam}`, { signal: abortController.current.signal }).then(r => r.json()),
+        fetch('/api/stats/trends?days=7', { signal: abortController.current.signal }).then(r => r.json())
       ])
 
       if (dashRes.error) {
@@ -163,6 +166,8 @@ function DashboardContent() {
       setReadinessScore(dashRes.readinessScore != null ? Number(dashRes.readinessScore) : 0)
       setTrends(trendsRes?.trends ?? [])
     } catch (e) {
+      // Ignore abort errors (component unmounted)
+      if (e.name === 'AbortError') return
       console.error('[dashboard] Fetch error:', e)
       toast?.error?.(
         t('Error al cargar el panel', 'Failed to load dashboard'),
@@ -172,7 +177,7 @@ function DashboardContent() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [t, toast])
+  }, [t, toast, abortController])
 
   useEffect(() => {
     fetchData()
@@ -187,7 +192,8 @@ function DashboardContent() {
       const res = await fetch('/api/exams/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'official' })
+        body: JSON.stringify({ mode: 'official' }),
+        signal: abortController.current.signal
       })
 
       const data = await res.json().catch(() => ({}))
@@ -202,6 +208,7 @@ function DashboardContent() {
         throw new Error(t('ID de examen no recibido', 'No exam ID received'))
       }
     } catch (e) {
+      if (e.name === 'AbortError') return
       console.error('[dashboard] Start exam error:', e)
       toast?.error?.(
         t('Error', 'Error'),
@@ -209,7 +216,7 @@ function DashboardContent() {
       )
       setStartingExam(false)
     }
-  }, [startingExam, router, toast, t])
+  }, [startingExam, router, toast, t, abortController])
 
   // ── Refresh Handler ────────────────────────────────────────────────────
   const handleRefresh = useCallback(() => {
@@ -220,10 +227,7 @@ function DashboardContent() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-ink-light dark:text-slate-400 text-sm">
-          {t('Cargando tu panel...', 'Loading your dashboard...')}
-        </p>
+        <Spinner size="lg" message={t('Cargando tu panel...', 'Loading your dashboard...')} />
       </div>
     )
   }

@@ -3,7 +3,8 @@ import { getCurrentUser } from '@/lib/auth'
 import { getQuestionExplanation } from '@/lib/groq'
 import Question from '@/models/Question'
 import connectDB from '@/lib/db'
-import { isValidObjectId } from '@/lib/utils'
+import { isValidObjectId, checkRateLimit } from '@/lib/utils'
+import { AIExplainSchema, parseSchema } from '@/lib/schemas'
 
 export const runtime = 'nodejs'
 export const maxDuration = 20
@@ -15,11 +16,38 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { questionId, selectedIdx, lang = 'es' } = await request.json()
-
-    if (!questionId || !isValidObjectId(questionId)) {
-      return NextResponse.json({ error: 'Invalid questionId' }, { status: 400 })
+    // ── Rate limiting (5 explanations per minute) ──────────────────────
+    const rateCheck = checkRateLimit(`ai:explain:${tokenData.userId}`, 5, 60000)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Too many explanation requests. Please slow down.' },
+        { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter || 60) } }
+      )
     }
+
+    // ── Parse and validate body ────────────────────────────────────────
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 }
+      )
+    }
+
+    const { data: validated, error: validationError } = parseSchema(
+      AIExplainSchema.omit({ sessionId: true }),
+      body
+    )
+    if (validationError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationError.messages },
+        { status: validationError.status }
+      )
+    }
+
+    const { questionId, selectedIdx, lang } = validated
 
     await connectDB()
     const question = await Question.findById(questionId).lean()

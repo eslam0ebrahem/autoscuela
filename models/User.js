@@ -7,6 +7,10 @@ const userSchema = new mongoose.Schema(
     nickname: { type: String, required: true, trim: true, minlength: 2, maxlength: 20 },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
 
+    // Email verification
+    emailVerified: { type: Boolean, default: false },
+    emailVerifiedAt: { type: Date },
+
     preferences: {
       language: { type: String, enum: ['es', 'en'], default: 'es' },
       theme: { type: String, enum: ['light', 'dark', 'system'], default: 'system' },

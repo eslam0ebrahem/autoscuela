@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AuthProvider, useAuth } from '@/components/AuthContext'
+import Input from '@/components/ui/Input'
+import Button from '@/components/ui/Button'
 
 function LoginForm() {
   const router = useRouter()
@@ -49,34 +51,30 @@ function LoginForm() {
           {error && <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 text-danger border-2 border-red-100 dark:border-red-900/50 text-sm font-bold flex items-center gap-2">⚠️ {error}</div>}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-1">
-              <label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">Email</label>
-              <input 
-                id="email"
-                name="email"
-                type="email" 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
-                className="w-full p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" 
-                placeholder="email@ejemplo.com" 
-                autoComplete="email"
-                required 
-              />
-            </div>
+            <Input
+              id="email"
+              label="Email"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="email@ejemplo.com"
+              autoComplete="email"
+              required
+            />
 
             <div className="space-y-1">
               <label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-ink-light ml-1">{t('Contraseña', 'Password')}</label>
               <div className="relative">
-                <input 
+                <input
                   id="password"
                   name="password"
-                  type={showPassword ? 'text' : 'password'} 
-                  value={password} 
-                  onChange={e => setPassword(e.target.value)} 
-                  className="w-full p-4 pr-12 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all" 
-                  placeholder="••••••••" 
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full p-4 pr-12 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none font-bold transition-all"
+                  placeholder="••••••••"
                   autoComplete="current-password"
-                  required 
+                  required
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-light hover:text-primary transition-colors">{showPassword ? '👁️' : '🔒'}</button>
               </div>
@@ -99,9 +97,15 @@ function LoginForm() {
               <Link href="/auth/forgot" className="text-xs font-bold text-primary hover:underline">{t('¿Olvidaste la clave?', 'Forgot password?')}</Link>
             </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full py-4 rounded-2xl font-black shadow-xl shadow-primary/20 text-lg transition-all active:scale-[0.98]">
-              {loading ? '...' : t('Entrar', 'Sign In') + ' →'}
-            </button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
+            >
+              {t('Entrar', 'Sign In')} →
+            </Button>
           </form>
 
           <div className="text-center pt-4">

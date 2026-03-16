@@ -65,12 +65,47 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('storage', handleStorageChange)
   }, [router, pathname, fetchUser])
 
+  // ── Refresh token periodically ────────────────────────────────────────
+  // Set up a timer to refresh token every 14 minutes (before 15-min expiry)
+  useEffect(() => {
+    if (!user) return
+
+    const refreshInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest', // CSRF header
+          },
+          credentials: 'same-origin',
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          setUser(data.user)
+        } else if (res.status === 401) {
+          // Refresh token expired, user needs to log in again
+          setUser(null)
+        }
+      } catch (err) {
+        console.error('[auth] Token refresh failed:', err)
+        // Continue - will refresh again on next interval
+      }
+    }, 14 * 60 * 1000) // 14 minutes
+
+    return () => clearInterval(refreshInterval)
+  }, [user])
+
   // ── Login ──────────────────────────────────────────────────────────────
   const login = useCallback(async (email, password, rememberMe = true) => {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest', // CSRF header
+        },
         body: JSON.stringify({ email, password, rememberMe }),
         credentials: 'same-origin',
       })
@@ -99,7 +134,10 @@ export function AuthProvider({ children }) {
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest', // CSRF header
+        },
         body: JSON.stringify({ email, password, nickname, language }),
         credentials: 'same-origin',
       })
@@ -127,6 +165,9 @@ export function AuthProvider({ children }) {
     try {
       await fetch('/api/auth/me', {
         method: 'DELETE',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest', // CSRF header
+        },
         credentials: 'same-origin',
       })
     } catch (err) {
@@ -150,7 +191,10 @@ export function AuthProvider({ children }) {
     try {
       const res = await fetch('/api/users/preferences', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest', // CSRF header
+        },
         body: JSON.stringify({ language: lang }),
         credentials: 'same-origin',
       })

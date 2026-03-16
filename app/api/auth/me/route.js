@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, getTokenFromRequest, blacklistToken, clearAuthCookie } from '@/lib/auth'
+import { checkCSRF } from '@/lib/csrf'
 
 // ---------------------------------------------------------------------------
 // GET /api/auth/me - Get current user session
@@ -37,6 +38,7 @@ export async function GET(request) {
         email: user.email,
         nickname: user.nickname,
         role: user.role,
+        emailVerified: user.emailVerified,
         preferences: user.preferences,
         subscription: user.subscription,
         gamification: user.gamification,
@@ -72,13 +74,30 @@ export async function GET(request) {
 }
 
 // ---------------------------------------------------------------------------
-// DELETE /api/auth/me - Logout (clear auth cookie)
+// DELETE /api/auth/me - Logout (clear auth cookie + add token to blacklist)
 // ---------------------------------------------------------------------------
 export async function DELETE(request) {
   try {
-    // Optional: Track logout in database
+    // ── CSRF Protection ────────────────────────────────────────────────
+    const csrfError = checkCSRF('DELETE', request)
+    if (csrfError) {
+      return NextResponse.json(csrfError, { status: csrfError.status })
+    }
+
+    // ── Get token and blacklist it ─────────────────────────────────────
+    const token = getTokenFromRequest(request)
     const tokenData = await getCurrentUser(request).catch(() => null)
 
+    if (token && tokenData) {
+      try {
+        await blacklistToken(token, tokenData.userId, 'logout')
+      } catch (blacklistError) {
+        console.error('[auth/me] Failed to blacklist token:', blacklistError)
+        // Continue with logout even if blacklist fails
+      }
+    }
+
+    // ── Track logout in database ───────────────────────────────────────
     if (tokenData) {
       await connectDB()
       const user = await User.findById(tokenData.userId)
@@ -88,35 +107,23 @@ export async function DELETE(request) {
       }
     }
 
-    // ── Clear auth cookie ──────────────────────────────────────────────
+    // ── Clear auth cookies ─────────────────────────────────────────────
     const response = NextResponse.json({
       message: 'Logged out successfully',
     })
 
-    response.cookies.set('vialia_token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
-    })
+    clearAuthCookie(response)
 
     return response
   } catch (error) {
     console.error('[auth/me] DELETE error:', error)
 
-    // Still return success and clear cookie even on error
+    // Still return success and clear cookies even on error
     const response = NextResponse.json({
       message: 'Logged out',
     })
 
-    response.cookies.set('vialia_token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/',
-    })
+    clearAuthCookie(response)
 
     return response
   }
@@ -127,6 +134,12 @@ export async function DELETE(request) {
 // ---------------------------------------------------------------------------
 export async function PUT(request) {
   try {
+    // ── CSRF Protection ────────────────────────────────────────────────
+    const csrfError = checkCSRF('PUT', request)
+    if (csrfError) {
+      return NextResponse.json(csrfError, { status: csrfError.status })
+    }
+
     const tokenData = await getCurrentUser(request)
 
     if (!tokenData) {
@@ -185,6 +198,7 @@ export async function PUT(request) {
         email: user.email,
         nickname: user.nickname,
         role: user.role,
+        emailVerified: user.emailVerified,
         preferences: user.preferences,
         subscription: user.subscription,
         gamification: user.gamification,

@@ -4,9 +4,11 @@ import User from '@/models/User'
 import Question from '@/models/Question'
 import ExamSession from '@/models/ExamSession'
 import { getCurrentUser } from '@/lib/auth'
-import { clamp } from '@/lib/utils'
+import { checkCSRF } from '@/lib/csrf'
+import { clamp, checkRateLimit } from '@/lib/utils'
 import { selectAdaptiveQuestions } from '@/lib/adaptive-selection'
 import { getExamRecommendation } from '@/lib/groq'
+import { ExamGenerateSchema, parseSchema } from '@/lib/schemas'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -101,9 +103,24 @@ function estimatePassProbability(skillProfile, mode, topicFilters) {
 // ---------------------------------------------------------------------------
 export async function POST(request) {
   try {
+    // ── CSRF Protection ────────────────────────────────────────────────
+    const csrfError = checkCSRF('POST', request)
+    if (csrfError) {
+      return NextResponse.json(csrfError, { status: csrfError.status })
+    }
+
     // ── Auth ──────────────────────────────────────────────────────────────
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // ── Rate limiting (2 per 60 sec to prevent abuse) ────────────────────
+    const rateCheck = checkRateLimit(`exam:generate:${tokenData.userId}`, 2, 60000)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: 'Too many exam generation requests' },
+        { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter || 60) } }
+      )
+    }
 
     await connectDB()
 
@@ -119,9 +136,6 @@ export async function POST(request) {
 
     // ── Cleanup abandoned sessions ─────────────────────────────────────
     const abandonedCount = await cleanupAbandonedSessions(user._id)
-    if (abandonedCount > 0) {
-      console.log(`[exam-generate] Cleaned up ${abandonedCount} abandoned sessions for user ${user._id}`)
-    }
 
     // ── Check session limits ──────────────────────────────────────────
     const { allowed, activeCount } = await checkSessionLimits(user._id)
@@ -137,25 +151,26 @@ export async function POST(request) {
     try { body = await request.json() }
     catch { return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }) }
 
-    const {
-      mode = 'official',
-      topic_filter = null,
-      assistance_mode = 'exam',
-      num_questions = OFFICIAL_EXAM_QUESTIONS,
-      source = 'standard',
-    } = body
+    const { data: validated, error: validationError } = parseSchema(ExamGenerateSchema, body)
+    if (validationError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationError.messages },
+        { status: validationError.status }
+      )
+    }
 
-    if (!VALID_MODES.includes(mode)) {
-      return NextResponse.json({ error: 'Invalid exam mode', validModes: VALID_MODES }, { status: 400 })
-    }
-    if (!VALID_ASSISTANCE_MODES.includes(assistance_mode)) {
-      return NextResponse.json({ error: 'Invalid assistance mode', validModes: VALID_ASSISTANCE_MODES }, { status: 400 })
-    }
+    const {
+      mode,
+      topic_filter,
+      assistance_mode,
+      num_questions,
+      source,
+    } = validated
 
     // ── Question count ─────────────────────────────────────────────────
     const requestedCount = mode === 'official'
       ? OFFICIAL_EXAM_QUESTIONS
-      : clamp(parseInt(num_questions, 10) || OFFICIAL_EXAM_QUESTIONS, QUESTION_LIMITS.MIN, QUESTION_LIMITS.MAX)
+      : num_questions
 
     // ── Bookmarks mode ─────────────────────────────────────────────────
     let bookmarkIds = []
