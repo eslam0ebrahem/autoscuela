@@ -4,7 +4,14 @@ import mongoose from 'mongoose'
 describe('API Routes: Exams', () => {
   describe('POST /api/exams/generate', () => {
     it('should validate mode parameter', () => {
-      const validModes = ['official', 'practice', 'custom', 'daily_challenge', 'mistakes', 'weak_topics']
+      const validModes = [
+        'official',
+        'practice',
+        'custom',
+        'daily_challenge',
+        'mistakes',
+        'weak_topics',
+      ]
       const validateMode = (mode) => validModes.includes(mode)
 
       expect(validateMode('official')).toBe(true)
@@ -38,10 +45,7 @@ describe('API Routes: Exams', () => {
     it('should require authentication', () => {
       // Token should be present in request
       const requiresAuth = (request) => {
-        return (
-          request.cookies?.get('vialia_token')?.value ||
-          request.headers?.get('authorization')
-        )
+        return request.cookies?.get('vialia_token')?.value || request.headers?.get('authorization')
       }
 
       const mockRequestWithToken = {
@@ -181,7 +185,9 @@ describe('API Routes: Exams', () => {
       const validatePagination = (skip, limit) => {
         const skipNum = parseInt(skip, 10)
         const limitNum = parseInt(limit, 10)
-        return !isNaN(skipNum) && !isNaN(limitNum) && skipNum >= 0 && limitNum > 0 && limitNum <= 100
+        return (
+          !isNaN(skipNum) && !isNaN(limitNum) && skipNum >= 0 && limitNum > 0 && limitNum <= 100
+        )
       }
 
       expect(validatePagination(0, 10)).toBe(true)

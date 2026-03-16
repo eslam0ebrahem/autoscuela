@@ -22,12 +22,10 @@ import {
   ExperimentOutlined,
 } from '@ant-design/icons'
 
-
 function sanitizeHtml(html) {
   if (typeof window === 'undefined') return ''
   return DOMPurify.sanitize(html)
 }
-
 
 // ── Audio ─────────────────────────────────────────────────
 const audioCache = {}
@@ -40,7 +38,12 @@ const preloadAudio = (src) => {
 }
 
 if (typeof window !== 'undefined') {
-  ['/sounds/correct-answer.mp3', '/sounds/wrong-answer.mp3', '/sounds/sucess-exam.mp3', '/sounds/fail-exam.mp3'].forEach(preloadAudio)
+  ;[
+    '/sounds/correct-answer.mp3',
+    '/sounds/wrong-answer.mp3',
+    '/sounds/sucess-exam.mp3',
+    '/sounds/fail-exam.mp3',
+  ].forEach(preloadAudio)
 }
 
 function playSound(src) {
@@ -49,14 +52,24 @@ function playSound(src) {
   const audio = audioCache[src]
   if (audio) {
     audio.currentTime = 0
-    audio.play().catch(() => { })
+    audio.play().catch(() => {})
   }
 }
 
-
 // ── Option button ─────────────────────────────────────────
-function OptionButton({ opt, idx, displayIdx, answered, selected, correct, isInstant, feedbackData, lang, onSelect }) {
-  const text = lang === 'en' ? (opt.text_en || opt.text_es) : (opt.text_es || opt.text_en)
+function OptionButton({
+  opt,
+  idx,
+  displayIdx,
+  answered,
+  selected,
+  correct,
+  isInstant,
+  feedbackData,
+  lang,
+  onSelect,
+}) {
+  const text = lang === 'en' ? opt.text_en || opt.text_es : opt.text_es || opt.text_en
   const letter = ['A', 'B', 'C', 'D'][displayIdx]
 
   let state = 'idle'
@@ -93,16 +106,25 @@ function OptionButton({ opt, idx, displayIdx, answered, selected, correct, isIns
       disabled={answered}
       className={`w-full flex items-center gap-4 p-5 rounded-3xl border-2 text-left transition-all duration-200 ${stateClasses[state]}`}
     >
-      <span className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-black transition-colors ${letterClasses[state]}`}>
+      <span
+        className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-black transition-colors ${letterClasses[state]}`}
+      >
         {letter}
       </span>
       <span className="flex-1 font-bold text-lg">{text}</span>
-      {isInstant && answered && feedbackData && idx === correct && <span className="text-2xl"><CheckOutlined /></span>}
-      {isInstant && answered && feedbackData && idx === selected && idx !== correct && <span className="text-2xl"><CloseOutlined /></span>}
+      {isInstant && answered && feedbackData && idx === correct && (
+        <span className="text-2xl">
+          <CheckOutlined />
+        </span>
+      )}
+      {isInstant && answered && feedbackData && idx === selected && idx !== correct && (
+        <span className="text-2xl">
+          <CloseOutlined />
+        </span>
+      )}
     </button>
   )
 }
-
 
 /**
  * TYPEWRITER HOOK
@@ -111,14 +133,21 @@ function useTypewriter(text, speed = 18) {
   const [displayed, setDisplayed] = useState('')
   const [done, setDone] = useState(false)
   useEffect(() => {
-    if (!text) { setDisplayed(''); setDone(false); return }
+    if (!text) {
+      setDisplayed('')
+      setDone(false)
+      return
+    }
     setDisplayed('')
     setDone(false)
     let i = 0
     const id = setInterval(() => {
       i++
       setDisplayed(text.slice(0, i))
-      if (i >= text.length) { clearInterval(id); setDone(true) }
+      if (i >= text.length) {
+        clearInterval(id)
+        setDone(true)
+      }
     }, speed)
     return () => clearInterval(id)
   }, [text, speed])
@@ -138,14 +167,23 @@ function AIHintPanel({ hint, loading, onClose, t }) {
           <RobotOutlined />
           {t('Pista IA', 'AI Hint')}
           {hint?.difficulty && (
-            <span className={`px-2 py-0.5 rounded-full text-xs ${
-              hint.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-              hint.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
-              'bg-amber-100 text-amber-700'
-            }`}>{hint.difficulty}</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs ${
+                hint.difficulty === 'easy'
+                  ? 'bg-green-100 text-green-700'
+                  : hint.difficulty === 'hard'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-amber-100 text-amber-700'
+              }`}
+            >
+              {hint.difficulty}
+            </span>
           )}
         </span>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+        <button
+          onClick={onClose}
+          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+        >
           <CloseOutlined />
         </button>
       </div>
@@ -221,7 +259,6 @@ function AIExplanationPanel({ explanation, loading, t }) {
     </div>
   )
 }
-
 
 function ExamInterface() {
   const { user, t } = useAuth()
@@ -306,40 +343,43 @@ function ExamInterface() {
     }
   }, [currentQuestion, feedbackData, selectedOption, lang, loadingExplanation])
 
-
   // FIX 4: added `router` to dependency array
   useEffect(() => {
     if (!sessionId) return
     Promise.all([
-      fetch('/api/bookmarks?idsOnly=true').then(r => r.ok ? r.json() : {}).catch(() => ({})),
-      fetch(`/api/exams/${sessionId}`).then(r => r.json()),
-    ]).then(([bookmarksData, examData]) => {
-      if (bookmarksData?.bookmarks) setBookmarkedQuestions(new Set(bookmarksData.bookmarks))
+      fetch('/api/bookmarks?idsOnly=true')
+        .then((r) => (r.ok ? r.json() : {}))
+        .catch(() => ({})),
+      fetch(`/api/exams/${sessionId}`).then((r) => r.json()),
+    ])
+      .then(([bookmarksData, examData]) => {
+        if (bookmarksData?.bookmarks) setBookmarkedQuestions(new Set(bookmarksData.bookmarks))
 
-      if (examData?.session) {
-        setSession(examData.session)
-        setQuestions(examData.questions || [])
-        if (examData.session.status === 'completed') {
-          setResult({
-            score: examData.session.score,
-            errors: examData.session.errorCount,
-            passed: examData.session.passed,
-            total: examData.questions?.length || 0,
-          })
+        if (examData?.session) {
+          setSession(examData.session)
+          setQuestions(examData.questions || [])
+          if (examData.session.status === 'completed') {
+            setResult({
+              score: examData.session.score,
+              errors: examData.session.errorCount,
+              passed: examData.session.passed,
+              total: examData.questions?.length || 0,
+            })
+          } else {
+            setCurrentIdx(examData.session.currentQuestionIndex || 0)
+            setStartTime(Date.now())
+          }
         } else {
-          setCurrentIdx(examData.session.currentQuestionIndex || 0)
-          setStartTime(Date.now())
+          console.error('Session not found or error:', examData?.error)
+          router.push('/exam')
         }
-      } else {
-        console.error('Session not found or error:', examData?.error)
+      })
+      .catch((err) => {
+        console.error('Error fetching session data:', err)
         router.push('/exam')
-      }
-    }).catch(err => {
-      console.error('Error fetching session data:', err)
-      router.push('/exam')
-    }).finally(() => setLoading(false))
+      })
+      .finally(() => setLoading(false))
   }, [sessionId, router]) // FIX 4
-
 
   const handleSubmitExam = useCallback(async () => {
     setSubmitting(true)
@@ -348,7 +388,8 @@ function ExamInterface() {
       const data = await res.json()
       if (data.result) {
         setResult(data.result)
-        if (soundEnabled) playSound(data.result.passed ? '/sounds/sucess-exam.mp3' : '/sounds/fail-exam.mp3')
+        if (soundEnabled)
+          playSound(data.result.passed ? '/sounds/sucess-exam.mp3' : '/sounds/fail-exam.mp3')
         if (data.result.passed) setConfetti(true)
       }
     } finally {
@@ -356,15 +397,16 @@ function ExamInterface() {
     }
   }, [sessionId, soundEnabled])
 
-
   useEffect(() => {
     if (!session?.expiresAt || result) return
     const endTime = new Date(session.expiresAt).getTime()
     const checkTime = () => {
       const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000))
       setTimeLeft(remaining)
-      if (remaining <= 0) { clearInterval(timerRef.current); handleSubmitExam() }
-      else if (remaining === 300) setTimerWarning('5min')
+      if (remaining <= 0) {
+        clearInterval(timerRef.current)
+        handleSubmitExam()
+      } else if (remaining === 300) setTimerWarning('5min')
       else if (remaining === 60) setTimerWarning('1min')
     }
     checkTime()
@@ -372,72 +414,77 @@ function ExamInterface() {
     return () => clearInterval(timerRef.current)
   }, [session, result, handleSubmitExam])
 
+  const handleSelectOption = useCallback(
+    (optIdx) => {
+      if (answered || submitting) return
 
-const handleSelectOption = useCallback((optIdx) => {
-  if (answered || submitting) return
+      answerFetchRef.current?.abort()
+      const controller = new AbortController()
+      answerFetchRef.current = controller
 
-  answerFetchRef.current?.abort()
-  const controller = new AbortController()
-  answerFetchRef.current = controller
+      setSelectedOption(optIdx)
+      setAnswered(true)
+      const timeTaken = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0
 
-  setSelectedOption(optIdx)
-  setAnswered(true)
-  const timeTaken = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0
-
-  if (session?.assistanceMode === 'instant' && soundEnabled) {
-    const localCorrect = currentQuestion?.correct_option_idx
-    if (localCorrect != null)
-      playSound(optIdx === localCorrect ? '/sounds/correct-answer.mp3' : '/sounds/wrong-answer.mp3')
-  }
-
-  fetch(`/api/exams/${sessionId}/answer`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      question_id:         currentQuestion?._id,
-      selected_option_idx: optIdx,
-      time_taken:          timeTaken,
-    }),
-    signal: controller.signal,
-  })
-    .then(r => r.json())
-    .then(data => {
-      // ✅ THE KEY FIX: discard if this is no longer the active fetch
-      // AbortController alone doesn't catch responses that already arrived on the wire
-      if (answerFetchRef.current !== controller) return
-
-      setFeedbackData(data)
-      if (soundEnabled && session?.assistanceMode === 'instant' && currentQuestion?.correct_option_idx == null) {
-        playSound(data.isCorrect ? '/sounds/correct-answer.mp3' : '/sounds/wrong-answer.mp3')
+      if (session?.assistanceMode === 'instant' && soundEnabled) {
+        const localCorrect = currentQuestion?.correct_option_idx
+        if (localCorrect != null)
+          playSound(
+            optIdx === localCorrect ? '/sounds/correct-answer.mp3' : '/sounds/wrong-answer.mp3'
+          )
       }
-    })
-    .catch(err => {
-      if (err.name !== 'AbortError') console.error('Answer fetch error:', err)
-    })
-}, [answered, submitting, startTime, session, soundEnabled, currentQuestion, sessionId])
 
+      fetch(`/api/exams/${sessionId}/answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question_id: currentQuestion?._id,
+          selected_option_idx: optIdx,
+          time_taken: timeTaken,
+        }),
+        signal: controller.signal,
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          // ✅ THE KEY FIX: discard if this is no longer the active fetch
+          // AbortController alone doesn't catch responses that already arrived on the wire
+          if (answerFetchRef.current !== controller) return
 
-const handleNext = useCallback(() => {
-  answerFetchRef.current?.abort()
-  answerFetchRef.current = null // ← null means "no active fetch", so any late arrival is discarded
+          setFeedbackData(data)
+          if (
+            soundEnabled &&
+            session?.assistanceMode === 'instant' &&
+            currentQuestion?.correct_option_idx == null
+          ) {
+            playSound(data.isCorrect ? '/sounds/correct-answer.mp3' : '/sounds/wrong-answer.mp3')
+          }
+        })
+        .catch((err) => {
+          if (err.name !== 'AbortError') console.error('Answer fetch error:', err)
+        })
+    },
+    [answered, submitting, startTime, session, soundEnabled, currentQuestion, sessionId]
+  )
 
-  if (currentIdx < questions.length - 1) {
-    setCurrentIdx(i => i + 1)
-    setSelectedOption(null)
-    setAnswered(false)
-    setFeedbackData(null)
-    setShowExplanation(false)
-    setAiHint(null)
-    setShowHint(false)
-    setHintUsed(false)
-    setAiExplanation(null)
-    setStartTime(Date.now())
-  } else {
-    handleSubmitExam()
-  }
-}, [currentIdx, questions.length, handleSubmitExam])
+  const handleNext = useCallback(() => {
+    answerFetchRef.current?.abort()
+    answerFetchRef.current = null // ← null means "no active fetch", so any late arrival is discarded
 
-
+    if (currentIdx < questions.length - 1) {
+      setCurrentIdx((i) => i + 1)
+      setSelectedOption(null)
+      setAnswered(false)
+      setFeedbackData(null)
+      setShowExplanation(false)
+      setAiHint(null)
+      setShowHint(false)
+      setHintUsed(false)
+      setAiExplanation(null)
+      setStartTime(Date.now())
+    } else {
+      handleSubmitExam()
+    }
+  }, [currentIdx, questions.length, handleSubmitExam])
 
   // FIX 3: wrapped in useCallback
   const toggleBookmark = useCallback(async (questionId) => {
@@ -449,15 +496,16 @@ const handleNext = useCallback(() => {
       })
       const data = await res.json()
       if (data.success) {
-        setBookmarkedQuestions(prev => {
+        setBookmarkedQuestions((prev) => {
           const s = new Set(prev)
           data.isBookmarked ? s.add(questionId) : s.delete(questionId)
           return s
         })
       }
-    } catch (err) { console.error('Error toggling bookmark:', err) }
+    } catch (err) {
+      console.error('Error toggling bookmark:', err)
+    }
   }, []) // FIX 3
-
 
   // FIX 3: added handleSelectOption, handleNext, toggleBookmark to deps
   useEffect(() => {
@@ -465,11 +513,14 @@ const handleNext = useCallback(() => {
       if (e.ctrlKey || e.metaKey || e.altKey) return
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
       if (expandedImage || showShortcuts) {
-        if (e.key === 'Escape') { setExpandedImage(null); setShowShortcuts(false) }
+        if (e.key === 'Escape') {
+          setExpandedImage(null)
+          setShowShortcuts(false)
+        }
         return
       }
       if (!answered && currentQuestion) {
-        const keyMap = { '1': 0, '2': 1, '3': 2, '4': 3, 'a': 0, 'b': 1, 'c': 2, 'd': 3 }
+        const keyMap = { 1: 0, 2: 1, 3: 2, 4: 3, a: 0, b: 1, c: 2, d: 3 }
         const optIdx = keyMap[e.key.toLowerCase()]
         if (optIdx !== undefined && currentQuestion.options?.[optIdx]) {
           e.preventDefault()
@@ -477,8 +528,11 @@ const handleNext = useCallback(() => {
         }
       }
       if (answered) {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNext() }
-        if (e.key === 'e' || e.key === 'E') setShowExplanation(p => !p)
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleNext()
+        }
+        if (e.key === 'e' || e.key === 'E') setShowExplanation((p) => !p)
       }
       if ((e.key === 's' || e.key === 'S') && currentQuestion) {
         e.preventDefault()
@@ -488,17 +542,22 @@ const handleNext = useCallback(() => {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [answered, currentQuestion, expandedImage, showShortcuts, handleSelectOption, handleNext, toggleBookmark]) // FIX 3
+  }, [
+    answered,
+    currentQuestion,
+    expandedImage,
+    showShortcuts,
+    handleSelectOption,
+    handleNext,
+    toggleBookmark,
+  ]) // FIX 3
 
-
-  if (loading) return (
-    <div className="flex h-96 items-center justify-center animate-pulse text-4xl">🚗</div>
-  )
+  if (loading)
+    return <div className="flex h-96 items-center justify-center animate-pulse text-4xl">🚗</div>
 
   if (result) {
     return (
       <div className="max-w-xl mx-auto space-y-8 animate-scale-in">
-
         {/* FIX 5: render confetti overlay when the exam is passed */}
         {confetti && (
           <div className="fixed inset-0 z-[200] pointer-events-none overflow-hidden">
@@ -520,9 +579,15 @@ const handleNext = useCallback(() => {
           </div>
         )}
 
-        <div className={`card text-center p-12 border-t-8 ${result.passed ? 'border-success' : 'border-danger'}`}>
+        <div
+          className={`card text-center p-12 border-t-8 ${result.passed ? 'border-success' : 'border-danger'}`}
+        >
           <div className="text-7xl mb-6">
-            {result.passed ? <SmileOutlined className="text-success" /> : <FrownOutlined className="text-danger" />}
+            {result.passed ? (
+              <SmileOutlined className="text-success" />
+            ) : (
+              <FrownOutlined className="text-danger" />
+            )}
           </div>
           <h2 className="text-4xl font-black mb-2">
             {result.passed ? t('¡APROBADO!', 'PASSED!') : t('¡CASI!', 'NOT YET!')}
@@ -536,11 +601,15 @@ const handleNext = useCallback(() => {
           <div className="grid grid-cols-2 gap-4 mb-10">
             <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl p-6">
               <p className="text-4xl font-black text-success">{result.score}</p>
-              <p className="text-xs font-black uppercase tracking-widest text-ink-light mt-1">{t('Aciertos', 'Correct')}</p>
+              <p className="text-xs font-black uppercase tracking-widest text-ink-light mt-1">
+                {t('Aciertos', 'Correct')}
+              </p>
             </div>
             <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl p-6">
               <p className="text-4xl font-black text-danger">{result.errors}</p>
-              <p className="text-xs font-black uppercase tracking-widest text-ink-light mt-1">{t('Errores', 'Errors')}</p>
+              <p className="text-xs font-black uppercase tracking-widest text-ink-light mt-1">
+                {t('Errores', 'Errors')}
+              </p>
             </div>
           </div>
 
@@ -565,11 +634,12 @@ const handleNext = useCallback(() => {
 
   // FIX 1 + 2: guard against undefined currentQuestion before accessing its properties
   // (also makes correctIdx safe to compute below)
-  if (!currentQuestion) return (
-    <div className="flex h-96 items-center justify-center text-ink-light">
-      {t('No hay preguntas disponibles.', 'No questions available.')}
-    </div>
-  )
+  if (!currentQuestion)
+    return (
+      <div className="flex h-96 items-center justify-center text-ink-light">
+        {t('No hay preguntas disponibles.', 'No questions available.')}
+      </div>
+    )
 
   const isInstant = session?.assistanceMode === 'instant'
   // FIX 2: now safe — currentQuestion is guaranteed non-null here
@@ -577,17 +647,21 @@ const handleNext = useCallback(() => {
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col min-h-[calc(100vh-12rem)] px-4">
-
       {/* FIX 7: timer warning with a dismiss button so it doesn't stay forever */}
       {timerWarning && (
-        <div className={`rounded-2xl px-4 py-2 text-center text-sm font-black mb-4 flex items-center justify-center gap-3
-          ${timerWarning === '1min' ? 'bg-danger/10 text-danger' : 'bg-warning/10 text-warning'}`}>
+        <div
+          className={`rounded-2xl px-4 py-2 text-center text-sm font-black mb-4 flex items-center justify-center gap-3
+          ${timerWarning === '1min' ? 'bg-danger/10 text-danger' : 'bg-warning/10 text-warning'}`}
+        >
           <span>
             {timerWarning === '1min'
               ? t('¡1 minuto restante!', '1 minute remaining!')
               : t('5 minutos restantes', '5 minutes remaining')}
           </span>
-          <button onClick={() => setTimerWarning(false)} className="opacity-60 hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => setTimerWarning(false)}
+            className="opacity-60 hover:opacity-100 transition-opacity"
+          >
             <CloseOutlined />
           </button>
         </div>
@@ -597,7 +671,14 @@ const handleNext = useCallback(() => {
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={async () => {
-            if (confirm(t('¿Seguro que quieres salir? El examen se guardará como completado.', 'Are you sure you want to exit? The exam will be saved as completed.'))) {
+            if (
+              confirm(
+                t(
+                  '¿Seguro que quieres salir? El examen se guardará como completado.',
+                  'Are you sure you want to exit? The exam will be saved as completed.'
+                )
+              )
+            ) {
               try {
                 // Submit the exam as-is to make it "completed"
                 await fetch(`/api/exams/${sessionId}/submit`, { method: 'POST' })
@@ -614,17 +695,22 @@ const handleNext = useCallback(() => {
         </button>
         <div className="flex-1">
           <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-ink-light mb-2">
-            <span>{t('Pregunta', 'Question')} {currentIdx + 1} / {questions.length}</span>
+            <span>
+              {t('Pregunta', 'Question')} {currentIdx + 1} / {questions.length}
+            </span>
             {timeLeft != null && (
               <span className={timeLeft < 60 ? 'text-danger animate-pulse' : ''}>
-                <ClockCircleOutlined /> {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+                <ClockCircleOutlined /> {Math.floor(timeLeft / 60)}:
+                {String(timeLeft % 60).padStart(2, '0')}
               </span>
             )}
           </div>
           <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-primary transition-all duration-500 ease-out"
-              style={{ width: `${questions.length > 0 ? ((currentIdx + 1) / questions.length) * 100 : 0}%` }}
+              style={{
+                width: `${questions.length > 0 ? ((currentIdx + 1) / questions.length) * 100 : 0}%`,
+              }}
             />
           </div>
         </div>
@@ -635,8 +721,8 @@ const handleNext = useCallback(() => {
         <div className="flex-1 space-y-8">
           <h2 className="text-2xl md:text-3xl font-black leading-tight text-ink dark:text-white">
             {lang === 'en'
-              ? (currentQuestion.question.en || currentQuestion.question.es)
-              : (currentQuestion.question.es || currentQuestion.question.en)}
+              ? currentQuestion.question.en || currentQuestion.question.es
+              : currentQuestion.question.es || currentQuestion.question.en}
           </h2>
 
           <div className="space-y-3">
@@ -678,7 +764,10 @@ const handleNext = useCallback(() => {
 
           {showExplanation && feedbackData?.helpHtml && (
             <div className="p-6 bg-blue-50 dark:bg-blue-900/10 rounded-3xl border border-blue-100 dark:border-blue-800/50 animate-fade-in">
-              <div className="help-html" dangerouslySetInnerHTML={{ __html: sanitizeHtml(feedbackData.helpHtml) }} />
+              <div
+                className="help-html"
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(feedbackData.helpHtml) }}
+              />
             </div>
           )}
 
@@ -695,11 +784,7 @@ const handleNext = useCallback(() => {
                   {t('Explicación detallada IA', 'Detailed AI Explanation')}
                 </button>
               )}
-              <AIExplanationPanel
-                explanation={aiExplanation}
-                loading={loadingExplanation}
-                t={t}
-              />
+              <AIExplanationPanel explanation={aiExplanation} loading={loadingExplanation} t={t} />
             </>
           )}
         </div>
@@ -710,13 +795,16 @@ const handleNext = useCallback(() => {
               className="sticky top-24 card p-0 overflow-hidden group cursor-zoom-in"
               onClick={() => setExpandedImage(currentQuestion.metadata.image_url)}
             >
+              {/* 5.7: Ensure all question images have alt text */}
               <img
                 src={currentQuestion.metadata.image_url}
-                alt="Question"
+                alt={`Imagen de la pregunta: ${currentQuestion.question?.es?.substring(0, 80) || 'pregunta de examen'}`}
                 className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="text-white text-3xl"><ZoomInOutlined /></span>
+                <span className="text-white text-3xl">
+                  <ZoomInOutlined />
+                </span>
               </div>
             </div>
           </div>
@@ -730,16 +818,29 @@ const handleNext = useCallback(() => {
             <button
               onClick={() => setShowExplanation(!showExplanation)}
               className="px-6 py-3 rounded-2xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-black text-sm uppercase tracking-widest flex items-center gap-2"
+              aria-label={
+                showExplanation
+                  ? t('Ocultar explicación', 'Hide explanation')
+                  : t('Mostrar explicación', 'Show explanation')
+              }
             >
               <BulbOutlined /> {showExplanation ? t('Ocultar', 'Hide') : t('Ayuda', 'Help')}
             </button>
           )}
+          {/* 5.4: Add aria-label to icon-only buttons */}
           <button
             onClick={() => toggleBookmark(currentQuestion._id)}
             className={`w-12 h-12 flex items-center justify-center rounded-2xl border-2 transition-all
-              ${bookmarkedQuestions.has(currentQuestion._id)
-                ? 'bg-amber-50 border-amber-200 text-amber-500'
-                : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+              ${
+                bookmarkedQuestions.has(currentQuestion._id)
+                  ? 'bg-amber-50 border-amber-200 text-amber-500'
+                  : 'bg-slate-50 border-slate-100 text-slate-400'
+              }`}
+            aria-label={
+              bookmarkedQuestions.has(currentQuestion._id)
+                ? t('Eliminar de guardados', 'Remove from bookmarks')
+                : t('Guardar pregunta', 'Save question')
+            }
           >
             {bookmarkedQuestions.has(currentQuestion._id) ? <StarFilled /> : <StarOutlined />}
           </button>
@@ -750,7 +851,9 @@ const handleNext = useCallback(() => {
             onClick={handleNext}
             className="btn-primary px-10 py-4 rounded-2xl font-black shadow-2xl shadow-primary/30 animate-scale-in flex items-center gap-2"
           >
-            {currentIdx === questions.length - 1 ? t('Finalizar', 'Finish') : t('Siguiente', 'Next')}
+            {currentIdx === questions.length - 1
+              ? t('Finalizar', 'Finish')
+              : t('Siguiente', 'Next')}
             <ArrowRightOutlined />
           </button>
         )}
@@ -761,8 +864,16 @@ const handleNext = useCallback(() => {
         <div
           className="fixed inset-0 z-[100] glass flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setExpandedImage(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Expanded question image"
         >
-          <img src={expandedImage} className="max-w-full max-h-full rounded-3xl shadow-2xl animate-scale-in" alt="Enlarged" />
+          {/* 5.7: Ensure all question images have alt text */}
+          <img
+            src={expandedImage}
+            className="max-w-full max-h-full rounded-3xl shadow-2xl animate-scale-in"
+            alt={`Enlarged image: ${currentQuestion?.question?.es?.substring(0, 80) || 'exam question'}`}
+          />
         </div>
       )}
 
@@ -774,7 +885,7 @@ const handleNext = useCallback(() => {
         >
           <div
             className="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-black">{t('Atajos de Teclado', 'Keyboard Shortcuts')}</h3>
@@ -808,7 +919,6 @@ const handleNext = useCallback(() => {
     </div>
   )
 }
-
 
 export default function ExamPage() {
   return (

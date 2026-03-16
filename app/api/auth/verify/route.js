@@ -33,10 +33,7 @@ export async function POST(request) {
     const { token, userId } = body
 
     if (!token) {
-      return NextResponse.json(
-        { error: 'Verification token is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Verification token is required' }, { status: 400 })
     }
 
     // ── Connect to database ────────────────────────────────────────────────
@@ -60,10 +57,7 @@ export async function POST(request) {
         // Token not found, or other error
       }
 
-      return NextResponse.json(
-        { error: 'Invalid or expired verification token' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid or expired verification token' }, { status: 400 })
     }
 
     // ── Update user email verified status ───────────────────────────────────
@@ -74,10 +68,7 @@ export async function POST(request) {
     )
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     // ── Return success ─────────────────────────────────────────────────────
@@ -114,18 +105,15 @@ export async function GET(request) {
     const userId = url.searchParams.get('userId')
 
     if (!token) {
-      return NextResponse.json(
-        { error: 'Verification token is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Verification token is required' }, { status: 400 })
     }
 
     // ── Connect to database ────────────────────────────────────────────────
     await connectDB()
 
     // ── Get token status (without marking as used) ─────────────────────────
-    const VerificationTokenModel = (await import('@/models/VerificationToken').then(m => m.default))
-    const crypto = await import('crypto').then(m => m.default)
+    const VerificationTokenModel = await import('@/models/VerificationToken').then((m) => m.default)
+    const crypto = await import('crypto').then((m) => m.default)
 
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
 
@@ -151,9 +139,6 @@ export async function GET(request) {
   } catch (error) {
     console.error('[auth/verify] GET error:', error)
 
-    return NextResponse.json(
-      { error: 'Failed to check token status' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to check token status' }, { status: 500 })
   }
 }

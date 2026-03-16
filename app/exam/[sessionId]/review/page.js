@@ -5,7 +5,12 @@ import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthContext'
 import AppShell from '@/components/AppShell'
 import DOMPurify from 'dompurify'
-import { RobotOutlined, LoadingOutlined, ThunderboltOutlined, TrophyOutlined } from '@ant-design/icons'
+import {
+  RobotOutlined,
+  LoadingOutlined,
+  ThunderboltOutlined,
+  TrophyOutlined,
+} from '@ant-design/icons'
 
 function sanitizeHtml(html) {
   if (typeof window === 'undefined') return ''
@@ -55,9 +60,11 @@ function AICoachCard({ sessionId, lang, t }) {
             <p className="font-black text-lg leading-tight">
               {loading
                 ? t('Analizando con IA...', 'Analyzing with AI...')
-                : feedback?.headline ?? t('Análisis IA', 'AI Analysis')}
+                : (feedback?.headline ?? t('Análisis IA', 'AI Analysis'))}
             </p>
-            <p className="text-white/80 text-sm">{t('Coach personalizado', 'Personalized coach')}</p>
+            <p className="text-white/80 text-sm">
+              {t('Coach personalizado', 'Personalized coach')}
+            </p>
           </div>
         </div>
         <span className="text-white/70 text-xl">{open ? '▲' : '▼'}</span>
@@ -77,7 +84,9 @@ function AICoachCard({ sessionId, lang, t }) {
             <>
               {/* Summary */}
               {feedback.summary && (
-                <p className="text-ink dark:text-white text-sm leading-relaxed">{feedback.summary}</p>
+                <p className="text-ink dark:text-white text-sm leading-relaxed">
+                  {feedback.summary}
+                </p>
               )}
 
               {/* Strengths & Weaknesses */}
@@ -89,7 +98,9 @@ function AICoachCard({ sessionId, lang, t }) {
                     </p>
                     <ul className="space-y-1">
                       {feedback.strengths.map((s, i) => (
-                        <li key={i} className="text-sm text-ink dark:text-white">• {s}</li>
+                        <li key={i} className="text-sm text-ink dark:text-white">
+                          • {s}
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -101,7 +112,9 @@ function AICoachCard({ sessionId, lang, t }) {
                     </p>
                     <ul className="space-y-1">
                       {feedback.weaknesses.map((w, i) => (
-                        <li key={i} className="text-sm text-ink dark:text-white">• {w}</li>
+                        <li key={i} className="text-sm text-ink dark:text-white">
+                          • {w}
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -162,19 +175,30 @@ function ReviewInterface() {
   useEffect(() => {
     if (!sessionId) return
     fetch('/api/bookmarks?idsOnly=true')
-      .then(r => r.ok ? r.json() : {})
-      .then(data => { if (data.bookmarks) setBookmarkedQuestions(new Set(data.bookmarks)) })
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((data) => {
+        if (data.bookmarks) setBookmarkedQuestions(new Set(data.bookmarks))
+      })
       .catch(console.error)
 
     fetch(`/api/exams/${sessionId}`)
-      .then((r) => { if (!r.ok) throw new Error('Failed to fetch exam review'); return r.json() })
-      .then((data) => { setSession(data.session); setQuestions(data.questions || []) })
-      .catch((err) => { console.error(err); setError(true) })
+      .then((r) => {
+        if (!r.ok) throw new Error('Failed to fetch exam review')
+        return r.json()
+      })
+      .then((data) => {
+        setSession(data.session)
+        setQuestions(data.questions || [])
+      })
+      .catch((err) => {
+        console.error(err)
+        setError(true)
+      })
       .finally(() => setLoading(false))
   }, [sessionId])
 
   const toggleExplanation = (idx) =>
-    setShowExplanationMap(prev => ({ ...prev, [idx]: !prev[idx] }))
+    setShowExplanationMap((prev) => ({ ...prev, [idx]: !prev[idx] }))
 
   const toggleBookmark = async (questionId) => {
     try {
@@ -185,7 +209,7 @@ function ReviewInterface() {
       })
       const data = await res.json()
       if (data.success) {
-        setBookmarkedQuestions(prev => {
+        setBookmarkedQuestions((prev) => {
           const newSet = new Set(prev)
           data.isBookmarked ? newSet.add(questionId) : newSet.delete(questionId)
           return newSet
@@ -227,7 +251,10 @@ function ReviewInterface() {
             {t('Examen no encontrado', 'Exam not found')}
           </h2>
           <p className="text-sm text-base-content/50">
-            {t('No pudimos cargar los resultados de este examen.', 'We could not load the results for this exam.')}
+            {t(
+              'No pudimos cargar los resultados de este examen.',
+              'We could not load the results for this exam.'
+            )}
           </p>
           <button onClick={() => router.push('/exam')} className="btn btn-primary rounded-xl mt-2">
             {t('Volver a exámenes', 'Back to exams')}
@@ -239,7 +266,9 @@ function ReviewInterface() {
 
   // Answer lookup map
   const answerMap = {}
-  session.answers?.forEach(a => { answerMap[a.questionId] = a })
+  session.answers?.forEach((a) => {
+    answerMap[a.questionId] = a
+  })
 
   // Derive per-question status
   const questionsWithStatus = questions.map((q) => {
@@ -259,9 +288,9 @@ function ReviewInterface() {
   })
 
   const counts = {
-    correct:   questionsWithStatus.filter(q => q.status === 'correct').length,
-    incorrect: questionsWithStatus.filter(q => q.status === 'incorrect').length,
-    unanswered:questionsWithStatus.filter(q => q.status === 'unanswered').length,
+    correct: questionsWithStatus.filter((q) => q.status === 'correct').length,
+    incorrect: questionsWithStatus.filter((q) => q.status === 'incorrect').length,
+    unanswered: questionsWithStatus.filter((q) => q.status === 'unanswered').length,
   }
 
   const passed = session.passed
@@ -271,7 +300,6 @@ function ReviewInterface() {
   return (
     <AppShell>
       <div className="min-h-screen bg-base-100">
-
         {/* ── Sticky Header ── */}
         <div className="sticky top-0 z-30 bg-base-100/95 backdrop-blur border-b border-base-200 shadow-sm">
           <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
@@ -290,23 +318,44 @@ function ReviewInterface() {
                 {questions.length} {t('preguntas', 'questions')}
               </p>
             </div>
-            <div className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-black border
-              ${passed
-                ? 'bg-success/10 border-success/30 text-success'
-                : 'bg-error/10 border-error/30 text-error'}`}>
+            <div
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-black border
+              ${
+                passed
+                  ? 'bg-success/10 border-success/30 text-success'
+                  : 'bg-error/10 border-error/30 text-error'
+              }`}
+            >
               {passed ? '✅' : '❌'} {scorePercent}%
             </div>
           </div>
         </div>
 
         <div className="max-w-2xl mx-auto px-4 pt-5 pb-16 space-y-5">
-
           {/* ── Score Summary ── */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: t('Correctas', 'Correct'),     value: counts.correct,    color: 'text-success', bg: 'bg-success/5 border-success/20',   icon: '✅' },
-              { label: t('Errores', 'Errors'),        value: counts.incorrect,  color: 'text-error',   bg: 'bg-error/5 border-error/20',       icon: '❌' },
-              { label: t('Sin resp.', 'No answer'),   value: counts.unanswered, color: 'text-base-content/50', bg: 'bg-base-200/60 border-base-300', icon: '—' },
+              {
+                label: t('Correctas', 'Correct'),
+                value: counts.correct,
+                color: 'text-success',
+                bg: 'bg-success/5 border-success/20',
+                icon: '✅',
+              },
+              {
+                label: t('Errores', 'Errors'),
+                value: counts.incorrect,
+                color: 'text-error',
+                bg: 'bg-error/5 border-error/20',
+                icon: '❌',
+              },
+              {
+                label: t('Sin resp.', 'No answer'),
+                value: counts.unanswered,
+                color: 'text-base-content/50',
+                bg: 'bg-base-200/60 border-base-300',
+                icon: '—',
+              },
             ].map((s, i) => (
               <div key={i} className={`rounded-2xl border p-3 text-center ${s.bg}`}>
                 <div className="text-base mb-1">{s.icon}</div>
@@ -322,23 +371,27 @@ function ReviewInterface() {
           {/* ── Filter Tabs ── */}
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
             {[
-              { key: 'all',        label: t('Todas', 'All'),           count: questions.length },
-              { key: 'correct',    label: t('Correctas', 'Correct'),   count: counts.correct },
-              { key: 'incorrect',  label: t('Errores', 'Errors'),      count: counts.incorrect },
-              { key: 'unanswered', label: t('Sin resp.', 'Unanswered'),count: counts.unanswered },
+              { key: 'all', label: t('Todas', 'All'), count: questions.length },
+              { key: 'correct', label: t('Correctas', 'Correct'), count: counts.correct },
+              { key: 'incorrect', label: t('Errores', 'Errors'), count: counts.incorrect },
+              { key: 'unanswered', label: t('Sin resp.', 'Unanswered'), count: counts.unanswered },
             ].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setFilter(tab.key)}
                 className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold
                   border transition-all
-                  ${filter === tab.key
-                    ? 'bg-primary text-white border-primary shadow-sm'
-                    : 'bg-base-100 text-base-content/60 border-base-200 hover:border-base-300'}`}
+                  ${
+                    filter === tab.key
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-base-100 text-base-content/60 border-base-200 hover:border-base-300'
+                  }`}
               >
                 {tab.label}
-                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black
-                  ${filter === tab.key ? 'bg-white/20 text-white' : 'bg-base-200 text-base-content/50'}`}>
+                <span
+                  className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black
+                  ${filter === tab.key ? 'bg-white/20 text-white' : 'bg-base-200 text-base-content/50'}`}
+                >
                   {tab.count}
                 </span>
               </button>
@@ -358,12 +411,24 @@ function ReviewInterface() {
               const questionText = getLocalizedText(q.question)
               const helpHtml = q.metadata?.help_html
               const isBookmarked = bookmarkedQuestions.has(q._id)
-              const originalIdx = questionsWithStatus.findIndex(qw => qw._id === q._id)
+              const originalIdx = questionsWithStatus.findIndex((qw) => qw._id === q._id)
 
               const statusConfig = {
-                correct:    { icon: '✓', ring: 'border-success/30', badge: 'bg-success/10 text-success border-success/25' },
-                incorrect:  { icon: '✗', ring: 'border-error/30',   badge: 'bg-error/10 text-error border-error/25' },
-                unanswered: { icon: '—', ring: 'border-base-300',   badge: 'bg-base-200 text-base-content/50 border-base-300' },
+                correct: {
+                  icon: '✓',
+                  ring: 'border-success/30',
+                  badge: 'bg-success/10 text-success border-success/25',
+                },
+                incorrect: {
+                  icon: '✗',
+                  ring: 'border-error/30',
+                  badge: 'bg-error/10 text-error border-error/25',
+                },
+                unanswered: {
+                  icon: '—',
+                  ring: 'border-base-300',
+                  badge: 'bg-base-200 text-base-content/50 border-base-300',
+                },
               }
               const sc = statusConfig[q.status]
 
@@ -375,8 +440,10 @@ function ReviewInterface() {
                   {/* Question Header */}
                   <div className="px-4 pt-4 pb-3 flex items-start gap-3">
                     {/* Status badge */}
-                    <span className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center
-                      text-xs font-black border ${sc.badge} mt-0.5`}>
+                    <span
+                      className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center
+                      text-xs font-black border ${sc.badge} mt-0.5`}
+                    >
                       {sc.icon}
                     </span>
 
@@ -389,7 +456,11 @@ function ReviewInterface() {
                           onClick={() => toggleBookmark(q._id)}
                           className={`shrink-0 text-base transition-colors
                             ${isBookmarked ? 'text-warning' : 'text-base-content/25 hover:text-warning'}`}
-                          aria-label={isBookmarked ? t('Quitar guardado', 'Remove bookmark') : t('Guardar', 'Bookmark')}
+                          aria-label={
+                            isBookmarked
+                              ? t('Quitar guardado', 'Remove bookmark')
+                              : t('Guardar', 'Bookmark')
+                          }
                         >
                           {isBookmarked ? '★' : '☆'}
                         </button>
@@ -418,30 +489,38 @@ function ReviewInterface() {
                   {/* Options */}
                   <div className="px-4 pb-3 space-y-2">
                     {q.options?.map((opt) => {
-                      const text = lang === 'en' ? (opt.text_en || opt.text_es) : (opt.text_es || opt.text_en)
+                      const text =
+                        lang === 'en' ? opt.text_en || opt.text_es : opt.text_es || opt.text_en
                       const letter = ['A', 'B', 'C', 'D'][opt.idx]
                       const isCorrect = opt.idx === q.correctIdx
                       const isWrong = opt.idx === q.selectedOptionIdx && !isCorrect
 
                       let optStyle = 'border-base-200 bg-base-50 text-base-content/40'
-                      if (isCorrect) optStyle = 'border-success bg-success/10 text-success font-semibold'
-                      if (isWrong)   optStyle = 'border-error bg-error/10 text-error font-semibold'
+                      if (isCorrect)
+                        optStyle = 'border-success bg-success/10 text-success font-semibold'
+                      if (isWrong) optStyle = 'border-error bg-error/10 text-error font-semibold'
 
                       return (
                         <div
                           key={opt.idx}
                           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-sm ${optStyle}`}
                         >
-                          <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center
+                          <span
+                            className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center
                             text-xs font-black
-                            ${isCorrect ? 'bg-success text-white' :
-                              isWrong   ? 'bg-error text-white'   :
-                              'bg-base-200 text-base-content/40'}`}>
+                            ${
+                              isCorrect
+                                ? 'bg-success text-white'
+                                : isWrong
+                                  ? 'bg-error text-white'
+                                  : 'bg-base-200 text-base-content/40'
+                            }`}
+                          >
                             {letter}
                           </span>
                           <span className="flex-1 leading-snug">{text}</span>
                           {isCorrect && <span className="shrink-0 text-success font-black">✓</span>}
-                          {isWrong   && <span className="shrink-0 text-error font-black">✗</span>}
+                          {isWrong && <span className="shrink-0 text-error font-black">✗</span>}
                         </div>
                       )
                     })}
@@ -468,8 +547,12 @@ function ReviewInterface() {
                           <span>💡</span>
                           {t('Explicación oficial DGT', 'Official DGT Explanation')}
                         </span>
-                        <span className={`text-xs transition-transform duration-200
-                          ${showExplanationMap[originalIdx] ? 'rotate-180' : ''}`}>▼</span>
+                        <span
+                          className={`text-xs transition-transform duration-200
+                          ${showExplanationMap[originalIdx] ? 'rotate-180' : ''}`}
+                        >
+                          ▼
+                        </span>
                       </button>
                       {showExplanationMap[originalIdx] && (
                         <div

@@ -75,10 +75,7 @@ const verificationTokenSchema = new mongoose.Schema(
 )
 
 // TTL index: automatically delete documents 1 second after expiresAt
-verificationTokenSchema.index(
-  { expiresAt: 1 },
-  { expireAfterSeconds: 1 }
-)
+verificationTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 1 })
 
 /**
  * Create a new verification token
@@ -88,7 +85,12 @@ verificationTokenSchema.index(
  * @param {string} type - Type of verification (default: 'email_verification')
  * @returns {Promise<Object>} Object with token and document
  */
-verificationTokenSchema.statics.createToken = async function (userId, email, expiresInMs = 24 * 60 * 60 * 1000, type = 'email_verification') {
+verificationTokenSchema.statics.createToken = async function (
+  userId,
+  email,
+  expiresInMs = 24 * 60 * 60 * 1000,
+  type = 'email_verification'
+) {
   // Generate random token
   const token = crypto.randomBytes(32).toString('hex')
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
@@ -160,7 +162,10 @@ verificationTokenSchema.statics.recordAttempt = async function (token) {
  * @param {string} type - Type of verification
  * @returns {Promise<Object|null>} The token document if exists
  */
-verificationTokenSchema.statics.getActiveToken = async function (userId, type = 'email_verification') {
+verificationTokenSchema.statics.getActiveToken = async function (
+  userId,
+  type = 'email_verification'
+) {
   return this.findOne({
     userId,
     type,
@@ -185,11 +190,15 @@ verificationTokenSchema.statics.cleanupExpired = async function () {
  * @param {string} type - Type of verification
  * @returns {Promise<Object>} Update result
  */
-verificationTokenSchema.statics.revokeUserTokens = async function (userId, type = 'email_verification') {
+verificationTokenSchema.statics.revokeUserTokens = async function (
+  userId,
+  type = 'email_verification'
+) {
   return this.updateMany(
     { userId, type, used: false },
     { expiresAt: new Date() } // Expire immediately
   )
 }
 
-export default mongoose.models.VerificationToken || mongoose.model('VerificationToken', verificationTokenSchema)
+export default mongoose.models.VerificationToken ||
+  mongoose.model('VerificationToken', verificationTokenSchema)

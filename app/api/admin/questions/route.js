@@ -8,6 +8,9 @@ import connectDB from '@/lib/db'
 import Question from '@/models/Question'
 import { getCurrentUser } from '@/lib/auth'
 import { escapeRegex, parsePositiveInt } from '@/lib/utils'
+import logger from '@/lib/logger'
+import { logAudit } from '@/lib/audit'
+import { ERROR_CODES, ERROR_MESSAGES } from '@/lib/error-codes'
 
 // ---------------------------------------------------------------------------
 // Helper: Require Admin
@@ -71,9 +74,9 @@ export async function GET(request) {
       totalPages: Math.ceil(total / limit),
     })
   } catch (error) {
-    console.error('[admin/questions] GET error:', error)
+    logger.error({ error: error.message, stack: error.stack }, 'Admin get questions error')
     return NextResponse.json(
-      { error: 'Failed to fetch questions' },
+      { error: ERROR_MESSAGES[ERROR_CODES.INTERNAL_ERROR], code: ERROR_CODES.INTERNAL_ERROR },
       { status: 500 }
     )
   }
@@ -93,17 +96,11 @@ export async function POST(request) {
 
     // Validation
     if (!Array.isArray(questions) || questions.length === 0) {
-      return NextResponse.json(
-        { error: 'Invalid data: questions array required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid data: questions array required' }, { status: 400 })
     }
 
     if (questions.length > 500) {
-      return NextResponse.json(
-        { error: 'Maximum 500 questions per import' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Maximum 500 questions per import' }, { status: 400 })
     }
 
     await connectDB()
@@ -134,7 +131,7 @@ export async function POST(request) {
         })
 
         // Upsert
-        await Question.findOneAndUpdate(
+        const updated = await Question.findOneAndUpdate(
           { exam_id: q.exam_id, question_number: q.question_number },
           { $set: q },
           { upsert: true, new: true, runValidators: true }
@@ -142,10 +139,38 @@ export async function POST(request) {
 
         if (existing) {
           results.updated++
+          // Log update
+          await logAudit({
+            userId: tokenData.userId,
+            action: 'question_update',
+            resourceType: 'question',
+            resourceId: updated._id,
+            changes: { question_number: q.question_number, exam_id: q.exam_id },
+            metadata: {
+              ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
+              userAgent: request.headers.get('user-agent'),
+            },
+          })
         } else {
           results.inserted++
+          // Log creation
+          await logAudit({
+            userId: tokenData.userId,
+            action: 'question_create',
+            resourceType: 'question',
+            resourceId: updated._id,
+            changes: { created: true, exam_id: q.exam_id, question_number: q.question_number },
+            metadata: {
+              ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
+              userAgent: request.headers.get('user-agent'),
+            },
+          })
         }
       } catch (err) {
+        logger.error(
+          { error: err.message, questionNumber: q.question_number },
+          'Question import error'
+        )
         results.errors.push({
           question: q.question_number,
           error: err.message,
@@ -153,9 +178,17 @@ export async function POST(request) {
       }
     }
 
+    logger.info(
+      { inserted: results.inserted, updated: results.updated, errors: results.errors.length },
+      'Question import completed'
+    )
+
     return NextResponse.json(results)
   } catch (error) {
-    console.error('[admin/questions] POST error:', error)
-    return NextResponse.json({ error: 'Import failed' }, { status: 500 })
+    logger.error({ error: error.message, stack: error.stack }, 'Admin import questions error')
+    return NextResponse.json(
+      { error: ERROR_MESSAGES[ERROR_CODES.INTERNAL_ERROR], code: ERROR_CODES.INTERNAL_ERROR },
+      { status: 500 }
+    )
   }
 }

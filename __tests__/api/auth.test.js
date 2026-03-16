@@ -4,13 +4,7 @@ import { signToken, verifyToken } from '@/lib/auth'
 describe('API Routes: Auth', () => {
   describe('POST /api/auth/register', () => {
     it('should validate email format', () => {
-      const invalidEmails = [
-        'notanemail',
-        'missing@domain',
-        '@example.com',
-        'user@',
-        '',
-      ]
+      const invalidEmails = ['notanemail', 'missing@domain', '@example.com', 'user@', '']
 
       invalidEmails.forEach((email) => {
         // In real integration tests, we would make fetch calls
@@ -21,11 +15,7 @@ describe('API Routes: Auth', () => {
     })
 
     it('should accept valid email formats', () => {
-      const validEmails = [
-        'user@example.com',
-        'test.user@example.co.uk',
-        'first+last@example.com',
-      ]
+      const validEmails = ['user@example.com', 'test.user@example.co.uk', 'first+last@example.com']
 
       validEmails.forEach((email) => {
         const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)

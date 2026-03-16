@@ -19,7 +19,8 @@ export async function GET(request) {
     const user = await User.findById(tokenData.userId).select('gamification')
     const todayStart = getMadridStartOfDay()
 
-    const completedToday = user.gamification.dailyChallengeCompletedAt &&
+    const completedToday =
+      user.gamification.dailyChallengeCompletedAt &&
       new Date(user.gamification.dailyChallengeCompletedAt) >= todayStart
 
     // Check if there's an in-progress daily challenge
@@ -57,9 +58,14 @@ export async function POST(request) {
     const todayStart = getMadridStartOfDay()
 
     // Check if already completed today
-    if (user.gamification.dailyChallengeCompletedAt &&
-      new Date(user.gamification.dailyChallengeCompletedAt) >= todayStart) {
-      return NextResponse.json({ error: 'Daily challenge already completed today' }, { status: 400 })
+    if (
+      user.gamification.dailyChallengeCompletedAt &&
+      new Date(user.gamification.dailyChallengeCompletedAt) >= todayStart
+    ) {
+      return NextResponse.json(
+        { error: 'Daily challenge already completed today' },
+        { status: 400 }
+      )
     }
 
     // Check for existing in-progress session

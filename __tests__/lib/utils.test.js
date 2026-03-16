@@ -1,12 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import mongoose from 'mongoose'
-import {
-  escapeRegex,
-  isValidObjectId,
-  clamp,
-  parsePositiveInt,
-  checkRateLimit,
-} from '@/lib/utils'
+import { escapeRegex, isValidObjectId, clamp, parsePositiveInt, checkRateLimit } from '@/lib/utils'
 
 describe('lib/utils', () => {
   describe('escapeRegex', () => {

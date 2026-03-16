@@ -8,9 +8,7 @@ export function Providers({ children }) {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <ToastProvider>
-          {children}
-        </ToastProvider>
+        <ToastProvider>{children}</ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   )

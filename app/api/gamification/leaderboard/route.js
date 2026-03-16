@@ -25,14 +25,19 @@ export async function GET(request) {
         $set: {
           'gamification.weeklyXP': 0,
           'gamification.weeklyXPResetAt': currentWeekStart,
+          'gamification.rank': 0, // Reset rank after weekly reset
         },
       }
     )
 
+    // ── OPTIMIZED: Get top users using pre-calculated rank field (instant query)
     const topUsers = await User.find({ 'gamification.weeklyXP': { $gt: 0 } })
       .sort({ 'gamification.weeklyXP': -1 })
       .limit(50)
-      .select('nickname gamification.weeklyXP gamification.totalXP gamification.currentStreak')
+      .select(
+        'nickname gamification.weeklyXP gamification.totalXP gamification.currentStreak gamification.rank'
+      )
+      .lean()
 
     const leaderboard = topUsers.map((user, index) => ({
       rank: index + 1,
@@ -42,18 +47,17 @@ export async function GET(request) {
       isCurrentUser: user._id.toString() === tokenData.userId,
     }))
 
-    // Find current user's rank if not in top 50
-    const currentUser = await User.findById(tokenData.userId).select(
-      'nickname gamification.weeklyXP gamification.currentStreak'
-    )
-    const userRank = await User.countDocuments({
-      'gamification.weeklyXP': { $gt: currentUser?.gamification?.weeklyXP || 0 },
-    })
+    // ── Use pre-calculated rank instead of counting
+    const currentUser = await User.findById(tokenData.userId)
+      .select('nickname gamification.weeklyXP gamification.currentStreak gamification.rank')
+      .lean()
+
+    const userRank = currentUser?.gamification?.rank || 0
 
     return NextResponse.json({
       leaderboard,
       userPosition: {
-        rank: userRank + 1,
+        rank: userRank > 0 ? userRank : 'unranked',
         weeklyXP: currentUser?.gamification?.weeklyXP || 0,
         nickname: currentUser?.nickname,
       },

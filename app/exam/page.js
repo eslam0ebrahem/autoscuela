@@ -106,13 +106,13 @@ function ModeCard({ mode, isSelected, onClick, t }) {
     <button
       onClick={() => onClick(mode.id)}
       className={`card text-left transition-all duration-200 hover:scale-105 active:scale-95 ${
-        isSelected
-          ? 'ring-2 ring-primary shadow-lg'
-          : 'hover:shadow-md'
+        isSelected ? 'ring-2 ring-primary shadow-lg' : 'hover:shadow-md'
       }`}
     >
       <div className="flex items-start gap-3">
-        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${mode.color} flex items-center justify-center text-white text-xl shrink-0`}>
+        <div
+          className={`w-12 h-12 rounded-xl bg-gradient-to-br ${mode.color} flex items-center justify-center text-white text-xl shrink-0`}
+        >
           <Icon />
         </div>
         <div className="flex-1 min-w-0">
@@ -130,9 +130,7 @@ function ModeCard({ mode, isSelected, onClick, t }) {
             {t(mode.descKey, mode.descEn)}
           </p>
         </div>
-        {isSelected && (
-          <CheckCircleOutlined className="text-primary text-xl shrink-0" />
-        )}
+        {isSelected && <CheckCircleOutlined className="text-primary text-xl shrink-0" />}
       </div>
     </button>
   )
@@ -168,9 +166,7 @@ function AssistanceModeToggle({ selected, onChange, t }) {
                   {t(mode.descKey, mode.descEn)}
                 </p>
               </div>
-              {isSelected && (
-                <CheckCircleOutlined className="text-primary" />
-              )}
+              {isSelected && <CheckCircleOutlined className="text-primary" />}
             </div>
           </button>
         )
@@ -269,9 +265,11 @@ function AIRecommendBanner({ lang, t, onApply }) {
               </span>
               {rec?.urgency && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${badgeClass}`}>
-                  {rec.urgency === 'high' ? t('Alta prioridad', 'High priority') :
-                   rec.urgency === 'medium' ? t('Prioridad media', 'Medium priority') :
-                   t('Baja prioridad', 'Low priority')}
+                  {rec.urgency === 'high'
+                    ? t('Alta prioridad', 'High priority')
+                    : rec.urgency === 'medium'
+                      ? t('Prioridad media', 'Medium priority')
+                      : t('Baja prioridad', 'Low priority')}
                 </span>
               )}
             </div>
@@ -279,13 +277,19 @@ function AIRecommendBanner({ lang, t, onApply }) {
             {loading ? (
               <div className="flex items-center gap-2 text-ink-light dark:text-slate-400">
                 <LoadingOutlined className="animate-spin" />
-                <span className="text-sm">{t('Analizando tu historial...', 'Analyzing your history...')}</span>
+                <span className="text-sm">
+                  {t('Analizando tu historial...', 'Analyzing your history...')}
+                </span>
               </div>
             ) : rec ? (
               <>
-                <p className="text-sm text-ink dark:text-white leading-relaxed mb-2">{rec.reason}</p>
+                <p className="text-sm text-ink dark:text-white leading-relaxed mb-2">
+                  {rec.reason}
+                </p>
                 {rec.tip && (
-                  <p className="text-xs text-ink-light dark:text-slate-400 italic mb-3">💡 {rec.tip}</p>
+                  <p className="text-xs text-ink-light dark:text-slate-400 italic mb-3">
+                    💡 {rec.tip}
+                  </p>
                 )}
                 <button
                   onClick={() => onApply?.(rec)}
@@ -367,10 +371,7 @@ function ExamSetup() {
         if (isMounted) {
           setAvailableTopics([])
           setTopicsLoading(false)
-          toast?.error?.(
-            t('Error al cargar temas', 'Failed to load topics'),
-            err.message
-          )
+          toast?.error?.(t('Error al cargar temas', 'Failed to load topics'), err.message)
         }
       }
     }
@@ -544,11 +545,7 @@ function ExamSetup() {
         <h2 className="text-lg font-black text-ink dark:text-white mb-4">
           {t('Modo de Asistencia', 'Assistance Mode')}
         </h2>
-        <AssistanceModeToggle
-          selected={assistanceMode}
-          onChange={setAssistanceMode}
-          t={t}
-        />
+        <AssistanceModeToggle selected={assistanceMode} onChange={setAssistanceMode} t={t} />
       </div>
 
       {/* ── Summary & Start Button ─────────────────────────────────── */}

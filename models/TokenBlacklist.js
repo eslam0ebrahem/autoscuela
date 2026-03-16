@@ -45,10 +45,7 @@ const tokenBlacklistSchema = new mongoose.Schema(
 )
 
 // TTL index: automatically delete documents 1 second after expiresAt
-tokenBlacklistSchema.index(
-  { expiresAt: 1 },
-  { expireAfterSeconds: 1 }
-)
+tokenBlacklistSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 1 })
 
 /**
  * Add a token to the blacklist
@@ -58,7 +55,12 @@ tokenBlacklistSchema.index(
  * @param {string} reason - Reason for blacklisting
  * @returns {Promise<Object>} The created blacklist entry
  */
-tokenBlacklistSchema.statics.addToBlacklist = async function (token, userId, expiresAt, reason = 'logout') {
+tokenBlacklistSchema.statics.addToBlacklist = async function (
+  token,
+  userId,
+  expiresAt,
+  reason = 'logout'
+) {
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
 
   return this.create({
@@ -99,4 +101,5 @@ tokenBlacklistSchema.statics.clearUserTokens = async function (userId) {
   return this.deleteMany({ userId })
 }
 
-export default mongoose.models.TokenBlacklist || mongoose.model('TokenBlacklist', tokenBlacklistSchema)
+export default mongoose.models.TokenBlacklist ||
+  mongoose.model('TokenBlacklist', tokenBlacklistSchema)

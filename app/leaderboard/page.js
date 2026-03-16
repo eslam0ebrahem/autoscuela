@@ -11,7 +11,10 @@ function LeaderboardContent() {
   useEffect(() => {
     fetch('/api/gamification/leaderboard')
       .then((r) => r.json())
-      .then((d) => { setData(d); setLoading(false) })
+      .then((d) => {
+        setData(d)
+        setLoading(false)
+      })
   }, [])
 
   const rankIcon = (rank) => {
@@ -24,9 +27,14 @@ function LeaderboardContent() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-bold text-ink">🏆 {t('Ranking Semanal', 'Weekly Leaderboard')}</h1>
+        <h1 className="text-3xl font-bold text-ink">
+          🏆 {t('Ranking Semanal', 'Weekly Leaderboard')}
+        </h1>
         <p className="text-ink-light mt-1">
-          {t('Top 50 estudiantes de esta semana. ¡Gana XP para subir!', 'Top 50 students this week. Earn XP to climb!')}
+          {t(
+            'Top 50 estudiantes de esta semana. ¡Gana XP para subir!',
+            'Top 50 students this week. Earn XP to climb!'
+          )}
         </p>
       </div>
 
@@ -67,10 +75,12 @@ function LeaderboardContent() {
 
       {/* Top 50 */}
       <div className="card">
-        <h2 className="font-bold text-lg text-ink mb-4">{t('Top 50 · Esta semana', 'Top 50 · This week')}</h2>
+        <h2 className="font-bold text-lg text-ink mb-4">
+          {t('Top 50 · Esta semana', 'Top 50 · This week')}
+        </h2>
         {loading ? (
           <div className="space-y-2">
-            {[1,2,3,4,5].map(i => (
+            {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="h-12 bg-slate-200 rounded-xl animate-pulse" />
             ))}
           </div>
@@ -83,12 +93,14 @@ function LeaderboardContent() {
                   entry.isCurrentUser
                     ? 'bg-blue-50 border border-primary'
                     : entry.rank <= 3
-                    ? 'bg-amber-50'
-                    : 'bg-slate-50'
+                      ? 'bg-amber-50'
+                      : 'bg-slate-50'
                 }`}
               >
                 <div className="w-10 text-center">
-                  <span className={`font-bold ${entry.rank <= 3 ? 'text-2xl' : 'text-sm text-ink-light'}`}>
+                  <span
+                    className={`font-bold ${entry.rank <= 3 ? 'text-2xl' : 'text-sm text-ink-light'}`}
+                  >
                     {rankIcon(entry.rank)}
                   </span>
                 </div>
@@ -99,7 +111,9 @@ function LeaderboardContent() {
                   <span className="font-semibold text-ink">
                     {entry.nickname}
                     {entry.isCurrentUser && (
-                      <span className="ml-2 text-xs text-primary font-normal">{t('(tú)', '(you)')}</span>
+                      <span className="ml-2 text-xs text-primary font-normal">
+                        {t('(tú)', '(you)')}
+                      </span>
                     )}
                   </span>
                   {entry.streak > 0 && (
@@ -121,9 +135,16 @@ function LeaderboardContent() {
       </div>
 
       <p className="text-xs text-center text-ink-light">
-        🔒 {t('El ranking solo muestra tu apodo anónimo, nunca tu nombre real o email.', 'The leaderboard only shows your anonymous nickname, never your real name or email.')}
+        🔒{' '}
+        {t(
+          'El ranking solo muestra tu apodo anónimo, nunca tu nombre real o email.',
+          'The leaderboard only shows your anonymous nickname, never your real name or email.'
+        )}
         <br />
-        {t('Se resetea cada domingo a medianoche (hora Madrid)', 'Resets every Sunday at midnight (Madrid time)')}
+        {t(
+          'Se resetea cada domingo a medianoche (hora Madrid)',
+          'Resets every Sunday at midnight (Madrid time)'
+        )}
       </p>
     </div>
   )

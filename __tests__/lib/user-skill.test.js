@@ -37,9 +37,7 @@ describe('lib/user-skill', () => {
 
     it('should calculate overall accuracy correctly', async () => {
       UserAnswer.aggregate.mockResolvedValueOnce([]) // topic results
-      UserAnswer.aggregate.mockResolvedValueOnce([
-        { total: 100, correct: 75 },
-      ]) // totals
+      UserAnswer.aggregate.mockResolvedValueOnce([{ total: 100, correct: 75 }]) // totals
 
       const profile = await getUserSkillProfile(mockUserId)
 
@@ -49,9 +47,7 @@ describe('lib/user-skill', () => {
 
     it('should determine easy level for 20+ answers', async () => {
       UserAnswer.aggregate.mockResolvedValueOnce([]) // topic results
-      UserAnswer.aggregate.mockResolvedValueOnce([
-        { total: 20, correct: 12 },
-      ]) // totals
+      UserAnswer.aggregate.mockResolvedValueOnce([{ total: 20, correct: 12 }]) // totals
 
       const profile = await getUserSkillProfile(mockUserId)
 
@@ -60,9 +56,7 @@ describe('lib/user-skill', () => {
 
     it('should determine medium level for 50+ answers with 65%+ accuracy', async () => {
       UserAnswer.aggregate.mockResolvedValueOnce([]) // topic results
-      UserAnswer.aggregate.mockResolvedValueOnce([
-        { total: 50, correct: 33 },
-      ]) // totals (66% accuracy)
+      UserAnswer.aggregate.mockResolvedValueOnce([{ total: 50, correct: 33 }]) // totals (66% accuracy)
 
       const profile = await getUserSkillProfile(mockUserId)
 
@@ -71,9 +65,7 @@ describe('lib/user-skill', () => {
 
     it('should determine hard level for 100+ answers with 80%+ accuracy', async () => {
       UserAnswer.aggregate.mockResolvedValueOnce([]) // topic results
-      UserAnswer.aggregate.mockResolvedValueOnce([
-        { total: 100, correct: 82 },
-      ]) // totals (82% accuracy)
+      UserAnswer.aggregate.mockResolvedValueOnce([{ total: 100, correct: 82 }]) // totals (82% accuracy)
 
       const profile = await getUserSkillProfile(mockUserId)
 
@@ -82,9 +74,7 @@ describe('lib/user-skill', () => {
 
     it('should determine expert level for 200+ answers with 90%+ accuracy', async () => {
       UserAnswer.aggregate.mockResolvedValueOnce([]) // topic results
-      UserAnswer.aggregate.mockResolvedValueOnce([
-        { total: 200, correct: 185 },
-      ]) // totals (92.5% accuracy)
+      UserAnswer.aggregate.mockResolvedValueOnce([{ total: 200, correct: 185 }]) // totals (92.5% accuracy)
 
       const profile = await getUserSkillProfile(mockUserId)
 
@@ -112,9 +102,7 @@ describe('lib/user-skill', () => {
       ]
 
       UserAnswer.aggregate.mockResolvedValueOnce(mockTopicResults)
-      UserAnswer.aggregate.mockResolvedValueOnce([
-        { total: 80, correct: 65 },
-      ])
+      UserAnswer.aggregate.mockResolvedValueOnce([{ total: 80, correct: 65 }])
 
       const profile = await getUserSkillProfile(mockUserId)
 
@@ -138,9 +126,7 @@ describe('lib/user-skill', () => {
       ]
 
       UserAnswer.aggregate.mockResolvedValueOnce(mockTopicResults)
-      UserAnswer.aggregate.mockResolvedValueOnce([
-        { total: 50, correct: 45 },
-      ])
+      UserAnswer.aggregate.mockResolvedValueOnce([{ total: 50, correct: 45 }])
 
       const profile = await getUserSkillProfile(mockUserId)
 

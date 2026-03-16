@@ -40,7 +40,9 @@ export async function GET(request) {
     const remaining = BATCH_SIZE - dueCards.length
     let newCards = []
     if (remaining > 0) {
-      const seenIds = await FlashcardProgress.find({ userId: tokenData.userId }).distinct('questionId')
+      const seenIds = await FlashcardProgress.find({ userId: tokenData.userId }).distinct(
+        'questionId'
+      )
       newCards = await Question.find({
         ...query,
         _id: { $nin: seenIds },

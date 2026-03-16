@@ -26,18 +26,18 @@ export async function DELETE(request, { params }) {
     const questionId = new mongoose.Types.ObjectId(id)
 
     // We only delete incorrect answers. Correct ones stay as history.
-    // Once all incorrect answers are gone, the aggregation in GET /api/mistakes 
+    // Once all incorrect answers are gone, the aggregation in GET /api/mistakes
     // will no longer include this question (unless they fail it again).
     const result = await UserAnswer.deleteMany({
       userId,
       questionId,
-      is_correct: false
+      is_correct: false,
     })
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       deletedCount: result.deletedCount,
-      message: 'Mistake history cleared for this question'
+      message: 'Mistake history cleared for this question',
     })
   } catch (error) {
     console.error('[api/mistakes/[id]] DELETE error:', error)

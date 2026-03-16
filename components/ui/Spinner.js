@@ -18,7 +18,9 @@ export default function Spinner({
   }
 
   const spinnerContent = (
-    <div className={`${sizeMap[size]} border-primary border-t-transparent rounded-full animate-spin`} />
+    <div
+      className={`${sizeMap[size]} border-primary border-t-transparent rounded-full animate-spin`}
+    />
   )
 
   if (variant === 'inline') {
@@ -28,11 +30,7 @@ export default function Spinner({
   return (
     <div className="flex flex-col items-center justify-center gap-3">
       {spinnerContent}
-      {message && (
-        <p className="text-ink-light dark:text-slate-400 text-sm">
-          {message}
-        </p>
-      )}
+      {message && <p className="text-ink-light dark:text-slate-400 text-sm">{message}</p>}
     </div>
   )
 }

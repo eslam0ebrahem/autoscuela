@@ -52,11 +52,17 @@ export async function GET(request) {
       return NextResponse.json({
         recommendation: {
           recommended_mode: 'official',
-          reason: lang === 'es' ? 'Empieza con el examen oficial para evaluar tu nivel.' : 'Start with the official exam to assess your level.',
+          reason:
+            lang === 'es'
+              ? 'Empieza con el examen oficial para evaluar tu nivel.'
+              : 'Start with the official exam to assess your level.',
           suggested_topics: [],
           suggested_question_count: 30,
           urgency: 'medium',
-          tip: lang === 'es' ? '¡Completa tu primer examen para análisis personalizados!' : 'Complete your first exam for personalized analysis!',
+          tip:
+            lang === 'es'
+              ? '¡Completa tu primer examen para análisis personalizados!'
+              : 'Complete your first exam for personalized analysis!',
           _fallback: true,
         },
       })
@@ -64,9 +70,15 @@ export async function GET(request) {
 
     const recentStats = {
       totalExams: recentSessions.length,
-      averageScore: Math.round(recentSessions.reduce((s, e) => s + (e.score || 0), 0) / recentSessions.length),
-      passRate: Math.round((recentSessions.filter((e) => e.passed).length / recentSessions.length) * 100),
-      recentErrors: recentSessions.slice(0, 3).map((e) => ({ mode: e.mode, score: e.score, errors: e.errorCount })),
+      averageScore: Math.round(
+        recentSessions.reduce((s, e) => s + (e.score || 0), 0) / recentSessions.length
+      ),
+      passRate: Math.round(
+        (recentSessions.filter((e) => e.passed).length / recentSessions.length) * 100
+      ),
+      recentErrors: recentSessions
+        .slice(0, 3)
+        .map((e) => ({ mode: e.mode, score: e.score, errors: e.errorCount })),
       topicBreakdown: recentSessions[0]?.topicBreakdown || [],
     }
 

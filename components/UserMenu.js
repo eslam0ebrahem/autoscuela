@@ -39,9 +39,7 @@ export default function UserMenu({
             <p className="font-bold text-ink dark:text-white truncate">
               {user?.nickname || t('Usuario', 'User')}
             </p>
-            <p className="text-xs text-ink-light dark:text-slate-400 truncate">
-              {user?.email}
-            </p>
+            <p className="text-xs text-ink-light dark:text-slate-400 truncate">{user?.email}</p>
           </div>
         </div>
         {isPremium && (
@@ -91,12 +89,7 @@ export default function UserMenu({
         </button>
 
         {/* Theme Toggle */}
-        <ThemeToggle
-          theme={theme}
-          onThemeChange={onThemeChange}
-          variant="menu"
-          t={t}
-        />
+        <ThemeToggle theme={theme} onThemeChange={onThemeChange} variant="menu" t={t} />
 
         <div className="my-2 border-t border-slate-200 dark:border-slate-700" />
 

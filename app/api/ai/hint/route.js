@@ -30,10 +30,7 @@ export async function POST(request) {
     try {
       body = await request.json()
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
     const { data: validated, error: validationError } = parseSchema(
@@ -56,16 +53,31 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Question not found' }, { status: 404 })
     }
 
-    const hint = await getSmartHint({
-      question: question.question,
-      options: question.options,
-      correctIdx: question.correct_option_idx -1,
-      lang,
-    })
-
-    return NextResponse.json({ hint })
+    try {
+      const hint = await getSmartHint({
+        question: question.question,
+        options: question.options,
+        correctIdx: question.correct_option_idx - 1,
+        lang,
+      })
+      return NextResponse.json({ hint })
+    } catch (aiError) {
+      console.error('[api/ai/hint] AI generation failed:', aiError.message)
+      // Graceful degradation: show user-friendly message instead of blank response
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'AI features temporarily unavailable',
+          message:
+            lang === 'es'
+              ? 'Los consejos de IA no están disponibles en este momento. Intenta más tarde.'
+              : 'AI hints are temporarily unavailable. Please try again later.',
+        },
+        { status: 503 }
+      )
+    }
   } catch (error) {
-    console.error('[api/ai/hint] Error:', error)
-    return NextResponse.json({ error: 'Hint generation failed' }, { status: 500 })
+    console.error('[api/ai/hint] Request error:', error)
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 })
   }
 }

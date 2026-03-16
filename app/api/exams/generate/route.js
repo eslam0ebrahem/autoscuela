@@ -13,13 +13,13 @@ import { ExamGenerateSchema, parseSchema } from '@/lib/schemas'
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-const OFFICIAL_EXAM_QUESTIONS   = 30
+const OFFICIAL_EXAM_QUESTIONS = 30
 const OFFICIAL_EXAM_DURATION_MIN = 30
-const ABANDONED_SESSION_HOURS   = 2
-const VALID_MODES               = ['official', 'custom', 'mistakes', 'weak_topics', 'bookmarks']
-const VALID_ASSISTANCE_MODES    = ['instant', 'exam']
-const QUESTION_LIMITS           = { MIN: 5, MAX: 100 }
-const DURATIONS                 = { official: 30, custom: 60, mistakes: 45, weak_topics: 45, bookmarks: 45 }
+const ABANDONED_SESSION_HOURS = 2
+const VALID_MODES = ['official', 'custom', 'mistakes', 'weak_topics', 'bookmarks']
+const VALID_ASSISTANCE_MODES = ['instant', 'exam']
+const QUESTION_LIMITS = { MIN: 5, MAX: 100 }
+const DURATIONS = { official: 30, custom: 60, mistakes: 45, weak_topics: 45, bookmarks: 45 }
 
 // ---------------------------------------------------------------------------
 // Helpers (unchanged)
@@ -58,9 +58,15 @@ function buildAdaptiveOptions(mode, topicFilters) {
   const options = { mode }
   switch (mode) {
     case 'custom':
-    case 'weak_topics': options.topicFilters = topicFilters; break
-    case 'mistakes':    options.prioritizeMistakes = true;   break
-    case 'official':    options.balanced = true;             break
+    case 'weak_topics':
+      options.topicFilters = topicFilters
+      break
+    case 'mistakes':
+      options.prioritizeMistakes = true
+      break
+    case 'official':
+      options.balanced = true
+      break
   }
   return options
 }
@@ -76,25 +82,24 @@ function estimatePassProbability(skillProfile, mode, topicFilters) {
 
   // Adjust for mode difficulty
   const modeAdjust = {
-    official:    0,
-    custom:      topicFilters?.length > 0 ? -5 : 0,
-    mistakes:   -15,  // Mistake reviews are harder
+    official: 0,
+    custom: topicFilters?.length > 0 ? -5 : 0,
+    mistakes: -15, // Mistake reviews are harder
     weak_topics: -10,
-    bookmarks:   -5,
+    bookmarks: -5,
   }
 
-  const adjustedProb = Math.round(
-    Math.min(95, Math.max(5, baseProb + (modeAdjust[mode] ?? 0)))
-  )
+  const adjustedProb = Math.round(Math.min(95, Math.max(5, baseProb + (modeAdjust[mode] ?? 0))))
 
   return {
     probability: adjustedProb,
     level: adjustedProb >= 80 ? 'high' : adjustedProb >= 55 ? 'medium' : 'low',
-    message: adjustedProb >= 80
-      ? 'high_confidence'
-      : adjustedProb >= 55
-      ? 'needs_practice'
-      : 'needs_more_study',
+    message:
+      adjustedProb >= 80
+        ? 'high_confidence'
+        : adjustedProb >= 55
+          ? 'needs_practice'
+          : 'needs_more_study',
   }
 }
 
@@ -129,7 +134,10 @@ export async function POST(request) {
 
     if (!user.isPremium) {
       return NextResponse.json(
-        { error: 'Premium subscription required', message: 'Upgrade to premium to access exams and AI features.' },
+        {
+          error: 'Premium subscription required',
+          message: 'Upgrade to premium to access exams and AI features.',
+        },
         { status: 403 }
       )
     }
@@ -141,15 +149,22 @@ export async function POST(request) {
     const { allowed, activeCount } = await checkSessionLimits(user._id)
     if (!allowed) {
       return NextResponse.json(
-        { error: 'Session limit reached', message: `You have ${activeCount} active exams. Please complete one first.`, activeCount },
+        {
+          error: 'Session limit reached',
+          message: `You have ${activeCount} active exams. Please complete one first.`,
+          activeCount,
+        },
         { status: 429 }
       )
     }
 
     // ── Parse & validate body ─────────────────────────────────────────
     let body
-    try { body = await request.json() }
-    catch { return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }) }
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
 
     const { data: validated, error: validationError } = parseSchema(ExamGenerateSchema, body)
     if (validationError) {
@@ -159,18 +174,10 @@ export async function POST(request) {
       )
     }
 
-    const {
-      mode,
-      topic_filter,
-      assistance_mode,
-      num_questions,
-      source,
-    } = validated
+    const { mode, topic_filter, assistance_mode, num_questions, source } = validated
 
     // ── Question count ─────────────────────────────────────────────────
-    const requestedCount = mode === 'official'
-      ? OFFICIAL_EXAM_QUESTIONS
-      : num_questions
+    const requestedCount = mode === 'official' ? OFFICIAL_EXAM_QUESTIONS : num_questions
 
     // ── Bookmarks mode ─────────────────────────────────────────────────
     let bookmarkIds = []
@@ -178,14 +185,17 @@ export async function POST(request) {
       bookmarkIds = user.bookmarkedQuestions || []
       if (bookmarkIds.length === 0) {
         return NextResponse.json(
-          { error: 'No bookmarks found', message: "You haven't bookmarked any questions yet. Save some during exams!" },
+          {
+            error: 'No bookmarks found',
+            message: "You haven't bookmarked any questions yet. Save some during exams!",
+          },
           { status: 404 }
         )
       }
     }
 
     // ── Select questions ──────────────────────────────────────────────
-    const topicFilters    = normalizeTopicFilters(topic_filter)
+    const topicFilters = normalizeTopicFilters(topic_filter)
     const adaptiveOptions = buildAdaptiveOptions(mode, topicFilters)
 
     let questionIds
@@ -196,7 +206,10 @@ export async function POST(request) {
       })
     } catch (error) {
       console.error('[exam-generate] Adaptive selection failed:', error)
-      return NextResponse.json({ error: 'Failed to select questions. Please try again.' }, { status: 500 })
+      return NextResponse.json(
+        { error: 'Failed to select questions. Please try again.' },
+        { status: 500 }
+      )
     }
 
     if (questionIds.length === 0) {
@@ -207,8 +220,8 @@ export async function POST(request) {
             mode === 'custom' && topicFilters.length > 0
               ? 'No questions found for the selected topics. Try broadening your filters.'
               : mode === 'mistakes'
-              ? "You haven't made any mistakes yet. Take some practice exams first!"
-              : 'No questions available. Please contact support.',
+                ? "You haven't made any mistakes yet. Take some practice exams first!"
+                : 'No questions available. Please contact support.',
         },
         { status: 404 }
       )
@@ -224,7 +237,7 @@ export async function POST(request) {
     const session = await ExamSession.create({
       userId: user._id,
       mode,
-      language:      user.preferences?.language ?? 'en',
+      language: user.preferences?.language ?? 'en',
       topicFilters,
       assistanceMode: assistance_mode,
       questionIds,
@@ -233,6 +246,7 @@ export async function POST(request) {
     })
 
     // ── AI: Fire-and-forget session tip (stored in session, used on setup confirmation) ──
+    // If AI fails, session still succeeds with null tip (graceful degradation)
     const lang = user.preferences?.language ?? 'en'
     getExamRecommendation({
       recentStats: {
@@ -244,26 +258,36 @@ export async function POST(request) {
       },
       lang,
     })
-      .then((rec) =>
-        ExamSession.findByIdAndUpdate(session._id, { $set: { aiSessionTip: rec?.tip ?? null } })
-      )
-      .catch((err) => console.error('[exam-generate] AI tip failed (non-critical):', err))
+      .then((rec) => {
+        if (rec && !rec._fallback) {
+          ExamSession.findByIdAndUpdate(session._id, {
+            $set: { aiSessionTip: rec?.tip ?? null },
+          }).catch(() => {}) // Silently fail - non-critical
+        }
+      })
+      .catch((err) => {
+        console.error('[exam-generate] AI recommendation failed (non-critical):', err.message)
+        // Session continues without AI tip
+      })
 
     // ── Response ──────────────────────────────────────────────────────
     return NextResponse.json({
-      examId:         session._id,
-      sessionId:      session._id,
+      examId: session._id,
+      sessionId: session._id,
       totalQuestions: questionIds.length,
       mode,
       assistanceMode: assistance_mode,
       expiresAt,
-      duration:       expiresAt ? DURATIONS[mode] : null,
-      topicFilters:   topicFilters.length > 0 ? topicFilters : null,
+      duration: expiresAt ? DURATIONS[mode] : null,
+      topicFilters: topicFilters.length > 0 ? topicFilters : null,
       // ✨ AI-powered additions
-      aiPassPrediction: passPrediction,  // { probability, level, message }
+      aiPassPrediction: passPrediction, // { probability, level, message }
     })
   } catch (error) {
     console.error('[exam-generate] Unhandled error:', error)
-    return NextResponse.json({ error: 'Failed to generate exam. Please try again later.' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to generate exam. Please try again later.' },
+      { status: 500 }
+    )
   }
 }

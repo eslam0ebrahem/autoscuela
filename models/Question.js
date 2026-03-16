@@ -13,7 +13,7 @@ const questionSchema = new mongoose.Schema(
     correct_option_idx: { type: Number, required: true, min: 0, max: 3 },
     topic_tag: {
       es: { type: String, required: true, index: true },
-      en: { type: String, required: true }
+      en: { type: String, required: true },
     },
     isActive: { type: Boolean, default: true },
     difficulty: { type: String, enum: ['easy', 'medium', 'hard'], default: 'medium' },
@@ -26,9 +26,11 @@ const questionSchema = new mongoose.Schema(
     options: {
       type: [optionSchema],
       validate: {
-        validator: function(v) { return v && v.length >= 2 && v.length <= 4 },
-        message: 'Questions must have 2-4 options'
-      }
+        validator: function (v) {
+          return v && v.length >= 2 && v.length <= 4
+        },
+        message: 'Questions must have 2-4 options',
+      },
     },
 
     question: {

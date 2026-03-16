@@ -8,6 +8,8 @@ import { sendVerificationEmail } from '@/lib/email'
 import { checkCSRF } from '@/lib/csrf'
 import { checkRateLimit } from '@/lib/utils'
 import { RegisterSchema, parseSchema } from '@/lib/schemas'
+import logger from '@/lib/logger'
+import { ERROR_CODES, ERROR_MESSAGES } from '@/lib/error-codes'
 
 // ---------------------------------------------------------------------------
 // POST /api/auth/register - User registration
@@ -43,10 +45,7 @@ export async function POST(request) {
     try {
       body = await request.json()
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
     const { data: validated, error: validationError } = parseSchema(RegisterSchema, body)
@@ -65,8 +64,12 @@ export async function POST(request) {
     // Check if email already exists
     const existing = await User.findOne({ email })
     if (existing) {
+      logger.warn({ email }, 'Registration attempt with existing email')
       return NextResponse.json(
-        { error: 'Email already registered' },
+        {
+          error: ERROR_MESSAGES[ERROR_CODES.EMAIL_ALREADY_EXISTS],
+          code: ERROR_CODES.EMAIL_ALREADY_EXISTS,
+        },
         { status: 409 }
       )
     }
@@ -97,7 +100,7 @@ export async function POST(request) {
     try {
       await sendVerificationEmail(email, verificationUrl, language)
     } catch (emailError) {
-      console.error('[auth/register] Failed to send verification email:', emailError)
+      logger.error({ email, error: emailError.message }, 'Failed to send verification email')
       // Don't fail the registration if email sending fails
       // User can request a new verification email later
     }
@@ -131,18 +134,21 @@ export async function POST(request) {
 
     return response
   } catch (error) {
-    console.error('[auth/register] Error:', error)
+    logger.error({ error: error.message, stack: error.stack }, 'Registration error')
 
     // Handle duplicate key error (race condition)
     if (error.code === 11000) {
       return NextResponse.json(
-        { error: 'Email already registered' },
+        {
+          error: ERROR_MESSAGES[ERROR_CODES.EMAIL_ALREADY_EXISTS],
+          code: ERROR_CODES.EMAIL_ALREADY_EXISTS,
+        },
         { status: 409 }
       )
     }
 
     return NextResponse.json(
-      { error: 'Registration failed. Please try again.' },
+      { error: ERROR_MESSAGES[ERROR_CODES.INTERNAL_ERROR], code: ERROR_CODES.INTERNAL_ERROR },
       { status: 500 }
     )
   }

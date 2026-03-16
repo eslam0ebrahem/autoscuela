@@ -23,10 +23,7 @@ export async function POST(request) {
     try {
       body = await request.json()
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
     const { data: validated, error: validationError } = parseSchema(LoginSchema, body)
@@ -61,26 +58,18 @@ export async function POST(request) {
     // ── Database lookup ────────────────────────────────────────────────
     await connectDB()
 
-    const user = await User.findOne({ email }).select(
-      '+passwordHash'
-    )
+    const user = await User.findOne({ email }).select('+passwordHash')
 
     if (!user) {
       // Generic error to prevent user enumeration
-      return NextResponse.json(
-        { error: 'Invalid email or password' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
     // ── Password verification ──────────────────────────────────────────
     const isValid = await bcrypt.compare(password, user.passwordHash)
 
     if (!isValid) {
-      return NextResponse.json(
-        { error: 'Invalid email or password' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
     // ── Check email verification status ────────────────────────────────
@@ -122,9 +111,6 @@ export async function POST(request) {
     return response
   } catch (error) {
     console.error('[auth/login] Error:', error)
-    return NextResponse.json(
-      { error: 'Login failed. Please try again.' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Login failed. Please try again.' }, { status: 500 })
   }
 }

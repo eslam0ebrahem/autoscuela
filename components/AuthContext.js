@@ -70,29 +70,32 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!user) return
 
-    const refreshInterval = setInterval(async () => {
-      try {
-        const res = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest', // CSRF header
-          },
-          credentials: 'same-origin',
-        })
+    const refreshInterval = setInterval(
+      async () => {
+        try {
+          const res = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest', // CSRF header
+            },
+            credentials: 'same-origin',
+          })
 
-        if (res.ok) {
-          const data = await res.json()
-          setUser(data.user)
-        } else if (res.status === 401) {
-          // Refresh token expired, user needs to log in again
-          setUser(null)
+          if (res.ok) {
+            const data = await res.json()
+            setUser(data.user)
+          } else if (res.status === 401) {
+            // Refresh token expired, user needs to log in again
+            setUser(null)
+          }
+        } catch (err) {
+          console.error('[auth] Token refresh failed:', err)
+          // Continue - will refresh again on next interval
         }
-      } catch (err) {
-        console.error('[auth] Token refresh failed:', err)
-        // Continue - will refresh again on next interval
-      }
-    }, 14 * 60 * 1000) // 14 minutes
+      },
+      14 * 60 * 1000
+    ) // 14 minutes
 
     return () => clearInterval(refreshInterval)
   }, [user])
@@ -180,36 +183,37 @@ export function AuthProvider({ children }) {
   }, [router])
 
   // ── Update language preference ─────────────────────────────────────────
-  const updateLanguage = useCallback(async (lang) => {
-    // Optimistic update
-    setUser((prev) =>
-      prev
-        ? { ...prev, preferences: { ...prev.preferences, language: lang } }
-        : prev
-    )
+  const updateLanguage = useCallback(
+    async (lang) => {
+      // Optimistic update
+      setUser((prev) =>
+        prev ? { ...prev, preferences: { ...prev.preferences, language: lang } } : prev
+      )
 
-    try {
-      const res = await fetch('/api/users/preferences', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest', // CSRF header
-        },
-        body: JSON.stringify({ language: lang }),
-        credentials: 'same-origin',
-      })
+      try {
+        const res = await fetch('/api/users/preferences', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest', // CSRF header
+          },
+          body: JSON.stringify({ language: lang }),
+          credentials: 'same-origin',
+        })
 
-      if (!res.ok) {
-        console.error('[auth] Failed to save language preference')
+        if (!res.ok) {
+          console.error('[auth] Failed to save language preference')
+          // Revert on error
+          await fetchUser()
+        }
+      } catch (err) {
+        console.error('[auth] Network error saving language preference:', err)
         // Revert on error
         await fetchUser()
       }
-    } catch (err) {
-      console.error('[auth] Network error saving language preference:', err)
-      // Revert on error
-      await fetchUser()
-    }
-  }, [fetchUser])
+    },
+    [fetchUser]
+  )
 
   // ── Refresh user data ──────────────────────────────────────────────────
   const refreshUser = useCallback(() => {

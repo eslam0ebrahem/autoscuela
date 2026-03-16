@@ -28,13 +28,13 @@ export async function GET(request, { params }) {
     const questions = await Question.find({ _id: { $in: session.questionIds } }).lean()
 
     // Sort questions to match the order in questionIds
-    const questionsOrdered = session.questionIds.map(id =>
-      questions.find(q => q._id.toString() === id.toString())
-    ).filter(Boolean)
+    const questionsOrdered = session.questionIds
+      .map((id) => questions.find((q) => q._id.toString() === id.toString()))
+      .filter(Boolean)
 
     return NextResponse.json({
       session,
-      questions: questionsOrdered
+      questions: questionsOrdered,
     })
   } catch (error) {
     console.error('[get-session] Error:', error)
@@ -75,13 +75,15 @@ export async function PATCH(request, { params }) {
     // ── AI: When flagging (not unflagging), provide a quick "why tricky" tip ──
     let aiTip = null
     if (flagged) {
-      const question = await Question.findById(questionId).select('question options topic_tag correct_option_idx').lean()
+      const question = await Question.findById(questionId)
+        .select('question options topic_tag correct_option_idx')
+        .lean()
       if (question) {
         const lang = session.language || 'es'
         aiTip = await getSmartHint({
           question: question.question,
-          options:  question.options,
-          correctIdx: question.correct_option_idx -1,
+          options: question.options,
+          correctIdx: question.correct_option_idx - 1,
           lang,
         }).catch(() => null)
       }

@@ -32,10 +32,7 @@ export async function POST(request, { params }) {
     try {
       body = await request.json()
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
     const { data: validated, error: validationError } = parseSchema(ExamAnswerSchema, body)
@@ -138,7 +135,7 @@ export async function POST(request, { params }) {
         ])
 
         if (aiExplanation) {
-          response.aiExplanation = aiExplanation  // { summary, correct_explanation, wrong_explanation, memory_tip, law_reference }
+          response.aiExplanation = aiExplanation // { summary, correct_explanation, wrong_explanation, memory_tip, law_reference }
         }
       }
     }

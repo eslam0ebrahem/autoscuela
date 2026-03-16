@@ -26,6 +26,7 @@ export default function NavLink({
             ? 'bg-primary text-white shadow-md'
             : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-ink dark:text-white'
         }`}
+        aria-current={isActive ? 'page' : undefined}
       >
         <span className="text-lg">{icon}</span>
         <span>{label}</span>
@@ -77,6 +78,7 @@ export default function NavLink({
           : 'text-ink-light dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-ink dark:hover:text-white'
       }`}
       aria-current={isActive ? 'page' : undefined}
+      aria-label={label}
     >
       <span className="text-lg">{icon}</span>
       <span className="hidden lg:inline text-sm">{label}</span>

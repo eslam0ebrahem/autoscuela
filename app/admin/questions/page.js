@@ -76,10 +76,7 @@ function AdminQuestionsContent() {
       })
       .catch((err) => {
         console.error('[admin/questions] Fetch error:', err)
-        showToast(
-          t('Error al cargar preguntas', 'Error loading questions'),
-          'error'
-        )
+        showToast(t('Error al cargar preguntas', 'Error loading questions'), 'error')
       })
       .finally(() => setLoading(false))
   }, [page, debouncedSearch, topicFilter, activeFilter, t, showToast])
@@ -109,7 +106,10 @@ function AdminQuestionsContent() {
       }
 
       if (arr.length > 500) {
-        showToast(t('Máximo 500 preguntas por importación', 'Maximum 500 questions per import'), 'error')
+        showToast(
+          t('Máximo 500 preguntas por importación', 'Maximum 500 questions per import'),
+          'error'
+        )
         setImporting(false)
         return
       }
@@ -139,10 +139,7 @@ function AdminQuestionsContent() {
     } catch (e) {
       console.error('[admin/questions] Import error:', e)
       setImportResult({ error: e.message })
-      showToast(
-        t('Error al importar: ' + e.message, 'Import error: ' + e.message),
-        'error'
-      )
+      showToast(t('Error al importar: ' + e.message, 'Import error: ' + e.message), 'error')
     } finally {
       setImporting(false)
     }
@@ -202,10 +199,7 @@ function AdminQuestionsContent() {
       }
     } catch (err) {
       console.error('[admin/questions] Delete error:', err)
-      showToast(
-        t('Error al desactivar', 'Error deactivating'),
-        'error'
-      )
+      showToast(t('Error al desactivar', 'Error deactivating'), 'error')
     }
   }
 
@@ -229,10 +223,7 @@ function AdminQuestionsContent() {
       }
     } catch (err) {
       console.error('[admin/questions] Save error:', err)
-      showToast(
-        t('Error al guardar', 'Error saving'),
-        'error'
-      )
+      showToast(t('Error al guardar', 'Error saving'), 'error')
     } finally {
       setSavingEdit(false)
     }
@@ -243,9 +234,7 @@ function AdminQuestionsContent() {
   // ── Field Helper ───────────────────────────────────────────────────────
   const Field = ({ label, children }) => (
     <div className="mb-4">
-      <label className="block text-sm font-bold text-ink dark:text-white mb-1">
-        {label}
-      </label>
+      <label className="block text-sm font-bold text-ink dark:text-white mb-1">{label}</label>
       {children}
     </div>
   )
@@ -399,8 +388,12 @@ function AdminQuestionsContent() {
                     {t('Importación exitosa:', 'Import successful:')}
                   </p>
                   <ul className="text-sm space-y-1">
-                    <li>✅ {t('Insertadas:', 'Inserted:')} {importResult.inserted}</li>
-                    <li>🔄 {t('Actualizadas:', 'Updated:')} {importResult.updated}</li>
+                    <li>
+                      ✅ {t('Insertadas:', 'Inserted:')} {importResult.inserted}
+                    </li>
+                    <li>
+                      🔄 {t('Actualizadas:', 'Updated:')} {importResult.updated}
+                    </li>
                     {importResult.errors?.length > 0 && (
                       <li className="text-amber-700 dark:text-amber-400">
                         ⚠️ {t('Errores:', 'Errors:')} {importResult.errors.length}
@@ -468,9 +461,7 @@ function AdminQuestionsContent() {
                           : 'bg-slate-100 text-ink-light dark:bg-slate-800 dark:text-slate-400'
                       }`}
                     >
-                      {q.isActive
-                        ? t('✅ Activa', '✅ Active')
-                        : t('🔒 Inactiva', '🔒 Inactive')}
+                      {q.isActive ? t('✅ Activa', '✅ Active') : t('🔒 Inactiva', '🔒 Inactive')}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm flex gap-2">

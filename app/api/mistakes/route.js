@@ -27,37 +27,60 @@ export async function GET(request) {
 
     const objectId = new mongoose.Types.ObjectId(tokenData.userId)
 
-    // Get all wrong answers grouped by questionId
-    const wrongAnswers = await UserAnswer.aggregate([
+    // ── OPTIMIZED: Combine 3 queries into single aggregation pipeline ──
+    // Using $facet to get:
+    // 1. Wrong answers grouped by questionId with correction status
+    // 2. Question details for those questions
+    // 3. Stats (total, uncorrected)
+    const aggregationResult = await UserAnswer.aggregate([
+      // Stage 1: Get all answers for this user
       {
-        $match: {
-          userId: objectId,
-          is_correct: false,
-        },
+        $match: { userId: objectId },
       },
-      { $sort: { createdAt: 1 } }, // Ensure $last gets the actual last one
+      // Stage 2: Facet to compute multiple outputs in one pass
       {
-        $group: {
-          _id: '$questionId',
-          topic: { $first: '$topic_tag.es' },
-          topicEn: { $first: '$topic_tag.en' },
-          timesWrong: { $sum: 1 },
-          lastWrong: { $max: '$createdAt' },
-          lastWrongAnswerIdx: { $last: '$selected_option_idx' },
-        },
-      },
-      {
-        $project: {
-          questionId: '$_id',
-          topic: 1,
-          topicEn: 1,
-          timesWrong: 1,
-          lastWrong: 1,
-          lastWrongAnswerIdx: 1,
-          _id: 0,
+        $facet: {
+          // Wrong answers with correction detection
+          wrongAnswers: [
+            { $match: { is_correct: false } },
+            { $sort: { createdAt: 1 } },
+            {
+              $group: {
+                _id: '$questionId',
+                topic: { $first: '$topic_tag.es' },
+                topicEn: { $first: '$topic_tag.en' },
+                timesWrong: { $sum: 1 },
+                lastWrong: { $max: '$createdAt' },
+                lastWrongAnswerIdx: { $last: '$selected_option_idx' },
+              },
+            },
+            {
+              $project: {
+                questionId: '$_id',
+                topic: 1,
+                topicEn: 1,
+                timesWrong: 1,
+                lastWrong: 1,
+                lastWrongAnswerIdx: 1,
+                _id: 0,
+              },
+            },
+          ],
+          // Corrected answers lookup (only for wrong questions)
+          correctionStatus: [
+            { $match: { is_correct: true } },
+            {
+              $group: {
+                _id: '$questionId',
+                lastCorrect: { $max: '$createdAt' },
+              },
+            },
+          ],
         },
       },
     ])
+
+    const { wrongAnswers = [], correctionStatus = [] } = aggregationResult[0] || {}
 
     if (wrongAnswers.length === 0) {
       return NextResponse.json({
@@ -74,32 +97,15 @@ export async function GET(request) {
       })
     }
 
-    // Check which mistakes have been corrected (answered correctly more recently)
-    const questionIds = wrongAnswers.map((m) => m.questionId)
-    const correctedMistakes = await UserAnswer.aggregate([
-      {
-        $match: {
-          userId: objectId,
-          questionId: { $in: questionIds },
-          is_correct: true,
-        },
-      },
-      {
-        $group: {
-          _id: '$questionId',
-          lastCorrect: { $max: '$createdAt' },
-        },
-      },
-    ])
-
-    const correctedMap = new Map()
-    for (const m of correctedMistakes) {
-      correctedMap.set(m._id.toString(), m.lastCorrect)
+    // Build correction map
+    const correctionMap = new Map()
+    for (const c of correctionStatus) {
+      correctionMap.set(c._id.toString(), c.lastCorrect)
     }
 
-    // Mark mistakes as corrected or uncorrected
+    // Mark mistakes as corrected
     const withCorrectionStatus = wrongAnswers.map((m) => {
-      const lastCorrect = correctedMap.get(m.questionId.toString())
+      const lastCorrect = correctionMap.get(m.questionId.toString())
       const isCorrected = lastCorrect && lastCorrect > m.lastWrong
       return { ...m, isCorrected: isCorrected || false }
     })
@@ -116,18 +122,20 @@ export async function GET(request) {
       filtered = filtered.filter((m) => m.isCorrected === shouldBeCorrected)
     }
 
-    // Get full question data for filtered results
+    // Get full question data for paginated results
     const pageFiltered = filtered.slice(skip, skip + limit)
     const questionDetails = await Question.find({
       _id: { $in: pageFiltered.map((m) => m.questionId) },
-    }).select('_id difficulty topic_tag question options metadata correct_option_idx')
+    })
+      .select('_id difficulty topic_tag question options metadata correct_option_idx')
+      .lean()
 
     const questionMap = new Map()
     for (const q of questionDetails) {
       questionMap.set(q._id.toString(), q)
     }
 
-    // Apply difficulty filter (after getting question data)
+    // Apply difficulty filter and format response
     const mistakes = pageFiltered
       .map((m) => {
         const q = questionMap.get(m.questionId.toString())
@@ -162,7 +170,10 @@ export async function GET(request) {
       stats: {
         totalMistakes,
         uncorrectedCount,
-        correctionRate: totalMistakes > 0 ? Math.round(((totalMistakes - uncorrectedCount) / totalMistakes) * 100) : 0,
+        correctionRate:
+          totalMistakes > 0
+            ? Math.round(((totalMistakes - uncorrectedCount) / totalMistakes) * 100)
+            : 0,
       },
     })
   } catch (error) {

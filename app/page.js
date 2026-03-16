@@ -26,7 +26,8 @@ const FEATURES = [
     title: 'IA Adaptativa',
     titleEn: 'Adaptive AI',
     desc: 'Nuestro motor analiza tus respuestas en tiempo real para enfocarse en lo que realmente te cuesta.',
-    descEn: 'Our engine analyzes your answers in real-time to focus on what you actually struggle with.',
+    descEn:
+      'Our engine analyzes your answers in real-time to focus on what you actually struggle with.',
     color: 'from-indigo-500/10 hover:from-indigo-500/20 border-indigo-500/20',
     darkColor: 'dark:from-indigo-500/20 dark:hover:from-indigo-500/30',
   },
@@ -36,7 +37,8 @@ const FEATURES = [
     title: 'Modo Bilingüe Instantáneo',
     titleEn: 'Instant Bilingual Mode',
     desc: 'Cambia entre español e inglés con un solo clic. Ideal para residentes internacionales.',
-    descEn: 'Switch between Spanish and English with one click. Perfect for international residents.',
+    descEn:
+      'Switch between Spanish and English with one click. Perfect for international residents.',
     color: 'from-emerald-500/10 hover:from-emerald-500/20 border-emerald-500/20',
     darkColor: 'dark:from-emerald-500/20 dark:hover:from-emerald-500/30',
   },
@@ -46,7 +48,8 @@ const FEATURES = [
     title: 'Gamificación Épica',
     titleEn: 'Epic Gamification',
     desc: 'Gana XP, sube de nivel y compite en el ranking. Aprender ya no es una tarea, es un juego.',
-    descEn: 'Earn XP, level up, and compete on leaderboards. Learning is no longer a chore, it\'s a game.',
+    descEn:
+      "Earn XP, level up, and compete on leaderboards. Learning is no longer a chore, it's a game.",
     color: 'from-purple-500/10 hover:from-purple-500/20 border-purple-500/20',
     darkColor: 'dark:from-purple-500/20 dark:hover:from-purple-500/30',
   },
@@ -76,7 +79,7 @@ const FEATURES = [
     title: 'Vialia Analytics',
     titleEn: 'Vialia Analytics',
     desc: 'Gráficos detallados de tu evolución. Sabrás que vas a aprobar antes de ir al examen.',
-    descEn: 'Detailed progress charts. You\'ll know you\'re ready before taking the exam.',
+    descEn: "Detailed progress charts. You'll know you're ready before taking the exam.",
     color: 'from-amber-500/10 hover:from-amber-500/20 border-amber-500/20',
     darkColor: 'dark:from-amber-500/20 dark:hover:from-amber-500/30',
   },
@@ -85,7 +88,12 @@ const FEATURES = [
 const STATS = [
   { num: '2,000+', numEn: '2,000+', label: 'Preguntas Actualizadas', labelEn: 'Updated Questions' },
   { num: '98%', numEn: '98%', label: 'Precisión de la IA', labelEn: 'AI Accuracy' },
-  { num: '24/7', numEn: '24/7', label: 'Soporte e Inteligencia', labelEn: 'Support & Intelligence' },
+  {
+    num: '24/7',
+    numEn: '24/7',
+    label: 'Soporte e Inteligencia',
+    labelEn: 'Support & Intelligence',
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -207,10 +215,7 @@ export default function LandingPage() {
 
           {/* Subtitle */}
           <p className="text-lg md:text-xl text-center text-ink-light dark:text-slate-400 max-w-3xl mx-auto mb-10 leading-relaxed">
-            {t(
-              'La evolución del aprendizaje vial. ',
-              'The evolution of driving education. '
-            )}
+            {t('La evolución del aprendizaje vial. ', 'The evolution of driving education. ')}
             <strong className="text-ink dark:text-white">Vialia</strong>{' '}
             {t(
               'utiliza IA de última generación para que apruebes tu examen teórico en tiempo récord y con total confianza.',

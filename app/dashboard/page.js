@@ -21,7 +21,7 @@ import {
   CrownOutlined,
   ArrowRightOutlined,
   TrophyFilled,
-  ReloadOutlined
+  ReloadOutlined,
 } from '@ant-design/icons'
 
 // ---------------------------------------------------------------------------
@@ -47,7 +47,8 @@ const ReadinessRing = memo(function ReadinessRing({ score, t }) {
   const radius = 54
   const circumference = 2 * Math.PI * radius
   const validScore = typeof score === 'number' && !isNaN(score) ? score : 0
-  const dashoffset = score != null ? circumference - (validScore / 100) * circumference : circumference
+  const dashoffset =
+    score != null ? circumference - (validScore / 100) * circumference : circumference
 
   const { color, label } = useMemo(() => {
     if (score >= READINESS_THRESHOLDS.READY) {
@@ -66,24 +67,24 @@ const ReadinessRing = memo(function ReadinessRing({ score, t }) {
     <div className="flex flex-col items-center shrink-0">
       <div className="relative w-28 h-28 md:w-36 md:h-36">
         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
-          <circle 
-            cx="60" 
-            cy="60" 
-            r={radius} 
-            fill="none" 
-            stroke="currentColor" 
-            className="text-slate-100 dark:text-slate-800" 
-            strokeWidth="8" 
+          <circle
+            cx="60"
+            cy="60"
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            className="text-slate-100 dark:text-slate-800"
+            strokeWidth="8"
           />
           <circle
-            cx="60" 
-            cy="60" 
-            r={radius} 
-            fill="none" 
-            stroke={color} 
-            strokeWidth="10" 
+            cx="60"
+            cy="60"
+            r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth="10"
             strokeLinecap="round"
-            strokeDasharray={circumference} 
+            strokeDasharray={circumference}
             strokeDashoffset={dashoffset}
             className="transition-all duration-1000 ease-out"
           />
@@ -91,8 +92,15 @@ const ReadinessRing = memo(function ReadinessRing({ score, t }) {
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {score != null ? (
             <>
-              <span className="text-2xl md:text-3xl font-black text-ink dark:text-white">{validScore}</span>
-              <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider" style={{ color }}>{label}</span>
+              <span className="text-2xl md:text-3xl font-black text-ink dark:text-white">
+                {validScore}
+              </span>
+              <span
+                className="text-[10px] md:text-xs font-bold uppercase tracking-wider"
+                style={{ color }}
+              >
+                {label}
+              </span>
             </>
           ) : (
             <span className="text-sm text-slate-400">—</span>
@@ -106,14 +114,23 @@ const ReadinessRing = memo(function ReadinessRing({ score, t }) {
 // ---------------------------------------------------------------------------
 // QuickActionCard Component (Memoized)
 // ---------------------------------------------------------------------------
-const QuickActionCard = memo(function QuickActionCard({ icon, title, desc, color, onClick, loading = false }) {
+const QuickActionCard = memo(function QuickActionCard({
+  icon,
+  title,
+  desc,
+  color,
+  onClick,
+  loading = false,
+}) {
   return (
     <button
       onClick={onClick}
       disabled={loading}
       className={`card hover:scale-105 active:scale-95 transition-all duration-200 text-left disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'animate-pulse' : ''}`}
     >
-      <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center text-white text-2xl mb-3 shadow-lg`}>
+      <div
+        className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center text-white text-2xl mb-3 shadow-lg`}
+      >
         {icon}
       </div>
       <h3 className="text-base font-black text-ink dark:text-white">{title}</h3>
@@ -145,39 +162,43 @@ function DashboardContent() {
   const isPremium = user?.isPremium
 
   // ── Fetch Dashboard Data ───────────────────────────────────────────────
-  const fetchData = useCallback(async (force = false) => {
-    try {
-      setRefreshing(force)
-      const forceParam = force ? '?force=true' : ''
+  const fetchData = useCallback(
+    async (force = false) => {
+      try {
+        setRefreshing(force)
+        const forceParam = force ? '?force=true' : ''
 
-      const [dashRes, trendsRes] = await Promise.all([
-        fetch(`/api/dashboard${forceParam}`, { signal: abortController.current.signal }).then(r => r.json()),
-        fetch('/api/stats/trends?days=7', { signal: abortController.current.signal }).then(r => r.json())
-      ])
+        const [dashRes, trendsRes] = await Promise.all([
+          fetch(`/api/dashboard${forceParam}`, { signal: abortController.current.signal }).then(
+            (r) => r.json()
+          ),
+          fetch('/api/stats/trends?days=7', { signal: abortController.current.signal }).then((r) =>
+            r.json()
+          ),
+        ])
 
-      if (dashRes.error) {
-        throw new Error(dashRes.error)
+        if (dashRes.error) {
+          throw new Error(dashRes.error)
+        }
+
+        setInsights(dashRes.insights ?? null)
+        setStreak(dashRes.streak ?? 0)
+        setBadges(dashRes.badges ?? [])
+        setLeaderboard(dashRes.leaderboard ?? [])
+        setReadinessScore(dashRes.readinessScore != null ? Number(dashRes.readinessScore) : 0)
+        setTrends(trendsRes?.trends ?? [])
+      } catch (e) {
+        // Ignore abort errors (component unmounted)
+        if (e.name === 'AbortError') return
+        console.error('[dashboard] Fetch error:', e)
+        toast?.error?.(t('Error al cargar el panel', 'Failed to load dashboard'), e.message)
+      } finally {
+        setLoading(false)
+        setRefreshing(false)
       }
-
-      setInsights(dashRes.insights ?? null)
-      setStreak(dashRes.streak ?? 0)
-      setBadges(dashRes.badges ?? [])
-      setLeaderboard(dashRes.leaderboard ?? [])
-      setReadinessScore(dashRes.readinessScore != null ? Number(dashRes.readinessScore) : 0)
-      setTrends(trendsRes?.trends ?? [])
-    } catch (e) {
-      // Ignore abort errors (component unmounted)
-      if (e.name === 'AbortError') return
-      console.error('[dashboard] Fetch error:', e)
-      toast?.error?.(
-        t('Error al cargar el panel', 'Failed to load dashboard'),
-        e.message
-      )
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }, [t, toast, abortController])
+    },
+    [t, toast, abortController]
+  )
 
   useEffect(() => {
     fetchData()
@@ -193,7 +214,7 @@ function DashboardContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: 'official' }),
-        signal: abortController.current.signal
+        signal: abortController.current.signal,
       })
 
       const data = await res.json().catch(() => ({}))
@@ -210,10 +231,7 @@ function DashboardContent() {
     } catch (e) {
       if (e.name === 'AbortError') return
       console.error('[dashboard] Start exam error:', e)
-      toast?.error?.(
-        t('Error', 'Error'),
-        e.message
-      )
+      toast?.error?.(t('Error', 'Error'), e.message)
       setStartingExam(false)
     }
   }, [startingExam, router, toast, t, abortController])
@@ -239,7 +257,7 @@ function DashboardContent() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
             <h1 className="text-2xl md:text-3xl font-black">
-              {t('Día', 'Day')} {streak || 1} — {t('¿Listo para aprobar?', "Ready to pass?")}
+              {t('Día', 'Day')} {streak || 1} — {t('¿Listo para aprobar?', 'Ready to pass?')}
             </h1>
             {insights?.coachMessage && (
               <p className="text-indigo-100 font-medium mt-2 text-sm md:text-base max-w-2xl">
@@ -273,7 +291,7 @@ function DashboardContent() {
             disabled={refreshing}
             className="w-full h-full flex flex-col items-center justify-center disabled:opacity-50"
           >
-            <ReloadOutlined 
+            <ReloadOutlined
               className={`text-2xl md:text-3xl text-slate-500 dark:text-slate-400 ${refreshing ? 'animate-spin' : ''}`}
             />
             <p className="text-xs md:text-sm text-ink-light dark:text-slate-400 mt-1 font-semibold">
@@ -342,16 +360,18 @@ function DashboardContent() {
                     : 'bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${
-                  i === 0
-                    ? 'bg-yellow-500 text-white'
-                    : i === 1
-                    ? 'bg-slate-300 text-white'
-                    : i === 2
-                    ? 'bg-amber-700 text-white'
-                    : 'text-ink-light'
-                }`}>
-                  {i === 0 ? <TrophyFilled /> : entry.rank ?? i + 1}
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${
+                    i === 0
+                      ? 'bg-yellow-500 text-white'
+                      : i === 1
+                        ? 'bg-slate-300 text-white'
+                        : i === 2
+                          ? 'bg-amber-700 text-white'
+                          : 'text-ink-light'
+                  }`}
+                >
+                  {i === 0 ? <TrophyFilled /> : (entry.rank ?? i + 1)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-ink dark:text-white truncate">
@@ -382,7 +402,10 @@ function DashboardContent() {
                 {t('Desbloquea Vialia Premium', 'Unlock Vialia Premium')}
               </h3>
               <p className="text-orange-100 font-medium text-sm mt-1">
-                {t('Acceso ilimitado a todos los exámenes e IA.', 'Unlimited access to all exams and AI.')}
+                {t(
+                  'Acceso ilimitado a todos los exámenes e IA.',
+                  'Unlimited access to all exams and AI.'
+                )}
               </p>
             </div>
             <Link

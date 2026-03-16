@@ -7,7 +7,7 @@ const userAnswerSchema = new mongoose.Schema(
     questionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Question', required: true },
     topic_tag: {
       es: { type: String, required: true },
-      en: { type: String, required: true }
+      en: { type: String, required: true },
     },
     selected_option_idx: { type: Number, required: true, min: 0, max: 3 },
     is_correct: { type: Boolean, required: true },

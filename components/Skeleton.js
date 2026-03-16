@@ -9,7 +9,10 @@ export function SkeletonCard({ className = '', lines = 2, ...props }) {
     >
       <div className="h-3 w-2/3 rounded-full bg-base-200 animate-pulse" />
       {Array.from({ length: lines }).map((_, i) => (
-        <div key={i} className={`h-2.5 rounded-full bg-base-200 animate-pulse ${i === lines - 1 ? 'w-1/2' : 'w-full'}`} />
+        <div
+          key={i}
+          className={`h-2.5 rounded-full bg-base-200 animate-pulse ${i === lines - 1 ? 'w-1/2' : 'w-full'}`}
+        />
       ))}
     </div>
   )
@@ -62,7 +65,12 @@ export function SkeletonList({ rows = 5, className = '', ...props }) {
   )
 }
 
-export function SkeletonGrid({ count = 6, cols = 'grid-cols-2 sm:grid-cols-3', className = '', ...props }) {
+export function SkeletonGrid({
+  count = 6,
+  cols = 'grid-cols-2 sm:grid-cols-3',
+  className = '',
+  ...props
+}) {
   return (
     <div className={`grid ${cols} gap-3 ${className}`} aria-hidden="true" {...props}>
       {Array.from({ length: count }).map((_, i) => (

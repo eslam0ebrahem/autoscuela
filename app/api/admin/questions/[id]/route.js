@@ -38,10 +38,7 @@ export async function GET(request, { params }) {
     return NextResponse.json({ question })
   } catch (error) {
     console.error('[admin/questions/:id] GET error:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch question' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch question' }, { status: 500 })
   }
 }
 
@@ -85,10 +82,7 @@ export async function PUT(request, { params }) {
     })
   } catch (error) {
     console.error('[admin/questions/:id] PUT error:', error)
-    return NextResponse.json(
-      { error: 'Update failed: ' + error.message },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Update failed: ' + error.message }, { status: 500 })
   }
 }
 

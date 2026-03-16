@@ -11,7 +11,9 @@ export async function GET(request) {
 
     await connectDB()
 
-    const user = await User.findById(tokenData.userId).select('gamification.earnedBadges preferences')
+    const user = await User.findById(tokenData.userId).select(
+      'gamification.earnedBadges preferences'
+    )
 
     const earnedBadges = user?.gamification?.earnedBadges || []
     const lang = user?.preferences?.language || 'es'

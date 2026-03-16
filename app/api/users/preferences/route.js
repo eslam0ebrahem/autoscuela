@@ -28,7 +28,8 @@ export async function PUT(request) {
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { language, nickname, theme, soundEnabled, currentPassword, newPassword } = await request.json()
+    const { language, nickname, theme, soundEnabled, currentPassword, newPassword } =
+      await request.json()
 
     await connectDB()
 
@@ -64,7 +65,10 @@ export async function PUT(request) {
         return NextResponse.json({ error: 'Current password required' }, { status: 400 })
       }
       if (newPassword.length < 8) {
-        return NextResponse.json({ error: 'New password must be at least 8 characters' }, { status: 400 })
+        return NextResponse.json(
+          { error: 'New password must be at least 8 characters' },
+          { status: 400 }
+        )
       }
 
       const user = await User.findById(tokenData.userId)

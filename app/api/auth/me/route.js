@@ -13,10 +13,7 @@ export async function GET(request) {
     const tokenData = await getCurrentUser(request)
 
     if (!tokenData) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // ── Fetch user data ────────────────────────────────────────────────
@@ -25,10 +22,7 @@ export async function GET(request) {
     const user = await User.findById(tokenData.userId).select('-passwordHash')
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     // ── Return user data ───────────────────────────────────────────────
@@ -53,23 +47,14 @@ export async function GET(request) {
 
     // Handle JWT errors specifically
     if (error.name === 'JsonWebTokenError') {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
     if (error.name === 'TokenExpiredError') {
-      return NextResponse.json(
-        { error: 'Session expired' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Session expired' }, { status: 401 })
     }
 
-    return NextResponse.json(
-      { error: 'Failed to get user' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to get user' }, { status: 500 })
   }
 }
 
@@ -143,20 +128,14 @@ export async function PUT(request) {
     const tokenData = await getCurrentUser(request)
 
     if (!tokenData) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { nickname } = await request.json()
 
     // ── Validation ─────────────────────────────────────────────────────
     if (!nickname) {
-      return NextResponse.json(
-        { error: 'Nickname is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Nickname is required' }, { status: 400 })
     }
 
     const trimmedNickname = nickname.trim()
@@ -185,10 +164,7 @@ export async function PUT(request) {
     )
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     return NextResponse.json({
@@ -207,9 +183,6 @@ export async function PUT(request) {
     })
   } catch (error) {
     console.error('[auth/me] PUT error:', error)
-    return NextResponse.json(
-      { error: 'Failed to update profile' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
   }
 }

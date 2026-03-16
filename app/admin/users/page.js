@@ -60,10 +60,7 @@ function AdminUsersContent() {
       })
       .catch((err) => {
         console.error('[admin/users] Fetch error:', err)
-        showToast(
-          t('Error al cargar usuarios', 'Error loading users'),
-          'error'
-        )
+        showToast(t('Error al cargar usuarios', 'Error loading users'), 'error')
       })
       .finally(() => setLoading(false))
   }, [page, debouncedSearch, roleFilter, t, showToast])
@@ -83,20 +80,14 @@ function AdminUsersContent() {
       })
 
       if (res.ok) {
-        showToast(
-          t('Estado premium actualizado', 'Premium status updated'),
-          'success'
-        )
+        showToast(t('Estado premium actualizado', 'Premium status updated'), 'success')
         fetchUsers()
       } else {
         throw new Error('Update failed')
       }
     } catch (err) {
       console.error('[admin/users] Toggle premium error:', err)
-      showToast(
-        t('Error al actualizar premium', 'Error updating premium'),
-        'error'
-      )
+      showToast(t('Error al actualizar premium', 'Error updating premium'), 'error')
     } finally {
       setUpdating(null)
     }
@@ -131,15 +122,27 @@ function AdminUsersContent() {
   // ── Subscription status ────────────────────────────────────────────────
   const subStatus = (user) => {
     if (user.premiumOverride) {
-      return { label: '⭐ Override', cls: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' }
+      return {
+        label: '⭐ Override',
+        cls: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+      }
     }
     if (user.subscription?.status === 'active') {
-      return { label: '✅ Active', cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' }
+      return {
+        label: '✅ Active',
+        cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+      }
     }
     if (user.subscription?.status === 'past_due') {
-      return { label: '⚠️ Past Due', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' }
+      return {
+        label: '⚠️ Past Due',
+        cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+      }
     }
-    return { label: '🔒 Inactive', cls: 'bg-slate-100 text-ink-light dark:bg-slate-800 dark:text-slate-400' }
+    return {
+      label: '🔒 Inactive',
+      cls: 'bg-slate-100 text-ink-light dark:bg-slate-800 dark:text-slate-400',
+    }
   }
 
   const totalPages = Math.ceil(total / 20)
@@ -247,12 +250,8 @@ function AdminUsersContent() {
                     key={user._id}
                     className="border-t border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                   >
-                    <td className="px-4 py-3 text-sm text-ink dark:text-white">
-                      {user.email}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-ink dark:text-white">
-                      {user.nickname}
-                    </td>
+                    <td className="px-4 py-3 text-sm text-ink dark:text-white">{user.email}</td>
+                    <td className="px-4 py-3 text-sm text-ink dark:text-white">{user.nickname}</td>
                     <td className="px-4 py-3 text-sm">
                       <span
                         className={`px-2 py-1 rounded text-xs font-bold ${

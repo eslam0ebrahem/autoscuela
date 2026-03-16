@@ -25,10 +25,7 @@ export async function POST(request) {
     const refreshToken = getRefreshTokenFromRequest(request)
 
     if (!refreshToken) {
-      return NextResponse.json(
-        { error: 'Refresh token not provided' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Refresh token not provided' }, { status: 401 })
     }
 
     // ── Verify refresh token ───────────────────────────────────────────────
@@ -36,10 +33,7 @@ export async function POST(request) {
     try {
       tokenData = jwt.verify(refreshToken, process.env.JWT_SECRET)
     } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid refresh token' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Invalid refresh token' }, { status: 401 })
     }
 
     // ── Connect to DB and get user ─────────────────────────────────────────
@@ -48,10 +42,7 @@ export async function POST(request) {
     const user = await User.findById(tokenData.userId).select('-passwordHash')
 
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     // ── Check refresh token validity in DB ─────────────────────────────────
@@ -118,10 +109,7 @@ export async function POST(request) {
   } catch (error) {
     console.error('[auth/refresh] Error:', error)
 
-    return NextResponse.json(
-      { error: 'Failed to refresh token' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to refresh token' }, { status: 500 })
   }
 }
 
@@ -137,24 +125,19 @@ export async function GET(request) {
     // No CSRF check needed for GET
 
     // ── Get access token ───────────────────────────────────────────────────
-    const token = request.headers.get('authorization')?.substring(7) ||
-                  request.cookies.get('vialia_token')?.value
+    const token =
+      request.headers.get('authorization')?.substring(7) ||
+      request.cookies.get('vialia_token')?.value
 
     if (!token) {
-      return NextResponse.json(
-        { error: 'No token provided' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'No token provided' }, { status: 401 })
     }
 
     // ── Decode token (without verification) ────────────────────────────────
     const decoded = jwt.decode(token)
 
     if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid token format' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid token format' }, { status: 400 })
     }
 
     // ── Calculate time remaining ───────────────────────────────────────────
@@ -162,10 +145,7 @@ export async function GET(request) {
     const expiresIn = decoded.exp - now
 
     if (expiresIn <= 0) {
-      return NextResponse.json(
-        { error: 'Token expired', expiresIn: 0 },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Token expired', expiresIn: 0 }, { status: 401 })
     }
 
     // Warn if expiring soon (within 1 minute)
@@ -180,9 +160,6 @@ export async function GET(request) {
   } catch (error) {
     console.error('[auth/refresh] GET error:', error)
 
-    return NextResponse.json(
-      { error: 'Failed to check token' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to check token' }, { status: 500 })
   }
 }

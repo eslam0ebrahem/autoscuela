@@ -87,10 +87,7 @@ function AdminContent() {
           {t('Panel de Administración', 'Admin Panel')}
         </h1>
         <p className="text-ink-light dark:text-slate-400">
-          {t(
-            'Gestiona el contenido y usuarios de Vialia',
-            'Manage Vialia content and users'
-          )}
+          {t('Gestiona el contenido y usuarios de Vialia', 'Manage Vialia content and users')}
         </p>
       </div>
 
@@ -98,10 +95,7 @@ function AdminContent() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-24 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse"
-            />
+            <div key={i} className="h-24 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
           ))}
         </div>
       ) : error ? (
@@ -122,19 +116,14 @@ function AdminContent() {
             <div className="text-sm text-ink-light dark:text-slate-400 mb-1">
               {t('Total Usuarios', 'Total Users')}
             </div>
-            <div className="text-3xl font-black text-ink dark:text-white">
-              {stats?.users || 0}
-            </div>
+            <div className="text-3xl font-black text-ink dark:text-white">{stats?.users || 0}</div>
           </div>
           <div className="p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
             <div className="text-sm text-ink-light dark:text-slate-400 mb-1">
               {t('Tasa de Activación', 'Activation Rate')}
             </div>
             <div className="text-3xl font-black text-green-600 dark:text-green-400">
-              {stats?.questions
-                ? Math.round((stats.activeQuestions / stats.questions) * 100)
-                : 0}
-              %
+              {stats?.questions ? Math.round((stats.activeQuestions / stats.questions) * 100) : 0}%
             </div>
           </div>
         </div>
@@ -155,12 +144,8 @@ function AdminContent() {
                 {link.icon}
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-black text-ink dark:text-white mb-1">
-                  {link.title}
-                </h3>
-                <p className="text-sm text-ink-light dark:text-slate-400 mb-3">
-                  {link.desc}
-                </p>
+                <h3 className="text-xl font-black text-ink dark:text-white mb-1">{link.title}</h3>
+                <p className="text-sm text-ink-light dark:text-slate-400 mb-3">{link.desc}</p>
                 {link.count !== undefined && (
                   <div className="inline-flex items-center gap-1 px-3 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-bold text-ink dark:text-white">
                     <BarChartOutlined />

@@ -21,22 +21,23 @@ export default class ErrorBoundary extends Component {
 
     return (
       <div className="min-h-[50vh] flex items-center justify-center px-4">
-        <div className="w-full max-w-sm rounded-3xl border border-error/20 bg-base-100
-          shadow-sm overflow-hidden text-center">
-
+        <div
+          className="w-full max-w-sm rounded-3xl border border-error/20 bg-base-100
+          shadow-sm overflow-hidden text-center"
+        >
           {/* Red top strip */}
           <div className="h-1.5 bg-gradient-to-r from-error/60 via-error to-error/60" />
 
           <div className="p-8 space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-error/10 border border-error/20
-              flex items-center justify-center text-2xl mx-auto">
+            <div
+              className="w-14 h-14 rounded-2xl bg-error/10 border border-error/20
+              flex items-center justify-center text-2xl mx-auto"
+            >
               ⚠️
             </div>
 
             <div>
-              <h2 className="text-lg font-black text-base-content">
-                Algo salió mal
-              </h2>
+              <h2 className="text-lg font-black text-base-content">Algo salió mal</h2>
               <p className="text-sm text-base-content/50 mt-1.5 leading-relaxed">
                 {this.props.message ||
                   'Ha ocurrido un error inesperado en esta sección. Por favor, inténtalo de nuevo.'}
@@ -59,8 +60,10 @@ export default class ErrorBoundary extends Component {
                 <summary className="text-xs font-bold text-base-content/40 cursor-pointer hover:text-base-content/60">
                   Stack trace (dev only)
                 </summary>
-                <pre className="mt-2 p-3 rounded-xl bg-base-200 text-[10px] text-error/80
-                  overflow-auto max-h-40 leading-relaxed whitespace-pre-wrap">
+                <pre
+                  className="mt-2 p-3 rounded-xl bg-base-200 text-[10px] text-error/80
+                  overflow-auto max-h-40 leading-relaxed whitespace-pre-wrap"
+                >
                   {this.state.error.toString()}
                 </pre>
               </details>
@@ -71,4 +74,3 @@ export default class ErrorBoundary extends Component {
     )
   }
 }
- 

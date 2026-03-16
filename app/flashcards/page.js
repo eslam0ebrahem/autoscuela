@@ -128,7 +128,8 @@ function FlashcardDeck({ deck, lang, onBack }) {
       // Update stats
       setStats((prev) => ({
         ...prev,
-        [status === 'got_it' ? 'got' : 'practice']: prev[status === 'got_it' ? 'got' : 'practice'] + 1,
+        [status === 'got_it' ? 'got' : 'practice']:
+          prev[status === 'got_it' ? 'got' : 'practice'] + 1,
       }))
 
       // Reset flip state
@@ -190,8 +191,14 @@ function FlashcardDeck({ deck, lang, onBack }) {
           </h3>
           <p className="text-sm text-ink-light dark:text-slate-400">
             {cards.length === 0
-              ? t('Intenta con otro tema o vuelve más tarde', 'Try another topic or come back later')
-              : t('Hubo un problema cargando las tarjetas', 'There was a problem loading the flashcards')}
+              ? t(
+                  'Intenta con otro tema o vuelve más tarde',
+                  'Try another topic or come back later'
+                )
+              : t(
+                  'Hubo un problema cargando las tarjetas',
+                  'There was a problem loading the flashcards'
+                )}
           </p>
           <button
             onClick={onBack}
@@ -219,8 +226,8 @@ function FlashcardDeck({ deck, lang, onBack }) {
               isPerfect
                 ? 'bg-green-100 dark:bg-green-900/30'
                 : isGood
-                ? 'bg-indigo-100 dark:bg-indigo-900/30'
-                : 'bg-orange-100 dark:bg-orange-900/30'
+                  ? 'bg-indigo-100 dark:bg-indigo-900/30'
+                  : 'bg-orange-100 dark:bg-orange-900/30'
             }`}
           >
             {isPerfect ? (
@@ -237,8 +244,8 @@ function FlashcardDeck({ deck, lang, onBack }) {
               {isPerfect
                 ? t('¡Perfecto!', 'Perfect!')
                 : isGood
-                ? t('¡Buen trabajo!', 'Good job!')
-                : t('Sigue practicando', 'Keep practicing')}
+                  ? t('¡Buen trabajo!', 'Good job!')
+                  : t('Sigue practicando', 'Keep practicing')}
             </h2>
             <p className="text-ink-light dark:text-slate-400">
               {t('Has completado todas las tarjetas', 'You completed all flashcards')}
@@ -248,13 +255,17 @@ function FlashcardDeck({ deck, lang, onBack }) {
           {/* Stats */}
           <div className="grid grid-cols-2 gap-6 w-full max-w-sm">
             <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
-              <div className="text-3xl font-black text-green-600 dark:text-green-400">{stats.got}</div>
+              <div className="text-3xl font-black text-green-600 dark:text-green-400">
+                {stats.got}
+              </div>
               <p className="text-xs font-semibold text-green-700 dark:text-green-300 mt-1">
                 {t('Sabidas', 'Learned')}
               </p>
             </div>
             <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl border border-orange-200 dark:border-orange-800">
-              <div className="text-3xl font-black text-orange-600 dark:text-orange-400">{stats.practice}</div>
+              <div className="text-3xl font-black text-orange-600 dark:text-orange-400">
+                {stats.practice}
+              </div>
               <p className="text-xs font-semibold text-orange-700 dark:text-orange-300 mt-1">
                 {t('Repasar', 'Review')}
               </p>
@@ -290,8 +301,10 @@ function FlashcardDeck({ deck, lang, onBack }) {
   // ── Active flashcard view ──────────────────────────────────────────────
   const currentCard = cards[currentIdx]
   const questionText = getLocalizedText(currentCard.question, lang)
-  const answerOpt = currentCard.options?.find(o => o.idx === currentCard.correct_option_idx)
-  const answerText = answerOpt ? getLocalizedText({ es: answerOpt.text_es, en: answerOpt.text_en }, lang) : '...'
+  const answerOpt = currentCard.options?.find((o) => o.idx === currentCard.correct_option_idx)
+  const answerText = answerOpt
+    ? getLocalizedText({ es: answerOpt.text_es, en: answerOpt.text_en }, lang)
+    : '...'
   const progress = ((currentIdx + 1) / cards.length) * 100
 
   return (
@@ -372,7 +385,9 @@ function FlashcardDeck({ deck, lang, onBack }) {
             <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-6">
               <CheckCircleOutlined className="text-3xl text-green-600 dark:text-green-400" />
             </div>
-            <p className="text-lg leading-relaxed text-ink dark:text-white font-medium">{answerText}</p>
+            <p className="text-lg leading-relaxed text-ink dark:text-white font-medium">
+              {answerText}
+            </p>
           </div>
         </div>
       </div>

@@ -25,11 +25,7 @@ describe('API Routes: Bookmarks', () => {
         const limitNum = parseInt(limit, 10)
         const offsetNum = parseInt(offset, 10)
         return (
-          !isNaN(limitNum) &&
-          !isNaN(offsetNum) &&
-          limitNum > 0 &&
-          limitNum <= 100 &&
-          offsetNum >= 0
+          !isNaN(limitNum) && !isNaN(offsetNum) && limitNum > 0 && limitNum <= 100 && offsetNum >= 0
         )
       }
 
@@ -123,9 +119,7 @@ describe('API Routes: Bookmarks', () => {
 
     it('should remove bookmark for user', () => {
       const removeBookmark = (bookmarks, questionIdToRemove) => {
-        return bookmarks.filter(
-          (b) => b.questionId.toString() !== questionIdToRemove
-        )
+        return bookmarks.filter((b) => b.questionId.toString() !== questionIdToRemove)
       }
 
       const bookmarks = [
@@ -137,10 +131,7 @@ describe('API Routes: Bookmarks', () => {
         },
       ]
 
-      const remaining = removeBookmark(
-        bookmarks,
-        '000000000000000000000001'
-      )
+      const remaining = removeBookmark(bookmarks, '000000000000000000000001')
       expect(remaining).toHaveLength(1)
       expect(remaining[0].questionId.toString()).toBe('000000000000000000000002')
     })
@@ -148,9 +139,7 @@ describe('API Routes: Bookmarks', () => {
     it('should handle non-existent bookmark gracefully', () => {
       const removeBookmark = (bookmarks, questionIdToRemove) => {
         const beforeLength = bookmarks.length
-        const filtered = bookmarks.filter(
-          (b) => b.questionId.toString() !== questionIdToRemove
-        )
+        const filtered = bookmarks.filter((b) => b.questionId.toString() !== questionIdToRemove)
         return { filtered, deleted: beforeLength > filtered.length }
       }
 
@@ -160,10 +149,7 @@ describe('API Routes: Bookmarks', () => {
         },
       ]
 
-      const result = removeBookmark(
-        bookmarks,
-        '000000000000000000000999'
-      )
+      const result = removeBookmark(bookmarks, '000000000000000000000999')
       expect(result.deleted).toBe(false)
       expect(result.filtered).toHaveLength(1)
     })
@@ -188,13 +174,9 @@ describe('API Routes: Bookmarks', () => {
         }
       }
 
-      const bookmark = createBookmark(
-        new mongoose.Types.ObjectId().toString()
-      )
+      const bookmark = createBookmark(new mongoose.Types.ObjectId().toString())
       expect(bookmark.bookmarkedAt).toBeInstanceOf(Date)
-      expect(bookmark.bookmarkedAt.getTime()).toBeLessThanOrEqual(
-        new Date().getTime()
-      )
+      expect(bookmark.bookmarkedAt.getTime()).toBeLessThanOrEqual(new Date().getTime())
     })
   })
 })

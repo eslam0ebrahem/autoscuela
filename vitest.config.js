@@ -9,13 +9,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        '__tests__/',
-        'app/',
-        'components/',
-        'models/',
-      ],
+      exclude: ['node_modules/', '__tests__/', 'app/', 'components/', 'models/'],
       lines: 60,
       functions: 60,
       branches: 50,

@@ -24,28 +24,28 @@ function ToastItem({ toast, dismiss }) {
 
   const config = {
     success: {
-      bar:  'bg-success',
+      bar: 'bg-success',
       icon: '✓',
       ring: 'border-success/20 bg-success/8',
       iconBg: 'bg-success/15 text-success',
       text: 'text-base-content',
     },
     error: {
-      bar:  'bg-error',
+      bar: 'bg-error',
       icon: '✕',
       ring: 'border-error/20 bg-error/8',
       iconBg: 'bg-error/15 text-error',
       text: 'text-base-content',
     },
     warning: {
-      bar:  'bg-warning',
+      bar: 'bg-warning',
       icon: '⚠',
       ring: 'border-warning/20 bg-warning/8',
       iconBg: 'bg-warning/15 text-warning',
       text: 'text-base-content',
     },
     info: {
-      bar:  'bg-primary',
+      bar: 'bg-primary',
       icon: 'ℹ',
       ring: 'border-primary/20 bg-primary/8',
       iconBg: 'bg-primary/15 text-primary',
@@ -64,17 +64,17 @@ function ToastItem({ toast, dismiss }) {
       className={`w-full max-w-sm rounded-2xl border shadow-lg overflow-hidden
         transition-all duration-300 ease-out
         ${c.ring}
-        ${visible
-          ? 'opacity-100 translate-y-0 scale-100'
-          : 'opacity-0 translate-y-4 scale-95'}`}
+        ${visible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-4 scale-95'}`}
     >
       {/* Colour top bar */}
       <div className={`h-1 w-full ${c.bar}`} />
 
       <div className="flex items-start gap-3 px-4 py-3">
         {/* Icon */}
-        <div className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center
-          text-sm font-black ${c.iconBg}`}>
+        <div
+          className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center
+          text-sm font-black ${c.iconBg}`}
+        >
           {c.icon}
         </div>
 
@@ -113,9 +113,9 @@ export function ToastProvider({ children }) {
 
   const toast = {
     success: (msg, dur) => addToast(msg, 'success', dur),
-    error:   (msg, dur) => addToast(msg, 'error',   dur || 5000),
+    error: (msg, dur) => addToast(msg, 'error', dur || 5000),
     warning: (msg, dur) => addToast(msg, 'warning', dur),
-    info:    (msg, dur) => addToast(msg, 'info',    dur),
+    info: (msg, dur) => addToast(msg, 'info', dur),
   }
 
   return (

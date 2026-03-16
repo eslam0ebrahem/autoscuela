@@ -46,13 +46,13 @@ function MistakeCard({ mistake, onReview, onClear, t, lang = 'es' }) {
   const [expanded, setExpanded] = useState(false)
 
   const questionText = mistake?.question?.[lang] || mistake?.question?.es || ''
-  
-  const correctOption = mistake?.options?.find(o => o.idx === mistake?.correct_option_idx)
-  const userOption = mistake?.options?.find(o => o.idx === mistake?.lastWrongAnswerIdx)
-  
-  const correctAnswer = correctOption ? (correctOption['text_' + lang] || correctOption.text_es) : ''
-  const userAnswer = userOption ? (userOption['text_' + lang] || userOption.text_es) : ''
-  
+
+  const correctOption = mistake?.options?.find((o) => o.idx === mistake?.correct_option_idx)
+  const userOption = mistake?.options?.find((o) => o.idx === mistake?.lastWrongAnswerIdx)
+
+  const correctAnswer = correctOption ? correctOption['text_' + lang] || correctOption.text_es : ''
+  const userAnswer = userOption ? userOption['text_' + lang] || userOption.text_es : ''
+
   const explanation = mistake.metadata?.help_html || ''
   const topic = mistake?.topic || t('Desconocido', 'Unknown')
   const timesIncorrect = mistake?.timesWrong || 1
@@ -85,7 +85,11 @@ function MistakeCard({ mistake, onReview, onClear, t, lang = 'es' }) {
           </h3>
           {mistake.metadata?.image_url && (
             <div className="mt-2 rounded-lg overflow-hidden border border-slate-100 dark:border-slate-700 max-w-[240px]">
-              <img src={mistake.metadata.image_url} alt="Question" className="w-full h-auto object-cover" />
+              <img
+                src={mistake.metadata.image_url}
+                alt="Question"
+                className="w-full h-auto object-cover"
+              />
             </div>
           )}
           {lastAttempt && (
@@ -132,13 +136,15 @@ function MistakeCard({ mistake, onReview, onClear, t, lang = 'es' }) {
               <BulbOutlined />
               {t('Explicación', 'Explanation')}
             </span>
-            <span className={`text-indigo-600 dark:text-indigo-400 transition-transform ${expanded ? 'rotate-180' : ''}`}>
+            <span
+              className={`text-indigo-600 dark:text-indigo-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            >
               ▼
             </span>
           </button>
           {expanded && (
             <div className="mt-2 p-4 bg-white dark:bg-slate-800 rounded-lg border border-indigo-200 dark:border-indigo-800">
-              <div 
+              <div
                 className="text-sm text-ink dark:text-white leading-relaxed help-html"
                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(explanation) }}
               />
@@ -175,10 +181,11 @@ function FilterButton({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${active
+      className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+        active
           ? 'bg-primary text-white shadow-md'
           : 'bg-slate-100 dark:bg-slate-800 text-ink dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
-        }`}
+      }`}
     >
       {children}
     </button>
@@ -489,13 +496,13 @@ function MistakeReviewContent() {
               <p className="text-sm text-ink-light dark:text-slate-400 max-w-md mx-auto">
                 {filter !== FILTER_OPTIONS.ALL || selectedTopic
                   ? t(
-                    'No tienes errores que coincidan con estos filtros',
-                    'You have no mistakes matching these filters'
-                  )
+                      'No tienes errores que coincidan con estos filtros',
+                      'You have no mistakes matching these filters'
+                    )
                   : t(
-                    'No has cometido errores aún. ¡Sigue así!',
-                    "You haven't made any mistakes yet. Keep it up!"
-                  )}
+                      'No has cometido errores aún. ¡Sigue así!',
+                      "You haven't made any mistakes yet. Keep it up!"
+                    )}
               </p>
             </div>
             <button
@@ -509,18 +516,19 @@ function MistakeReviewContent() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {filteredMistakes.map((mistake, index) => (
-            mistake && (
-              <MistakeCard
-                key={mistake.questionId || `mistake-${index}`}
-                mistake={mistake}
-                onReview={handleReviewMistake}
-                onClear={handleClearMistake}
-                t={t}
-                lang={lang}
-              />
-            )
-          ))}
+          {filteredMistakes.map(
+            (mistake, index) =>
+              mistake && (
+                <MistakeCard
+                  key={mistake.questionId || `mistake-${index}`}
+                  mistake={mistake}
+                  onReview={handleReviewMistake}
+                  onClear={handleClearMistake}
+                  t={t}
+                  lang={lang}
+                />
+              )
+          )}
         </div>
       )}
     </div>

@@ -25,14 +25,14 @@ export async function DELETE(request, { params }) {
 
     // Remove from array
     user.bookmarkedQuestions = user.bookmarkedQuestions.filter(
-      bookmarkId => bookmarkId.toString() !== id
+      (bookmarkId) => bookmarkId.toString() !== id
     )
 
     await user.save()
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Question removed from bookmarks' 
+    return NextResponse.json({
+      success: true,
+      message: 'Question removed from bookmarks',
     })
   } catch (error) {
     console.error('[api/bookmarks/[id]] DELETE error:', error)

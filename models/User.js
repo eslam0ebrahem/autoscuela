@@ -18,7 +18,11 @@ const userSchema = new mongoose.Schema(
     },
 
     subscription: {
-      status: { type: String, enum: ['active', 'inactive', 'past_due', 'canceled'], default: 'inactive' },
+      status: {
+        type: String,
+        enum: ['active', 'inactive', 'past_due', 'canceled'],
+        default: 'inactive',
+      },
       stripeCustomerId: { type: String },
       stripeSubscriptionId: { type: String },
       currentPeriodEnd: { type: Date },
@@ -35,6 +39,7 @@ const userSchema = new mongoose.Schema(
       examLanguages: [{ type: String }],
       dailyChallengeCompletedAt: { type: Date },
       dailyChallengeStreak: { type: Number, default: 0 },
+      rank: { type: Number, default: 0 }, // Pre-calculated leaderboard rank (0 = not ranked)
     },
 
     // AI insights cache
@@ -57,18 +62,25 @@ const userSchema = new mongoose.Schema(
     bookmarkedQuestions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
 
     // Study history for trends
-    studyHistory: [{
-      date: { type: Date },
-      questionsAnswered: { type: Number, default: 0 },
-      correctAnswers: { type: Number, default: 0 },
-      minutesStudied: { type: Number, default: 0 },
-    }],
+    studyHistory: [
+      {
+        date: { type: Date },
+        questionsAnswered: { type: Number, default: 0 },
+        correctAnswers: { type: Number, default: 0 },
+        minutesStudied: { type: Number, default: 0 },
+      },
+    ],
 
-    // User skill profile (v4)
+    // User skill profile (v4) with caching
     skillProfile: {
-      overallLevel: { type: String, enum: ['beginner', 'easy', 'medium', 'hard', 'expert'], default: 'beginner' },
+      overallLevel: {
+        type: String,
+        enum: ['beginner', 'easy', 'medium', 'hard', 'expert'],
+        default: 'beginner',
+      },
       topicLevels: { type: Map, of: String },
       lastCalculated: { type: Date },
+      lastCalculatedAt: { type: Date }, // TTL tracking: recalculate if >1 hour old
     },
   },
   { timestamps: true }

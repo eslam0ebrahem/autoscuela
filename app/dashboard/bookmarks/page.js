@@ -102,7 +102,9 @@ function BookmarkCard({ question, onRemove, onReview, t, lang = 'es' }) {
                 ) : (
                   <div className="w-4 h-4 rounded-full border-2 border-slate-300 dark:border-slate-600 shrink-0 mt-0.5" />
                 )}
-                <p className={`text-sm ${isCorrect ? 'text-green-900 dark:text-green-200 font-semibold' : 'text-ink-light dark:text-slate-400'}`}>
+                <p
+                  className={`text-sm ${isCorrect ? 'text-green-900 dark:text-green-200 font-semibold' : 'text-ink-light dark:text-slate-400'}`}
+                >
                   {optionText}
                 </p>
               </div>
@@ -122,13 +124,15 @@ function BookmarkCard({ question, onRemove, onReview, t, lang = 'es' }) {
               <BulbOutlined />
               {t('Explicación', 'Explanation')}
             </span>
-            <span className={`text-indigo-600 dark:text-indigo-400 transition-transform ${expanded ? 'rotate-180' : ''}`}>
+            <span
+              className={`text-indigo-600 dark:text-indigo-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            >
               ▼
             </span>
           </button>
           {expanded && (
             <div className="mt-2 p-3 bg-white dark:bg-slate-800 rounded-lg border border-indigo-200 dark:border-indigo-800">
-              <div 
+              <div
                 className="text-sm text-ink dark:text-white leading-relaxed prose prose-sm dark:prose-invert max-w-none"
                 dangerouslySetInnerHTML={{ __html: explanation }}
               />
@@ -341,7 +345,10 @@ function BookmarksContent() {
           </h1>
           <p className="text-sm text-ink-light dark:text-slate-400 mt-1">
             {questions.length > 0
-              ? t(`${questions.length} preguntas para revisar`, `${questions.length} questions to review`)
+              ? t(
+                  `${questions.length} preguntas para revisar`,
+                  `${questions.length} questions to review`
+                )
               : t('Sin preguntas guardadas', 'No bookmarks yet')}
           </p>
         </div>

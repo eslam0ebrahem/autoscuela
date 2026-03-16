@@ -47,7 +47,8 @@ function ReadinessRing({ score, t }) {
   const radius = 60
   const circumference = 2 * Math.PI * radius
   const validScore = typeof score === 'number' && !isNaN(score) ? score : 0
-  const dashoffset = score != null ? circumference - (validScore / 100) * circumference : circumference
+  const dashoffset =
+    score != null ? circumference - (validScore / 100) * circumference : circumference
 
   const getColorAndLabel = () => {
     if (score >= READINESS_THRESHOLDS.READY) {
@@ -258,9 +259,7 @@ function AIInsightsContent() {
             <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
               <LockOutlined className="text-5xl text-white" />
             </div>
-            <h2 className="text-2xl font-black">
-              {t('Función Premium', 'Premium Feature')}
-            </h2>
+            <h2 className="text-2xl font-black">{t('Función Premium', 'Premium Feature')}</h2>
             <p className="text-orange-100 max-w-md">
               {t(
                 'El análisis IA está disponible solo para usuarios Premium. Mejora tu plan para desbloquear recomendaciones personalizadas.',
@@ -374,9 +373,7 @@ function AIInsightsContent() {
             <h2 className="text-xl md:text-2xl font-black mb-3">
               {t('Tu Nivel de Preparación', 'Your Readiness Level')}
             </h2>
-            {coachMessage && (
-              <p className="text-indigo-100 leading-relaxed mb-4">{coachMessage}</p>
-            )}
+            {coachMessage && <p className="text-indigo-100 leading-relaxed mb-4">{coachMessage}</p>}
             {predictedReadyDate && (
               <div className="flex items-center gap-2 text-indigo-200 text-sm">
                 <ClockCircleOutlined />
@@ -413,7 +410,9 @@ function AIInsightsContent() {
         <StatCard
           icon={<LineChartOutlined />}
           label={t('Mejora Semanal', 'Weekly Improvement')}
-          value={improvementRate != null ? `${improvementRate > 0 ? '+' : ''}${improvementRate}%` : '—'}
+          value={
+            improvementRate != null ? `${improvementRate > 0 ? '+' : ''}${improvementRate}%` : '—'
+          }
           color={improvementRate > 0 ? 'green-500' : improvementRate < 0 ? 'red-500' : 'slate-400'}
         />
       </div>

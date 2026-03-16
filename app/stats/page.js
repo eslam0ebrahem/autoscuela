@@ -30,7 +30,11 @@ const ACCURACY_THRESHOLDS = {
 }
 
 const ACCURACY_COLORS = {
-  EXCELLENT: { bg: 'bg-green-500', text: 'text-green-600', light: 'bg-green-100 dark:bg-green-900/30' },
+  EXCELLENT: {
+    bg: 'bg-green-500',
+    text: 'text-green-600',
+    light: 'bg-green-100 dark:bg-green-900/30',
+  },
   GOOD: { bg: 'bg-amber-500', text: 'text-amber-600', light: 'bg-amber-100 dark:bg-amber-900/30' },
   POOR: { bg: 'bg-red-500', text: 'text-red-600', light: 'bg-red-100 dark:bg-red-900/30' },
 }
@@ -112,14 +116,19 @@ function StatCard({ icon, label, value, trend, trendValue, color = 'primary' }) 
   return (
     <div className="card hover:shadow-lg transition-shadow">
       <div className="flex items-start justify-between mb-2">
-        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br from-${color} to-indigo-600 flex items-center justify-center text-white text-xl`}>
+        <div
+          className={`w-12 h-12 rounded-xl bg-gradient-to-br from-${color} to-indigo-600 flex items-center justify-center text-white text-xl`}
+        >
           {icon}
         </div>
         {showTrend && (
-          <div className={`flex items-center gap-1 text-xs font-bold ${isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-slate-400'}`}>
+          <div
+            className={`flex items-center gap-1 text-xs font-bold ${isPositive ? 'text-green-600' : isNegative ? 'text-red-600' : 'text-slate-400'}`}
+          >
             {isPositive && <RiseOutlined />}
             {isNegative && <FallOutlined />}
-            {isPositive ? '+' : ''}{trendValue}%
+            {isPositive ? '+' : ''}
+            {trendValue}%
           </div>
         )}
       </div>
@@ -167,7 +176,10 @@ function ProgressContent() {
         setTopicStats(topicsData.topics || [])
       } catch (err) {
         console.error('[progress] Fetch error:', err)
-        toast?.error?.(t('Error', 'Error'), t('Error al cargar estadísticas', 'Failed to load stats'))
+        toast?.error?.(
+          t('Error', 'Error'),
+          t('Error al cargar estadísticas', 'Failed to load stats')
+        )
       } finally {
         setLoading(false)
         setRefreshing(false)
@@ -432,7 +444,9 @@ function ProgressContent() {
                 <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
                   {index + 1}
                 </div>
-                <p className="text-sm text-indigo-900 dark:text-indigo-200 leading-relaxed">{tip}</p>
+                <p className="text-sm text-indigo-900 dark:text-indigo-200 leading-relaxed">
+                  {tip}
+                </p>
               </div>
             ))}
           </div>

@@ -15,32 +15,33 @@ export async function GET(request) {
 
     const todayStart = getMadridStartOfDay()
 
-    const [completedExams, totalAnswered, correctAnswers, recentSessions, studyTimeToday] = await Promise.all([
-      ExamSession.countDocuments({ userId: tokenData.userId, status: 'completed' }),
-      UserAnswer.countDocuments({ userId: tokenData.userId }),
-      UserAnswer.countDocuments({ userId: tokenData.userId, is_correct: true }),
-      ExamSession.find({ userId: tokenData.userId, status: 'completed' })
-        .sort({ completedAt: -1 })
-        .limit(10)
-        .select('score passed errorCount completedAt mode'),
-      // Calculate study time today (sum of time_taken_seconds from today's answers)
-      UserAnswer.aggregate([
-        {
-          $match: {
-            userId: new mongoose.Types.ObjectId(tokenData.userId),
-            createdAt: { $gte: todayStart },
-            time_taken_seconds: { $exists: true, $gt: 0 },
+    const [completedExams, totalAnswered, correctAnswers, recentSessions, studyTimeToday] =
+      await Promise.all([
+        ExamSession.countDocuments({ userId: tokenData.userId, status: 'completed' }),
+        UserAnswer.countDocuments({ userId: tokenData.userId }),
+        UserAnswer.countDocuments({ userId: tokenData.userId, is_correct: true }),
+        ExamSession.find({ userId: tokenData.userId, status: 'completed' })
+          .sort({ completedAt: -1 })
+          .limit(10)
+          .select('score passed errorCount completedAt mode'),
+        // Calculate study time today (sum of time_taken_seconds from today's answers)
+        UserAnswer.aggregate([
+          {
+            $match: {
+              userId: new mongoose.Types.ObjectId(tokenData.userId),
+              createdAt: { $gte: todayStart },
+              time_taken_seconds: { $exists: true, $gt: 0 },
+            },
           },
-        },
-        {
-          $group: {
-            _id: null,
-            totalSeconds: { $sum: '$time_taken_seconds' },
-            questionsToday: { $sum: 1 },
+          {
+            $group: {
+              _id: null,
+              totalSeconds: { $sum: '$time_taken_seconds' },
+              questionsToday: { $sum: 1 },
+            },
           },
-        },
-      ]),
-    ])
+        ]),
+      ])
 
     const passedExams = await ExamSession.countDocuments({
       userId: tokenData.userId,

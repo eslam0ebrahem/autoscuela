@@ -73,9 +73,6 @@ export async function GET(request) {
     })
   } catch (error) {
     console.error('[dashboard] Unhandled error:', error)
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

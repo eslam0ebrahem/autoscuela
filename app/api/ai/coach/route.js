@@ -30,10 +30,7 @@ export async function POST(request) {
     try {
       body = await request.json()
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
     const { data: validated, error: validationError } = parseSchema(
@@ -72,11 +69,26 @@ export async function POST(request) {
       })),
     }
 
-    const feedback = await getExamCoachFeedback({ examSummary, lang })
-
-    return NextResponse.json({ feedback })
+    try {
+      const feedback = await getExamCoachFeedback({ examSummary, lang })
+      return NextResponse.json({ feedback })
+    } catch (aiError) {
+      console.error('[api/ai/coach] AI generation failed:', aiError.message)
+      // Graceful degradation: show user-friendly message instead of blank response
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'AI features temporarily unavailable',
+          message:
+            lang === 'es'
+              ? 'Los análisis de IA del entrenador no están disponibles en este momento. Intenta más tarde.'
+              : 'AI coach analysis is temporarily unavailable. Please try again later.',
+        },
+        { status: 503 }
+      )
+    }
   } catch (error) {
-    console.error('[api/ai/coach] Error:', error)
-    return NextResponse.json({ error: 'Coach feedback failed' }, { status: 500 })
+    console.error('[api/ai/coach] Request error:', error)
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 })
   }
 }

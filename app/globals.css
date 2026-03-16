@@ -1,28 +1,28 @@
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-@import "tailwindcss";
+@import 'tailwindcss';
 @config "../tailwind.config.js";
 
 @layer base {
   :root {
-    --primary: #6366F1;
-    --primary-light: #818CF8;
-    --secondary: #10B981;
-    --success: #10B981;
-    --danger: #F43F5E;
-    --warning: #F59E0B;
-    --canvas: #F8FAFC;
-    --surface: #FFFFFF;
-    --ink: #1E293B;
-    --ink-light: #64748B;
-    --border: #E2E8F0;
+    --primary: #6366f1;
+    --primary-light: #818cf8;
+    --secondary: #10b981;
+    --success: #10b981;
+    --danger: #f43f5e;
+    --warning: #f59e0b;
+    --canvas: #f8fafc;
+    --surface: #ffffff;
+    --ink: #1e293b;
+    --ink-light: #64748b;
+    --border: #e2e8f0;
   }
 
   .dark {
-    --canvas: #0B0F14;
-    --surface: #151B28;
-    --ink: #F9FAFB;
-    --ink-light: #9CA3AF;
-    --border: #1F2937;
+    --canvas: #0b0f14;
+    --surface: #151b28;
+    --ink: #f9fafb;
+    --ink-light: #9ca3af;
+    --border: #1f2937;
   }
 
   * {
@@ -39,7 +39,9 @@
   body {
     min-height: 100vh;
     background: var(--canvas);
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
   }
 
   /* Scrollbar styling */
@@ -48,22 +50,24 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #F1F5F9;
+    background: #f1f5f9;
   }
   .dark ::-webkit-scrollbar-track {
-    background: #1E293B;
+    background: #1e293b;
   }
   ::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
+    background: #cbd5e1;
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #94A3B8;
+    background: #94a3b8;
   }
 
   /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -162,19 +166,19 @@
   }
 
   .bg-gradient-primary {
-    background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   }
 
   .bg-gradient-success {
-    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   }
 
   .bg-gradient-danger {
-    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   }
 
   .bg-gradient-purple {
-    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   }
 
   .glass {
@@ -192,28 +196,53 @@
 
 /* Custom animations */
 @keyframes flicker {
-  0% { transform: scale(1) rotate(-1deg); }
-  100% { transform: scale(1.05) rotate(1deg); }
+  0% {
+    transform: scale(1) rotate(-1deg);
+  }
+  100% {
+    transform: scale(1.05) rotate(1deg);
+  }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @keyframes confetti-fall {
-  0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  0% {
+    transform: translateY(-100%) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
 }
 
 @keyframes score-count {
-  from { transform: scale(0.5); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .animate-score {
@@ -233,12 +262,14 @@
   display: block;
 }
 
-.help-html strong, .help-html b {
+.help-html strong,
+.help-html b {
   color: var(--ink);
   font-weight: 600;
 }
 
-.help-html ul, .help-html ol {
+.help-html ul,
+.help-html ol {
   padding-left: 1.5rem;
   margin: 0.5rem 0;
 }
@@ -295,13 +326,13 @@
 
 /* Dark mode specific overrides */
 .dark .bg-canvas {
-  background: #0F172A;
+  background: #0f172a;
 }
 
 .dark .text-ink {
-  color: #F1F5F9;
+  color: #f1f5f9;
 }
 
 .dark .text-ink-light {
-  color: #94A3B8;
+  color: #94a3b8;
 }

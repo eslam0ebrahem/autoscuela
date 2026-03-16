@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from './AuthContext'
 import { useTheme } from './ThemeProvider'
+import { useFocusTrap } from '@/lib/useFocusTrap'
 import {
   HomeOutlined,
   FileTextOutlined,
@@ -41,6 +42,9 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const dropdownRef = useRef(null)
 
+  // 5.5: Add focus trap to mobile menu overlay
+  const { ref: mobileMenuRef } = useFocusTrap(mobileMenuOpen)
+
   const lang = user?.preferences?.language || 'es'
   const streak = user?.gamification?.currentStreak || 0
   const isPremium = user?.subscription?.status === 'active' || user?.premiumOverride
@@ -58,11 +62,14 @@ export default function Navbar() {
   const bottomNavLinks = navLinks.slice(0, 5)
 
   // Check if link is active
-  const isLinkActive = useCallback((href) => {
-    if (pathname === href) return true
-    if (href !== '/dashboard' && pathname?.startsWith(href)) return true
-    return false
-  }, [pathname])
+  const isLinkActive = useCallback(
+    (href) => {
+      if (pathname === href) return true
+      if (href !== '/dashboard' && pathname?.startsWith(href)) return true
+      return false
+    },
+    [pathname]
+  )
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -106,9 +113,12 @@ export default function Navbar() {
     updateLanguage(lang === 'es' ? 'en' : 'es')
   }, [lang, updateLanguage])
 
-  const handleThemeChange = useCallback((newTheme) => {
-    setTheme(newTheme)
-  }, [setTheme])
+  const handleThemeChange = useCallback(
+    (newTheme) => {
+      setTheme(newTheme)
+    },
+    [setTheme]
+  )
 
   return (
     <>
@@ -154,27 +164,22 @@ export default function Navbar() {
               )}
 
               {/* Theme Toggle */}
-              <ThemeToggle
-                theme={theme}
-                onThemeChange={handleThemeChange}
-                variant="icon"
-                t={t}
-              />
+              <ThemeToggle theme={theme} onThemeChange={handleThemeChange} variant="icon" t={t} />
 
               {/* User Profile Dropdown */}
               <div className="relative" ref={dropdownRef}>
+                {/* 5.2: Add aria-expanded to dropdown triggers and 5.4: Add aria-label to icon-only buttons */}
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-2 p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                   aria-expanded={dropdownOpen}
                   aria-haspopup="menu"
+                  aria-label={t('Menú de usuario', 'User menu')}
                 >
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
                     {user?.nickname?.[0]?.toUpperCase() || <UserOutlined />}
                   </div>
-                  {isPremium && (
-                    <CrownOutlined className="text-amber-500 text-xs" />
-                  )}
+                  {isPremium && <CrownOutlined className="text-amber-500 text-xs" />}
                 </button>
 
                 {/* Dropdown Menu */}
@@ -229,12 +234,15 @@ export default function Navbar() {
               </div>
             )}
 
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - 5.2: aria-expanded, 5.4: aria-label */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               aria-expanded={mobileMenuOpen}
-              aria-label={t('Abrir menú', 'Open menu')}
+              aria-label={
+                mobileMenuOpen ? t('Cerrar menú', 'Close menu') : t('Abrir menú', 'Open menu')
+              }
+              aria-haspopup="menu"
             >
               {mobileMenuOpen ? (
                 <CloseOutlined className="text-xl text-ink dark:text-white" />
@@ -250,19 +258,21 @@ export default function Navbar() {
       {/* Mobile Menu Overlay */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {mobileMenuOpen && (
-        <NavMobileMenu
-          user={user}
-          isPremium={isPremium}
-          navLinks={navLinks}
-          isLinkActive={isLinkActive}
-          onLogout={handleLogout}
-          onLanguageToggle={handleLanguageToggle}
-          lang={lang}
-          theme={theme}
-          onThemeChange={handleThemeChange}
-          t={t}
-          onClose={() => setMobileMenuOpen(false)}
-        />
+        <div ref={mobileMenuRef}>
+          <NavMobileMenu
+            user={user}
+            isPremium={isPremium}
+            navLinks={navLinks}
+            isLinkActive={isLinkActive}
+            onLogout={handleLogout}
+            onLanguageToggle={handleLanguageToggle}
+            lang={lang}
+            theme={theme}
+            onThemeChange={handleThemeChange}
+            t={t}
+            onClose={() => setMobileMenuOpen(false)}
+          />
+        </div>
       )}
 
       {/* ════════════════════════════════════════════════════════════════ */}

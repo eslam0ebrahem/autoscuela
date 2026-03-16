@@ -96,10 +96,14 @@ export async function POST(request) {
     const mistakeQuestionIds = filtered.map((m) => m._id)
 
     // Use adaptive selection with mistake mode to shuffle and select
-    const selectedIds = await selectAdaptiveQuestions(tokenData.userId, Math.min(count, mistakeQuestionIds.length), {
-      mode: 'mistakes',
-      mistakeQuestionIds,
-    })
+    const selectedIds = await selectAdaptiveQuestions(
+      tokenData.userId,
+      Math.min(count, mistakeQuestionIds.length),
+      {
+        mode: 'mistakes',
+        mistakeQuestionIds,
+      }
+    )
 
     // Create exam session
     const session = await ExamSession.create({

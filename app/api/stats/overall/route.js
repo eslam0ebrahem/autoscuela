@@ -68,7 +68,8 @@ export async function GET(request) {
     const lastWeekData = lastWeekStats[0] || { total: 0, correct: 0 }
 
     const thisWeekAcc = thisWeek.total > 0 ? (thisWeek.correct / thisWeek.total) * 100 : 0
-    const lastWeekAcc = lastWeekData.total > 0 ? (lastWeekData.correct / lastWeekData.total) * 100 : 0
+    const lastWeekAcc =
+      lastWeekData.total > 0 ? (lastWeekData.correct / lastWeekData.total) * 100 : 0
     const weeklyAccuracyChange = Math.round(thisWeekAcc - lastWeekAcc)
 
     const stats = {

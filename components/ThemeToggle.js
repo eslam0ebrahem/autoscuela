@@ -1,11 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import {
-  SunOutlined,
-  MoonOutlined,
-  DesktopOutlined,
-} from '@ant-design/icons'
+import { SunOutlined, MoonOutlined, DesktopOutlined } from '@ant-design/icons'
 
 /**
  * ThemeToggle Component
@@ -50,9 +46,7 @@ export default function ThemeToggle({
         <span className="text-sm font-medium text-ink dark:text-white flex-1 text-left">
           {t('Tema', 'Theme')}
         </span>
-        <span className="text-xs text-ink-light dark:text-slate-400">
-          {themeLabel}
-        </span>
+        <span className="text-xs text-ink-light dark:text-slate-400">{themeLabel}</span>
       </button>
     )
   }

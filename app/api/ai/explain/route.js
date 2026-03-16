@@ -30,10 +30,7 @@ export async function POST(request) {
     try {
       body = await request.json()
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
     const { data: validated, error: validationError } = parseSchema(
@@ -56,18 +53,33 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Question not found' }, { status: 404 })
     }
 
-    const explanation = await getQuestionExplanation({
-      question: question.question,
-      options: question.options,
-      correctIdx: question.correct_option_idx - 1,
-      selectedIdx: selectedIdx -1,
-      helpHtml: question.metadata?.help_html,
-      lang,
-    })
-
-    return NextResponse.json({ explanation })
+    try {
+      const explanation = await getQuestionExplanation({
+        question: question.question,
+        options: question.options,
+        correctIdx: question.correct_option_idx - 1,
+        selectedIdx: selectedIdx - 1,
+        helpHtml: question.metadata?.help_html,
+        lang,
+      })
+      return NextResponse.json({ explanation })
+    } catch (aiError) {
+      console.error('[api/ai/explain] AI generation failed:', aiError.message)
+      // Graceful degradation: show user-friendly message instead of blank response
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'AI features temporarily unavailable',
+          message:
+            lang === 'es'
+              ? 'Las explicaciones de IA no están disponibles en este momento. Intenta más tarde.'
+              : 'AI explanations are temporarily unavailable. Please try again later.',
+        },
+        { status: 503 }
+      )
+    }
   } catch (error) {
-    console.error('[api/ai/explain] Error:', error)
-    return NextResponse.json({ error: 'Explanation generation failed' }, { status: 500 })
+    console.error('[api/ai/explain] Request error:', error)
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 })
   }
 }

@@ -21,9 +21,7 @@ function ProtectedLayout({ children, requirePremium = false, requireAdmin = fals
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-slate-900">
         <div className="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-        <p className="text-sm text-ink-light animate-pulse">
-          {t('Cargando...', 'Loading...')}
-        </p>
+        <p className="text-sm text-ink-light animate-pulse">{t('Cargando...', 'Loading...')}</p>
       </div>
     )
   }
@@ -40,7 +38,11 @@ function ProtectedLayout({ children, requirePremium = false, requireAdmin = fals
           {isPremiumRequired ? (
             <PaywallScreen />
           ) : (
-            <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 flex-1 animate-fade-in">
+            // 5.1: Add main-content id for skip-to-content link
+            <main
+              id="main-content"
+              className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 flex-1 animate-fade-in"
+            >
               {children}
             </main>
           )}
@@ -60,9 +62,9 @@ function PaywallScreen() {
     setLoadingCheckout(true)
     setErrorMsg('')
     try {
-      const res = await fetch('/api/billing/checkout', { 
+      const res = await fetch('/api/billing/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
       })
       const data = await res.json()
       if (data.url) window.location.href = data.url
@@ -82,22 +84,38 @@ function PaywallScreen() {
           {t('Acceso Premium Requerido', 'Premium Access Required')}
         </h2>
         <p className="text-ink-light dark:text-slate-400 mb-6 leading-relaxed text-sm">
-          {t('Desbloquea todos los exámenes, tarjetas de memoria y análisis IA con una suscripción mensual.', 'Unlock all exams, flashcards, and AI analytics with a monthly subscription.')}
+          {t(
+            'Desbloquea todos los exámenes, tarjetas de memoria y análisis IA con una suscripción mensual.',
+            'Unlock all exams, flashcards, and AI analytics with a monthly subscription.'
+          )}
         </p>
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-5 mb-6 border border-blue-100 dark:border-blue-800/50">
           <div className="text-4xl font-extrabold text-primary dark:text-blue-400 mb-1">
-            $9.99<span className="text-sm font-medium text-ink-light dark:text-slate-400">/mes</span>
+            $9.99
+            <span className="text-sm font-medium text-ink-light dark:text-slate-400">/mes</span>
           </div>
           <ul className="text-sm text-left space-y-3 mt-5">
-            {[t('Exámenes ilimitados', 'Unlimited exams'), t('Tarjetas de memoria', 'Flashcard module'), t('Análisis IA', 'AI insights')].map((item, i) => (
+            {[
+              t('Exámenes ilimitados', 'Unlimited exams'),
+              t('Tarjetas de memoria', 'Flashcard module'),
+              t('Análisis IA', 'AI insights'),
+            ].map((item, i) => (
               <li key={i} className="text-ink dark:text-slate-300 flex items-start gap-3">
                 <span className="text-success font-bold mt-0.5">✓</span> <span>{item}</span>
               </li>
             ))}
           </ul>
         </div>
-        <button onClick={handleSubscribe} disabled={loadingCheckout} className="btn-primary w-full py-3.5 flex items-center justify-center gap-2">
-          {loadingCheckout ? <span className="animate-pulse">{t('Redirigiendo...', 'Redirecting...')}</span> : t('Suscribirse ahora', 'Subscribe Now')}
+        <button
+          onClick={handleSubscribe}
+          disabled={loadingCheckout}
+          className="btn-primary w-full py-3.5 flex items-center justify-center gap-2"
+        >
+          {loadingCheckout ? (
+            <span className="animate-pulse">{t('Redirigiendo...', 'Redirecting...')}</span>
+          ) : (
+            t('Suscribirse ahora', 'Subscribe Now')
+          )}
         </button>
       </div>
     </div>

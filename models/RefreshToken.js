@@ -72,10 +72,7 @@ const refreshTokenSchema = new mongoose.Schema(
 )
 
 // TTL index: automatically delete documents 1 second after expiresAt
-refreshTokenSchema.index(
-  { expiresAt: 1 },
-  { expireAfterSeconds: 1 }
-)
+refreshTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 1 })
 
 /**
  * Create a new refresh token
@@ -158,10 +155,7 @@ refreshTokenSchema.statics.rotateToken = async function (oldToken, newToken, new
  * @returns {Promise<Object>} Update result
  */
 refreshTokenSchema.statics.revokeFamily = async function (familyId) {
-  return this.updateMany(
-    { familyId },
-    { revoked: true, rotatedAt: new Date() }
-  )
+  return this.updateMany({ familyId }, { revoked: true, rotatedAt: new Date() })
 }
 
 /**
@@ -170,10 +164,7 @@ refreshTokenSchema.statics.revokeFamily = async function (familyId) {
  * @returns {Promise<Object>} Update result
  */
 refreshTokenSchema.statics.revokeUserTokens = async function (userId) {
-  return this.updateMany(
-    { userId },
-    { revoked: true, rotatedAt: new Date() }
-  )
+  return this.updateMany({ userId }, { revoked: true, rotatedAt: new Date() })
 }
 
 /**

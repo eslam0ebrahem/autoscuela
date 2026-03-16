@@ -37,7 +37,8 @@ export default function NavMobileMenu({
       <div className="md:hidden fixed inset-0 bg-black/50 z-40 animate-fadeIn" onClick={onClose} />
 
       {/* Menu Panel */}
-      <div className="md:hidden fixed top-14 right-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-900 z-50 shadow-2xl animate-slideInRight overflow-y-auto"
+      <div
+        className="md:hidden fixed top-14 right-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-900 z-50 shadow-2xl animate-slideInRight overflow-y-auto"
         role="dialog"
         aria-modal="true"
         aria-label={t('Menú de navegación', 'Navigation menu')}
@@ -52,9 +53,7 @@ export default function NavMobileMenu({
               <p className="font-bold text-ink dark:text-white truncate">
                 {user?.nickname || t('Usuario', 'User')}
               </p>
-              <p className="text-xs text-ink-light dark:text-slate-400 truncate">
-                {user?.email}
-              </p>
+              <p className="text-xs text-ink-light dark:text-slate-400 truncate">{user?.email}</p>
             </div>
           </div>
           {isPremium && (
@@ -128,12 +127,7 @@ export default function NavMobileMenu({
           </button>
 
           <div className="pt-2">
-            <ThemeToggle
-              theme={theme}
-              onThemeChange={onThemeChange}
-              variant="menu"
-              t={t}
-            />
+            <ThemeToggle theme={theme} onThemeChange={onThemeChange} variant="menu" t={t} />
           </div>
 
           <div className="pt-2">

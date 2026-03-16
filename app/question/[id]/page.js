@@ -41,9 +41,9 @@ export default function SingleQuestionReviewPage() {
       if (!res.ok) throw new Error(t('Question not found', 'Pregunta no encontrada'))
       const data = await res.json()
       setQuestion(data.question)
-      
+
       // Check bookmark status
-      const bookRes = await fetch('/api/bookmarks?idsOnly=true').then(r => r.json())
+      const bookRes = await fetch('/api/bookmarks?idsOnly=true').then((r) => r.json())
       if (bookRes.bookmarks?.includes(questionId)) {
         setBookmarked(true)
       }
@@ -92,7 +92,9 @@ export default function SingleQuestionReviewPage() {
     return (
       <AppShell>
         <div className="container-wrapper max-w-2xl mx-auto text-center py-12">
-          <h2 className="text-2xl font-black mb-4">{t('Pregunta no encontrada', 'Question not found')}</h2>
+          <h2 className="text-2xl font-black mb-4">
+            {t('Pregunta no encontrada', 'Question not found')}
+          </h2>
           <button onClick={() => router.back()} className="btn btn-primary">
             {t('Volver', 'Go Back')}
           </button>
@@ -111,9 +113,11 @@ export default function SingleQuestionReviewPage() {
       <div className="container-wrapper max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
+          {/* 5.4: Add aria-label to icon-only buttons */}
           <button
             onClick={() => router.back()}
             className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-lg"
+            aria-label={t('Volver atrás', 'Go back')}
           >
             <LeftOutlined />
           </button>
@@ -121,8 +125,15 @@ export default function SingleQuestionReviewPage() {
             <button
               onClick={toggleBookmark}
               className={`w-10 h-10 flex items-center justify-center rounded-xl border-2 transition-all ${
-                bookmarked ? 'bg-amber-50 border-amber-200 text-amber-500' : 'bg-white border-slate-100 text-slate-400'
+                bookmarked
+                  ? 'bg-amber-50 border-amber-200 text-amber-500'
+                  : 'bg-white border-slate-100 text-slate-400'
               }`}
+              aria-label={
+                bookmarked
+                  ? t('Eliminar de guardados', 'Remove from bookmarks')
+                  : t('Guardar pregunta', 'Save question')
+              }
             >
               {bookmarked ? <StarFilled /> : <StarOutlined />}
             </button>
@@ -135,11 +146,15 @@ export default function SingleQuestionReviewPage() {
             <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full uppercase tracking-wider">
               {t(question.topic_tag?.es, question.topic_tag?.en)}
             </span>
-            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-              question.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-              question.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
-              'bg-orange-100 text-orange-700'
-            }`}>
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                question.difficulty === 'easy'
+                  ? 'bg-green-100 text-green-700'
+                  : question.difficulty === 'hard'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-orange-100 text-orange-700'
+              }`}
+            >
               {t(question.difficulty, question.difficulty)}
             </span>
           </div>
@@ -150,7 +165,12 @@ export default function SingleQuestionReviewPage() {
 
           {question.metadata?.image_url && (
             <div className="rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 max-w-md mx-auto">
-              <img src={question.metadata.image_url} alt="Question" className="w-full h-auto" />
+              {/* 5.7: Ensure all question images have alt text */}
+              <img
+                src={question.metadata.image_url}
+                alt={`${t('Imagen de la pregunta:', 'Question image:')} ${questionText.substring(0, 100)}`}
+                className="w-full h-auto"
+              />
             </div>
           )}
 
@@ -162,18 +182,22 @@ export default function SingleQuestionReviewPage() {
                 <div
                   key={i}
                   className={`w-full flex items-center gap-4 p-5 rounded-3xl border-2 text-left transition-all duration-200 ${
-                    isCorrect 
-                      ? 'border-success bg-success/10 text-success' 
+                    isCorrect
+                      ? 'border-success bg-success/10 text-success'
                       : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 opacity-60'
                   }`}
                 >
-                  <span className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-black ${
-                    isCorrect ? 'bg-success text-white' : 'bg-slate-100 dark:bg-slate-700 text-ink-light'
-                  }`}>
+                  <span
+                    className={`shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-black ${
+                      isCorrect
+                        ? 'bg-success text-white'
+                        : 'bg-slate-100 dark:bg-slate-700 text-ink-light'
+                    }`}
+                  >
                     {['A', 'B', 'C', 'D'][i]}
                   </span>
                   <span className="flex-1 font-bold text-lg">
-                    {lang === 'en' ? (opt.text_en || opt.text_es) : opt.text_es}
+                    {lang === 'en' ? opt.text_en || opt.text_es : opt.text_es}
                   </span>
                   {isCorrect && <CheckCircleOutlined className="text-2xl" />}
                 </div>
@@ -189,7 +213,7 @@ export default function SingleQuestionReviewPage() {
               <BulbOutlined />
               {t('Explicación', 'Explanation')}
             </h3>
-            <div 
+            <div
               className="text-sm text-ink dark:text-white leading-relaxed help-html"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(explanation) }}
             />
