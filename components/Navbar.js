@@ -174,6 +174,7 @@ export default function Navbar() {
                   className="flex items-center gap-2 p-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                   aria-expanded={dropdownOpen}
                   aria-haspopup="menu"
+                  aria-controls="user-menu-dropdown"
                   aria-label={t('Menú de usuario', 'User menu')}
                 >
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
@@ -243,6 +244,7 @@ export default function Navbar() {
                 mobileMenuOpen ? t('Cerrar menú', 'Close menu') : t('Abrir menú', 'Open menu')
               }
               aria-haspopup="menu"
+              aria-controls="mobile-navigation"
             >
               {mobileMenuOpen ? (
                 <CloseOutlined className="text-xl text-ink dark:text-white" />

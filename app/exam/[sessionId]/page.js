@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, memo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
@@ -57,7 +57,7 @@ function playSound(src) {
 }
 
 // ── Option button ─────────────────────────────────────────
-function OptionButton({
+const OptionButton = memo(function OptionButton({
   opt,
   idx,
   displayIdx,
@@ -104,6 +104,8 @@ function OptionButton({
     <button
       onClick={() => onSelect(idx)}
       disabled={answered}
+      role="radio"
+      aria-checked={idx === selected}
       className={`w-full flex items-center gap-4 p-5 rounded-3xl border-2 text-left transition-all duration-200 ${stateClasses[state]}`}
     >
       <span
@@ -124,7 +126,7 @@ function OptionButton({
       )}
     </button>
   )
-}
+})
 
 /**
  * TYPEWRITER HOOK
@@ -745,21 +747,23 @@ function ExamInterface() {
               t={t}
             />
 
-            {currentQuestion.options.map((opt, i) => (
-              <OptionButton
-                key={i}
-                opt={opt}
-                idx={opt.idx}
-                displayIdx={i}
-                answered={answered}
-                selected={selectedOption}
-                correct={correctIdx}
-                isInstant={isInstant}
-                feedbackData={feedbackData}
-                lang={lang}
-                onSelect={handleSelectOption}
-              />
-            ))}
+            <div role="radiogroup" aria-label={t('Opciones de respuesta', 'Answer options')}>
+              {currentQuestion.options.map((opt, i) => (
+                <OptionButton
+                  key={i}
+                  opt={opt}
+                  idx={opt.idx}
+                  displayIdx={i}
+                  answered={answered}
+                  selected={selectedOption}
+                  correct={correctIdx}
+                  isInstant={isInstant}
+                  feedbackData={feedbackData}
+                  lang={lang}
+                  onSelect={handleSelectOption}
+                />
+              ))}
+            </div>
           </div>
 
           {showExplanation && feedbackData?.helpHtml && (

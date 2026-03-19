@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import mongoose from 'mongoose'
 import connectDB from '@/lib/db'
 import ExamSession from '@/models/ExamSession'
 import User from '@/models/User'
@@ -111,17 +112,7 @@ export async function POST(request, { params }) {
     // ── Topic breakdown (AI context + cached for review page) ───────────
     const topicBreakdown = computeTopicBreakdown(session.answers)
 
-    // ── Update session ──────────────────────────────────────────────────
-    session.score = correctCount
-    session.errorCount = errors
-    session.passed = passed
-    session.status = 'completed'
-    session.completedAt = new Date()
-    session.totalTimeTakenSeconds = totalTime
-    session.topicBreakdown = topicBreakdown
-    await session.save()
-
-    // ── Gamification ────────────────────────────────────────────────────
+    // ── Gamification (computed before transaction — reads only) ──────────
     const user = await User.findById(tokenData.userId)
     const skillProfile = await getUserSkillProfile(tokenData.userId)
     const { bonus: aiBonus, reasons: bonusReasons } = computeAIXPBonus(
@@ -154,22 +145,46 @@ export async function POST(request, { params }) {
       { examLanguages: examLangs, newStreak }
     )
 
-    await User.findByIdAndUpdate(tokenData.userId, {
-      $set: {
-        'gamification.currentStreak': newStreak,
-        'gamification.maxStreak': Math.max(user.gamification.maxStreak || 0, newStreak),
-        'gamification.lastStudyDate': new Date(),
-        'gamification.examLanguages': examLangs,
-        'skillProfile.overallLevel': skillProfile.overallLevel,
-        'skillProfile.topicLevels': skillProfile.topicLevels,
-        'skillProfile.lastCalculated': new Date(),
-      },
-      $inc: {
-        'gamification.totalXP': xpEarned,
-        'gamification.weeklyXP': xpEarned,
-      },
-      $addToSet: { 'gamification.earnedBadges': { $each: newBadges } },
-    })
+    // ── Atomic transaction: update ExamSession + User together ──────────
+    // Using txSession to avoid naming collision with the `session` ExamSession doc.
+    const txSession = await mongoose.startSession()
+    try {
+      await txSession.withTransaction(async () => {
+        // Update session fields and save within the transaction
+        session.score = correctCount
+        session.errorCount = errors
+        session.passed = passed
+        session.status = 'completed'
+        session.completedAt = new Date()
+        session.totalTimeTakenSeconds = totalTime
+        session.topicBreakdown = topicBreakdown
+        await session.save({ session: txSession })
+
+        // Update user gamification within the same transaction
+        await User.findByIdAndUpdate(
+          tokenData.userId,
+          {
+            $set: {
+              'gamification.currentStreak': newStreak,
+              'gamification.maxStreak': Math.max(user.gamification.maxStreak || 0, newStreak),
+              'gamification.lastStudyDate': new Date(),
+              'gamification.examLanguages': examLangs,
+              'skillProfile.overallLevel': skillProfile.overallLevel,
+              'skillProfile.topicLevels': skillProfile.topicLevels,
+              'skillProfile.lastCalculated': new Date(),
+            },
+            $inc: {
+              'gamification.totalXP': xpEarned,
+              'gamification.weeklyXP': xpEarned,
+            },
+            $addToSet: { 'gamification.earnedBadges': { $each: newBadges } },
+          },
+          { session: txSession, new: true }
+        )
+      })
+    } finally {
+      await txSession.endSession()
+    }
 
     // ── Fire-and-forget: Update leaderboard rank (non-critical) ──
     updateLeaderboardRank(tokenData.userId).catch((err) =>

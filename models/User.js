@@ -100,7 +100,7 @@ userSchema.virtual('isPremium').get(function () {
 userSchema.set('toJSON', { virtuals: true })
 
 // Indexes for leaderboard and admin
-userSchema.index({ 'gamification.weeklyXP': -1 })
-userSchema.index({ 'gamification.totalXP': -1 })
+userSchema.index({ 'gamification.weeklyXP': -1, _id: 1 })
+userSchema.index({ 'gamification.totalXP': -1, _id: 1 })
 
 export default mongoose.models.User || mongoose.model('User', userSchema)

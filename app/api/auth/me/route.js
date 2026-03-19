@@ -3,6 +3,8 @@ import connectDB from '@/lib/db'
 import User from '@/models/User'
 import { getCurrentUser, getTokenFromRequest, blacklistToken, clearAuthCookie } from '@/lib/auth'
 import { checkCSRF } from '@/lib/csrf'
+import { checkRateLimit } from '@/lib/utils'
+import { nicknameUpdateSchema } from '@/lib/schemas'
 
 // ---------------------------------------------------------------------------
 // GET /api/auth/me - Get current user session
@@ -131,28 +133,24 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // ── Rate limiting ───────────────────────────────────────────────────
+    const rateCheck = checkRateLimit(`nickname:${tokenData.userId}`, 5, 60000) // 5 per minute
+    if (!rateCheck.allowed) {
+      const retryAfter = Math.ceil((rateCheck.retryAfter || 60000) / 1000)
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      )
+    }
+
     const { nickname } = await request.json()
 
     // ── Validation ─────────────────────────────────────────────────────
-    if (!nickname) {
-      return NextResponse.json({ error: 'Nickname is required' }, { status: 400 })
+    const parseResult = nicknameUpdateSchema.safeParse({ nickname })
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.errors[0].message }, { status: 400 })
     }
-
-    const trimmedNickname = nickname.trim()
-
-    if (trimmedNickname.length < 2 || trimmedNickname.length > 20) {
-      return NextResponse.json(
-        { error: 'Nickname must be between 2 and 20 characters' },
-        { status: 400 }
-      )
-    }
-
-    if (!/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/.test(trimmedNickname)) {
-      return NextResponse.json(
-        { error: 'Nickname can only contain letters, numbers, and spaces' },
-        { status: 400 }
-      )
-    }
+    const trimmedNickname = parseResult.data.nickname.trim()
 
     // ── Update user ────────────────────────────────────────────────────
     await connectDB()

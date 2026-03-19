@@ -139,7 +139,7 @@ export async function PATCH(request, { params }) {
       changes,
       metadata: {
         ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip'),
-        userAgent: request.headers.get('user-agent'),
+        userAgent: request.headers.get('user-agent') ?? 'unknown',
       },
     })
 

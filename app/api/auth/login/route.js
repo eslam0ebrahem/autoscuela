@@ -6,6 +6,7 @@ import { signToken, setAuthCookie } from '@/lib/auth'
 import { checkCSRF } from '@/lib/csrf'
 import { checkRateLimit } from '@/lib/utils'
 import { LoginSchema, parseSchema } from '@/lib/schemas'
+import { logAudit } from '@/lib/audit'
 
 // ---------------------------------------------------------------------------
 // POST /api/auth/login - User login
@@ -62,6 +63,17 @@ export async function POST(request) {
 
     if (!user) {
       // Generic error to prevent user enumeration
+      await logAudit({
+        userId: user?._id ?? null,
+        action: 'LOGIN_FAILED',
+        resourceType: 'User',
+        resourceId: user?._id ?? null,
+        metadata: {
+          email: email,
+          ipAddress: ip,
+          reason: user ? 'invalid_password' : 'user_not_found',
+        },
+      })
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
@@ -69,6 +81,17 @@ export async function POST(request) {
     const isValid = await bcrypt.compare(password, user.passwordHash)
 
     if (!isValid) {
+      await logAudit({
+        userId: user?._id ?? null,
+        action: 'LOGIN_FAILED',
+        resourceType: 'User',
+        resourceId: user?._id ?? null,
+        metadata: {
+          email: email,
+          ipAddress: ip,
+          reason: user ? 'invalid_password' : 'user_not_found',
+        },
+      })
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import mongoose from 'mongoose'
 import connectDB from '@/lib/db'
 import ExamSession from '@/models/ExamSession'
 import Question from '@/models/Question'
@@ -87,35 +88,51 @@ export async function POST(request, { params }) {
       }).catch(() => null) // never throws
     }
 
-    // ── DB writes (in parallel with AI) ──────────────────────────────────
+    // ── Atomic transaction: record UserAnswer + update ExamSession ────────
+    // Both writes must succeed together; a partial write would corrupt answer state.
+    const txSession = await mongoose.startSession()
     try {
-      await UserAnswer.create({
-        userId: tokenData.userId,
-        examSessionId: session._id,
-        questionId: question._id,
-        topic_tag: question.topic_tag || { es: 'General', en: 'General' },
-        selected_option_idx,
-        is_correct: isCorrect,
-        time_taken_seconds: sanitizedTime,
+      await txSession.withTransaction(async () => {
+        // create() with an array + options object is the Mongoose 9 transactional API
+        await UserAnswer.create(
+          [
+            {
+              userId: tokenData.userId,
+              examSessionId: session._id,
+              questionId: question._id,
+              topic_tag: question.topic_tag || { es: 'General', en: 'General' },
+              selected_option_idx,
+              is_correct: isCorrect,
+              time_taken_seconds: sanitizedTime,
+            },
+          ],
+          { session: txSession }
+        )
+
+        session.answers.push({
+          questionId: question._id,
+          selectedOptionIdx: selected_option_idx,
+          isCorrect,
+          timeTakenSeconds: sanitizedTime,
+        })
+        session.currentQuestionIndex = Math.max(
+          session.currentQuestionIndex,
+          session.answers.length
+        )
+        await session.save({ session: txSession })
       })
     } catch (err) {
       if (err.code === 11000)
         return NextResponse.json({ error: 'Question already answered' }, { status: 400 })
       throw err
+    } finally {
+      await txSession.endSession()
     }
 
+    // ── Non-critical: update per-question stats (fire outside transaction) ──
     await Question.findByIdAndUpdate(question._id, {
       $inc: { 'stats.timesAnswered': 1, ...(isCorrect ? { 'stats.timesCorrect': 1 } : {}) },
     })
-
-    session.answers.push({
-      questionId: question._id,
-      selectedOptionIdx: selected_option_idx,
-      isCorrect,
-      timeTakenSeconds: sanitizedTime,
-    })
-    session.currentQuestionIndex = Math.max(session.currentQuestionIndex, session.answers.length)
-    await session.save()
 
     // ── Build response ────────────────────────────────────────────────────
     const response = { isCorrect }

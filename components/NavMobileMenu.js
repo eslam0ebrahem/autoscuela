@@ -38,6 +38,7 @@ export default function NavMobileMenu({
 
       {/* Menu Panel */}
       <div
+        id="mobile-navigation"
         className="md:hidden fixed top-14 right-0 bottom-0 w-80 max-w-[85vw] bg-white dark:bg-slate-900 z-50 shadow-2xl animate-slideInRight overflow-y-auto"
         role="dialog"
         aria-modal="true"

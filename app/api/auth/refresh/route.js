@@ -3,7 +3,14 @@ import jwt from 'jsonwebtoken'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
 import RefreshToken from '@/models/RefreshToken'
-import { getRefreshTokenFromRequest, signAccessToken, setAuthCookie, verifyToken } from '@/lib/auth'
+import {
+  getRefreshTokenFromRequest,
+  signAccessToken,
+  signRefreshToken,
+  setAuthCookie,
+  setRefreshCookie,
+  verifyToken,
+} from '@/lib/auth'
 import { checkCSRF } from '@/lib/csrf'
 
 // ---------------------------------------------------------------------------
@@ -62,10 +69,8 @@ export async function POST(request) {
       role: user.role,
     })
 
-    // ── Optional: Rotate refresh token (advanced security) ─────────────────
-    // Uncomment this section to implement token rotation
+    // ── Rotate refresh token (advanced security) ───────────────────────────
     // This prevents refresh token reuse (if the token is ever stolen)
-    /*
     const newRefreshToken = signRefreshToken({
       userId: user._id.toString(),
       role: user.role,
@@ -81,7 +86,6 @@ export async function POST(request) {
       console.error('[auth/refresh] Token rotation failed:', rotateError)
       // Continue with new access token even if rotation fails
     }
-    */
 
     // ── Prepare response ───────────────────────────────────────────────────
     const response = NextResponse.json({
@@ -102,8 +106,8 @@ export async function POST(request) {
     // Set new access token in cookie
     setAuthCookie(response, newAccessToken, true)
 
-    // Optionally set new refresh token cookie (if rotation is enabled)
-    // setRefreshCookie(response, newRefreshToken, true)
+    // Set new refresh token cookie (rotation enabled)
+    setRefreshCookie(response, newRefreshToken, true)
 
     return response
   } catch (error) {

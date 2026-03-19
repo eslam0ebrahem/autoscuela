@@ -228,11 +228,19 @@ function AIRecommendBanner({ lang, t, onApply }) {
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/ai/recommend?lang=${lang}`)
+    const controller = new AbortController()
+
+    fetch(`/api/ai/recommend?lang=${lang}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => setRec(d.recommendation))
-      .catch((err) => console.error('[setup/recommend]', err))
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
+          console.error('[setup/recommend]', err)
+        }
+      })
       .finally(() => setLoading(false))
+
+    return () => controller.abort()
   }, [lang])
 
   if (dismissed || (!loading && !rec)) return null

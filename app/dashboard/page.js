@@ -168,7 +168,7 @@ function DashboardContent() {
         setRefreshing(force)
         const forceParam = force ? '?force=true' : ''
 
-        const [dashRes, trendsRes] = await Promise.all([
+        const [dashResult, trendsResult] = await Promise.allSettled([
           fetch(`/api/dashboard${forceParam}`, { signal: abortController.current.signal }).then(
             (r) => r.json()
           ),
@@ -177,16 +177,36 @@ function DashboardContent() {
           ),
         ])
 
-        if (dashRes.error) {
-          throw new Error(dashRes.error)
+        if (dashResult.status === 'fulfilled') {
+          const dashRes = dashResult.value
+          if (dashRes.error) {
+            console.error('[dashboard] Dashboard API error:', dashRes.error)
+            toast?.error?.(t('Error al cargar el panel', 'Failed to load dashboard'), dashRes.error)
+          } else {
+            setInsights(dashRes.insights ?? null)
+            setStreak(dashRes.streak ?? 0)
+            setBadges(dashRes.badges ?? [])
+            setLeaderboard(dashRes.leaderboard ?? [])
+            setReadinessScore(dashRes.readinessScore != null ? Number(dashRes.readinessScore) : 0)
+          }
+        } else {
+          // dashResult.status === 'rejected'
+          if (dashResult.reason?.name !== 'AbortError') {
+            console.error('[dashboard] Dashboard fetch failed:', dashResult.reason)
+            toast?.error?.(
+              t('Error al cargar el panel', 'Failed to load dashboard'),
+              dashResult.reason?.message
+            )
+          }
         }
 
-        setInsights(dashRes.insights ?? null)
-        setStreak(dashRes.streak ?? 0)
-        setBadges(dashRes.badges ?? [])
-        setLeaderboard(dashRes.leaderboard ?? [])
-        setReadinessScore(dashRes.readinessScore != null ? Number(dashRes.readinessScore) : 0)
-        setTrends(trendsRes?.trends ?? [])
+        if (trendsResult.status === 'fulfilled') {
+          setTrends(trendsResult.value?.trends ?? [])
+        } else {
+          if (trendsResult.reason?.name !== 'AbortError') {
+            console.error('[dashboard] Trends fetch failed:', trendsResult.reason)
+          }
+        }
       } catch (e) {
         // Ignore abort errors (component unmounted)
         if (e.name === 'AbortError') return

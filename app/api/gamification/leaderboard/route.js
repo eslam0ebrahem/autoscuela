@@ -11,7 +11,11 @@ export async function GET(request) {
 
     await connectDB()
 
-    // Lazily reset weekly XP for all users whose week has rolled over
+    // Lazily reset weekly XP for all users whose week has rolled over.
+    // This updateMany is idempotent under concurrent requests: the filter matches
+    // only users where weeklyXPResetAt < currentWeekStart (or missing). The $set
+    // immediately writes weeklyXPResetAt = currentWeekStart, so any subsequent
+    // concurrent call finds 0 matching documents and is a no-op. No mutex needed.
     const currentWeekStart = getMadridStartOfWeek()
     await User.updateMany(
       {

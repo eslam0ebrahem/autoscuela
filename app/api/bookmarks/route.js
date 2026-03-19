@@ -77,6 +77,15 @@ export async function GET(request) {
       .select('question options correct_option_idx topic_tag difficulty metadata')
       .lean()
 
+    // Fire-and-forget: remove stale bookmark IDs for questions that no longer exist
+    if (questions.length < paginatedIds.length) {
+      const foundIds = new Set(questions.map((q) => q._id.toString()))
+      const staleIds = paginatedIds.filter((id) => !foundIds.has(id.toString()))
+      User.findByIdAndUpdate(tokenData.userId, { $pull: { bookmarks: { $in: staleIds } } }).catch(
+        (err) => console.error('[bookmarks] stale cleanup failed:', err.message)
+      )
+    }
+
     const questionMap = new Map(questions.map((q) => [q._id.toString(), q]))
 
     const bookmarks = paginatedIds

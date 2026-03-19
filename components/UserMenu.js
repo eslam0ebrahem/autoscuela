@@ -28,7 +28,10 @@ export default function UserMenu({
   t,
 }) {
   return (
-    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fadeIn">
+    <div
+      id="user-menu-dropdown"
+      className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-fadeIn"
+    >
       {/* User Info */}
       <div className="p-4 bg-gradient-to-br from-primary/10 to-indigo-600/10 dark:from-primary/20 dark:to-indigo-600/20 border-b border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-3 mb-2">
