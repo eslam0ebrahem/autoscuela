@@ -13,7 +13,7 @@ import {
   isTodayStudied,
   updateLeaderboardRank,
 } from '@/lib/gamification'
-import { getUserSkillProfile } from '@/lib/user-skill'
+import { getUserSkillProfile, invalidateSkillProfile } from '@/lib/user-skill'
 import { getExamCoachFeedback } from '@/lib/groq'
 
 const MAX_ERRORS_TO_PASS = 3
@@ -191,6 +191,12 @@ export async function POST(request, { params }) {
       console.error('[submit] Rank update failed (non-critical):', err)
     )
 
+    // ── Fire-and-forget: Invalidate skill profile cache (non-critical) ──
+    // Forces recalculation on next adaptive selection with fresh data
+    invalidateSkillProfile(tokenData.userId).catch((err) =>
+      console.error('[submit] Skill profile invalidation failed (non-critical):', err)
+    )
+
     // ── AI: Fire-and-forget coach feedback (stored in session for review page) ──
     // This runs in background so exam submission response is instant
     const examSummary = {
@@ -209,12 +215,29 @@ export async function POST(request, { params }) {
       })),
     }
 
-    getExamCoachFeedback({ examSummary, lang })
-      .then((feedback) => {
+    Promise.resolve()
+      .then(async () => {
+        // Fetch recent session history for trend analysis
+        let sessionHistory = []
+        try {
+          sessionHistory = await ExamSession.find({
+            userId: tokenData.userId,
+            status: 'completed',
+            _id: { $ne: session._id },
+          })
+            .sort({ completedAt: -1 })
+            .limit(5)
+            .select('score errorCount passed completedAt mode')
+            .lean()
+          sessionHistory.reverse() // oldest first
+        } catch {
+          // Graceful: proceed without history
+        }
+        const feedback = await getExamCoachFeedback({ examSummary, sessionHistory, lang })
         if (feedback && !feedback._fallback) {
-          ExamSession.findByIdAndUpdate(session._id, {
+          await ExamSession.findByIdAndUpdate(session._id, {
             $set: { aiCoachFeedback: feedback, aiCoachGeneratedAt: new Date() },
-          }).catch(() => {}) // Silently fail - non-critical
+          })
         }
       })
       .catch((err) => {

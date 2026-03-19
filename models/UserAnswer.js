@@ -12,6 +12,13 @@ const userAnswerSchema = new mongoose.Schema(
     selected_option_idx: { type: Number, required: true, min: 0, max: 3 },
     is_correct: { type: Boolean, required: true },
     time_taken_seconds: { type: Number, min: 0 },
+    srs: {
+      easinessFactor: { type: Number, default: 2.5, min: 1.3, max: 4.0 },
+      interval: { type: Number, default: 1 },
+      repetitions: { type: Number, default: 0 },
+      nextReviewAt: { type: Date, default: Date.now },
+      lastGrade: { type: Number, min: 0, max: 5 },
+    },
   },
   { timestamps: true }
 )
@@ -19,6 +26,7 @@ const userAnswerSchema = new mongoose.Schema(
 userAnswerSchema.index({ userId: 1, createdAt: -1 })
 userAnswerSchema.index({ userId: 1, 'topic_tag.es': 1 })
 userAnswerSchema.index({ examSessionId: 1, questionId: 1 }, { unique: true, sparse: true })
+userAnswerSchema.index({ userId: 1, 'srs.nextReviewAt': 1 })
 
 // Static: aggregate user performance for AI
 userAnswerSchema.statics.aggregateForAI = async function (userId, days = 30) {

@@ -69,8 +69,25 @@ export async function POST(request) {
       })),
     }
 
+    // Fetch last 5 completed sessions for trend analysis
+    let sessionHistory = []
     try {
-      const feedback = await getExamCoachFeedback({ examSummary, lang })
+      sessionHistory = await ExamSession.find({
+        userId: tokenData.userId,
+        status: 'completed',
+        _id: { $ne: session._id },
+      })
+        .sort({ completedAt: -1 })
+        .limit(5)
+        .select('score errorCount passed completedAt mode')
+        .lean()
+      sessionHistory.reverse() // oldest first for trend analysis
+    } catch {
+      // Graceful: proceed without history
+    }
+
+    try {
+      const feedback = await getExamCoachFeedback({ examSummary, sessionHistory, lang })
       return NextResponse.json({ feedback })
     } catch (aiError) {
       console.error('[api/ai/coach] AI generation failed:', aiError.message)

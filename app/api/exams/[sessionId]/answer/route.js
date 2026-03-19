@@ -10,6 +10,7 @@ import { getQuestionExplanation } from '@/lib/groq'
 import { ExamAnswerSchema, parseSchema } from '@/lib/schemas'
 import { JSDOM } from 'jsdom'
 import DOMPurifyFactory from 'dompurify'
+import { calculateSRS, answerToGrade } from '@/lib/srs'
 
 const { window: domWindow } = new JSDOM('')
 const DOMPurify = DOMPurifyFactory(domWindow)
@@ -94,11 +95,12 @@ export async function POST(request, { params }) {
 
     // ── Atomic transaction: record UserAnswer + update ExamSession ────────
     // Both writes must succeed together; a partial write would corrupt answer state.
+    let savedAnswer
     const txSession = await mongoose.startSession()
     try {
       await txSession.withTransaction(async () => {
         // create() with an array + options object is the Mongoose 9 transactional API
-        await UserAnswer.create(
+        const [created] = await UserAnswer.create(
           [
             {
               userId: tokenData.userId,
@@ -112,6 +114,7 @@ export async function POST(request, { params }) {
           ],
           { session: txSession }
         )
+        savedAnswer = created
 
         session.answers.push({
           questionId: question._id,
@@ -136,6 +139,25 @@ export async function POST(request, { params }) {
     // ── Non-critical: update per-question stats (fire outside transaction) ──
     await Question.findByIdAndUpdate(question._id, {
       $inc: { 'stats.timesAnswered': 1, ...(isCorrect ? { 'stats.timesCorrect': 1 } : {}) },
+    })
+
+    // Fire-and-forget: update SRS state for this question
+    Promise.resolve().then(async () => {
+      try {
+        const existing = await UserAnswer.findOne(
+          { userId: tokenData.userId, questionId: question._id },
+          { srs: 1 }
+        )
+          .sort({ createdAt: -1 })
+          .lean()
+        const grade = answerToGrade(isCorrect, sanitizedTime)
+        const newSRS = calculateSRS(existing?.srs || {}, grade)
+        await UserAnswer.findByIdAndUpdate(savedAnswer._id, {
+          $set: { srs: { ...newSRS, lastGrade: grade } },
+        })
+      } catch {
+        // SRS update failure is non-critical
+      }
     })
 
     // ── Build response ────────────────────────────────────────────────────

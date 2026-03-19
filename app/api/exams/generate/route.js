@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
+import mongoose from 'mongoose'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
 import Question from '@/models/Question'
 import ExamSession from '@/models/ExamSession'
+import UserAnswer from '@/models/UserAnswer'
 import { getCurrentUser } from '@/lib/auth'
 import { checkCSRF } from '@/lib/csrf'
 import { clamp, checkRateLimit } from '@/lib/utils'
@@ -16,10 +18,24 @@ import { ExamGenerateSchema, parseSchema } from '@/lib/schemas'
 const OFFICIAL_EXAM_QUESTIONS = 30
 const OFFICIAL_EXAM_DURATION_MIN = 30
 const ABANDONED_SESSION_HOURS = 2
-const VALID_MODES = ['official', 'custom', 'mistakes', 'weak_topics', 'bookmarks']
+const VALID_MODES = [
+  'official',
+  'custom',
+  'mistakes',
+  'weak_topics',
+  'bookmarks',
+  'spaced_repetition',
+]
 const VALID_ASSISTANCE_MODES = ['instant', 'exam']
 const QUESTION_LIMITS = { MIN: 5, MAX: 100 }
-const DURATIONS = { official: 30, custom: 60, mistakes: 45, weak_topics: 45, bookmarks: 45 }
+const DURATIONS = {
+  official: 30,
+  custom: 60,
+  mistakes: 45,
+  weak_topics: 45,
+  bookmarks: 45,
+  spaced_repetition: 45,
+}
 
 // ---------------------------------------------------------------------------
 // Helpers (unchanged)
@@ -197,19 +213,45 @@ export async function POST(request) {
     // ── Select questions ──────────────────────────────────────────────
     const topicFilters = normalizeTopicFilters(topic_filter)
     const adaptiveOptions = buildAdaptiveOptions(mode, topicFilters)
+    const language = user.preferences?.language ?? 'en'
 
     let questionIds
-    try {
-      questionIds = await selectAdaptiveQuestions(tokenData.userId, requestedCount, {
-        ...adaptiveOptions,
-        mistakeQuestionIds: mode === 'bookmarks' ? bookmarkIds : null,
-      })
-    } catch (error) {
-      console.error('[exam-generate] Adaptive selection failed:', error)
-      return NextResponse.json(
-        { error: 'Failed to select questions. Please try again.' },
-        { status: 500 }
-      )
+    if (mode === 'spaced_repetition') {
+      const now = new Date()
+      const objectId = new mongoose.Types.ObjectId(tokenData.userId)
+      const dueAnswers = await UserAnswer.aggregate([
+        { $match: { userId: objectId, 'srs.nextReviewAt': { $lte: now } } },
+        { $sort: { 'srs.nextReviewAt': 1 } },
+        { $limit: requestedCount * 3 },
+        { $group: { _id: '$questionId' } },
+      ])
+      const dueIds = dueAnswers.map((a) => a._id)
+      if (dueIds.length === 0) {
+        return NextResponse.json(
+          {
+            error: 'no_reviews_due',
+            message:
+              language === 'es'
+                ? '¡Excelente! No tienes preguntas pendientes de repaso. Vuelve más tarde.'
+                : 'Great job! No questions due for review. Come back later.',
+          },
+          { status: 200 }
+        )
+      }
+      questionIds = dueIds.slice(0, requestedCount).sort(() => Math.random() - 0.5)
+    } else {
+      try {
+        questionIds = await selectAdaptiveQuestions(tokenData.userId, requestedCount, {
+          ...adaptiveOptions,
+          mistakeQuestionIds: mode === 'bookmarks' ? bookmarkIds : null,
+        })
+      } catch (error) {
+        console.error('[exam-generate] Adaptive selection failed:', error)
+        return NextResponse.json(
+          { error: 'Failed to select questions. Please try again.' },
+          { status: 500 }
+        )
+      }
     }
 
     if (questionIds.length === 0) {

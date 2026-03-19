@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
 import UserAnswer from '@/models/UserAnswer'
+import ExamSession from '@/models/ExamSession'
 import { getCurrentUser } from '@/lib/auth'
 import { getAIInsights } from '@/lib/groq'
 
@@ -9,7 +10,7 @@ import { getAIInsights } from '@/lib/groq'
 // Constants
 // ---------------------------------------------------------------------------
 const MIN_QUESTIONS_FOR_AI = 60
-const CACHE_HOURS = 8
+const CACHE_HOURS = 4
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -82,11 +83,20 @@ export async function GET(request) {
 
     if (!forceRefresh && user.aiInsights?.lastUpdated) {
       if (hoursSince(user.aiInsights.lastUpdated) < CACHE_HOURS) {
-        return NextResponse.json({
-          insights: user.aiInsights,
-          cached: true,
-          cachedAt: user.aiInsights.lastUpdated,
-        })
+        // Check if a newer exam was completed after the cache was made
+        const latestExam = await ExamSession.findOne({ userId: user._id, status: 'completed' })
+          .sort({ completedAt: -1 })
+          .select('completedAt')
+          .lean()
+        const cacheDate = user.aiInsights.lastUpdated
+        if (!latestExam?.completedAt || latestExam.completedAt <= cacheDate) {
+          return NextResponse.json({
+            insights: user.aiInsights,
+            cached: true,
+            cachedAt: cacheDate,
+          })
+        }
+        // Newer exam exists — fall through to regenerate insights
       }
     }
 
