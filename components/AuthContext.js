@@ -66,7 +66,7 @@ export function AuthProvider({ children }) {
   }, [router, pathname, fetchUser])
 
   // ── Refresh token periodically ────────────────────────────────────────
-  // Set up a timer to refresh token every 14 minutes (before 15-min expiry)
+  // Set up a timer to refresh token every 6 hours (now that tokens last longer)
   useEffect(() => {
     if (!user) return
 
@@ -94,8 +94,8 @@ export function AuthProvider({ children }) {
           // Continue - will refresh again on next interval
         }
       },
-      14 * 60 * 1000
-    ) // 14 minutes
+      6 * 60 * 60 * 1000
+    ) // 6 hours
 
     return () => clearInterval(refreshInterval)
   }, [user])
