@@ -24,7 +24,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://api.groq.com https://fonts.googleapis.com; frame-ancestors 'none';`,
+            value: `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://gala.elportaldelalumno.com; connect-src 'self' https://api.groq.com https://fonts.googleapis.com; frame-ancestors 'none';`,
           },
           {
             key: 'X-Frame-Options',
