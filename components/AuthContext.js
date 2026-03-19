@@ -113,7 +113,12 @@ export function AuthProvider({ children }) {
         credentials: 'same-origin',
       })
 
-      const data = await res.json()
+      let data = {}
+      try {
+        data = await res.json()
+      } catch {
+        // Server returned non-JSON (e.g., HTML error page)
+      }
 
       if (res.ok) {
         setUser(data.user)
@@ -145,7 +150,12 @@ export function AuthProvider({ children }) {
         credentials: 'same-origin',
       })
 
-      const data = await res.json()
+      let data = {}
+      try {
+        data = await res.json()
+      } catch {
+        // Server returned non-JSON (e.g., HTML error page)
+      }
 
       if (res.ok) {
         setUser(data.user)
