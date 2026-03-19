@@ -126,7 +126,7 @@ export async function PATCH(request, { params }) {
     const user = await User.findByIdAndUpdate(
       pathParams.id,
       { $set: updates },
-      { new: true }
+      { returnDocument: 'after' }
     ).select('-passwordHash')
 
     // Log audit trail for admin action

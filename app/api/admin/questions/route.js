@@ -134,7 +134,7 @@ export async function POST(request) {
         const updated = await Question.findOneAndUpdate(
           { exam_id: q.exam_id, question_number: q.question_number },
           { $set: q },
-          { upsert: true, new: true, runValidators: true }
+          { upsert: true, returnDocument: 'after', runValidators: true }
         )
 
         if (existing) {

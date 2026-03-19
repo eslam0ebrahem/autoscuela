@@ -69,7 +69,7 @@ export async function PUT(request, { params }) {
     const question = await Question.findByIdAndUpdate(
       id,
       { $set: data },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     )
 
     if (!question) {
@@ -107,7 +107,7 @@ export async function DELETE(request, { params }) {
     const question = await Question.findByIdAndUpdate(
       id,
       { $set: { isActive: false } },
-      { new: true }
+      { returnDocument: 'after' }
     )
 
     if (!question) {

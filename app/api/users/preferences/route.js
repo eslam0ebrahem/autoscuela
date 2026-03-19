@@ -87,7 +87,7 @@ export async function PUT(request) {
     const user = await User.findByIdAndUpdate(
       tokenData.userId,
       { $set: updates },
-      { new: true }
+      { returnDocument: 'after' }
     ).select('-passwordHash')
 
     return NextResponse.json({

@@ -8,7 +8,11 @@ import { getCurrentUser } from '@/lib/auth'
 import { isValidObjectId, clamp, checkRateLimit } from '@/lib/utils'
 import { getQuestionExplanation } from '@/lib/groq'
 import { ExamAnswerSchema, parseSchema } from '@/lib/schemas'
-import DOMPurify from 'dompurify'
+import { JSDOM } from 'jsdom'
+import DOMPurifyFactory from 'dompurify'
+
+const { window: domWindow } = new JSDOM('')
+const DOMPurify = DOMPurifyFactory(domWindow)
 
 // Max ms to wait for AI explanation before returning without it
 const AI_EXPLANATION_TIMEOUT_MS = 4000

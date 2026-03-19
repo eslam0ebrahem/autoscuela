@@ -64,7 +64,7 @@ export async function POST(request) {
     const user = await User.findByIdAndUpdate(
       verificationDoc.userId,
       { emailVerified: true },
-      { new: true, select: '-passwordHash' }
+      { returnDocument: 'after', select: '-passwordHash' }
     )
 
     if (!user) {

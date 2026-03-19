@@ -179,7 +179,7 @@ export async function POST(request, { params }) {
             },
             $addToSet: { 'gamification.earnedBadges': { $each: newBadges } },
           },
-          { session: txSession, new: true }
+          { session: txSession, returnDocument: 'after' }
         )
       })
     } finally {

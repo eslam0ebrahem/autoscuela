@@ -150,7 +150,7 @@ verificationTokenSchema.statics.recordAttempt = async function (token) {
       $inc: { attempts: 1 },
       lastAttemptAt: new Date(),
     },
-    { new: true }
+    { returnDocument: 'after' }
   )
 
   return doc?.attempts || 0

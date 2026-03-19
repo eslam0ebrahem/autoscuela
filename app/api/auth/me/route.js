@@ -158,7 +158,7 @@ export async function PUT(request) {
     const user = await User.findByIdAndUpdate(
       tokenData.userId,
       { nickname: trimmedNickname },
-      { new: true, select: '-passwordHash' }
+      { returnDocument: 'after', select: '-passwordHash' }
     )
 
     if (!user) {
