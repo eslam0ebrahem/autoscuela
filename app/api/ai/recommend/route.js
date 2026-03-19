@@ -17,7 +17,7 @@ export async function GET(request) {
     }
 
     // ── Rate limiting (10 recommendations per hour) ─────────────────────
-    const rateCheck = checkRateLimit(`ai:recommend:${tokenData.userId}`, 10, 3600000)
+    const rateCheck = await checkRateLimit(`ai:recommend:${tokenData.userId}`, 10, 3600000)
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: 'Too many recommendation requests. Please try later.' },

@@ -40,7 +40,7 @@ export async function POST(request) {
     // ── Rate limiting ──────────────────────────────────────────────────
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
     const rateLimitKey = `login:${ip}:${email}`
-    const rateCheck = checkRateLimit(rateLimitKey, 5, 300000) // 5 attempts per 5 min
+    const rateCheck = await checkRateLimit(rateLimitKey, 5, 300000) // 5 attempts per 5 min
 
     if (!rateCheck.allowed) {
       const retryAfter = Math.ceil((rateCheck.retryAfter || 300000) / 1000)

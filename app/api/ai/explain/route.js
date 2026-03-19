@@ -17,7 +17,7 @@ export async function POST(request) {
     }
 
     // ── Rate limiting (5 explanations per minute) ──────────────────────
-    const rateCheck = checkRateLimit(`ai:explain:${tokenData.userId}`, 5, 60000)
+    const rateCheck = await checkRateLimit(`ai:explain:${tokenData.userId}`, 5, 60000)
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: 'Too many explanation requests. Please slow down.' },

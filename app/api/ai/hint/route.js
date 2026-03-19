@@ -17,7 +17,7 @@ export async function POST(request) {
     }
 
     // ── Rate limiting (3 hints per minute to control Groq cost) ────────
-    const rateCheck = checkRateLimit(`ai:hint:${tokenData.userId}`, 3, 60000)
+    const rateCheck = await checkRateLimit(`ai:hint:${tokenData.userId}`, 3, 60000)
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: 'Too many hint requests. Please slow down.' },

@@ -17,7 +17,7 @@ export async function POST(request) {
     }
 
     // ── Rate limiting (2 coach calls per minute) ───────────────────────
-    const rateCheck = checkRateLimit(`ai:coach:${tokenData.userId}`, 2, 60000)
+    const rateCheck = await checkRateLimit(`ai:coach:${tokenData.userId}`, 2, 60000)
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: 'Too many coach requests. Please slow down.' },

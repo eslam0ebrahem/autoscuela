@@ -24,7 +24,7 @@ export async function POST(request) {
 
     // ── Rate limiting ──────────────────────────────────────────────────
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-    const rateCheck = checkRateLimit(`register:${ip}`, 3, 600000) // 3 per 10 min
+    const rateCheck = await checkRateLimit(`register:${ip}`, 3, 600000) // 3 per 10 min
 
     if (!rateCheck.allowed) {
       const retryAfter = Math.ceil((rateCheck.retryAfter || 600000) / 1000)

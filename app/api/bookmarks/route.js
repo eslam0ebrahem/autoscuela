@@ -25,7 +25,7 @@ export async function GET(request) {
 
     // ── Rate limiting ──────────────────────────────────────────────────
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-    const rateCheck = checkRateLimit(`bookmarks:${tokenData.userId}:get`, 30, 60000)
+    const rateCheck = await checkRateLimit(`bookmarks:${tokenData.userId}:get`, 30, 60000)
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: 'Too many requests' },
@@ -136,7 +136,7 @@ export async function POST(request) {
 
     // ── Rate limiting ──────────────────────────────────────────────────
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-    const rateCheck = checkRateLimit(`bookmarks:${tokenData.userId}:post`, 20, 60000)
+    const rateCheck = await checkRateLimit(`bookmarks:${tokenData.userId}:post`, 20, 60000)
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: 'Too many bookmark changes' },

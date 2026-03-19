@@ -25,7 +25,7 @@ export async function GET(request, { params }) {
     }
 
     // ── Rate limiting ──────────────────────────────────────────────────
-    const rateCheck = checkRateLimit(`admin:users:${tokenData.userId}:get`, 30, 60000)
+    const rateCheck = await checkRateLimit(`admin:users:${tokenData.userId}:get`, 30, 60000)
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: 'Too many requests' },
@@ -68,7 +68,7 @@ export async function PATCH(request, { params }) {
     }
 
     // ── Rate limiting ──────────────────────────────────────────────────
-    const rateCheck = checkRateLimit(`admin:users:${tokenData.userId}:patch`, 10, 60000)
+    const rateCheck = await checkRateLimit(`admin:users:${tokenData.userId}:patch`, 10, 60000)
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: 'Too many requests' },

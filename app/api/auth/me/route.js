@@ -134,7 +134,7 @@ export async function PUT(request) {
     }
 
     // ── Rate limiting ───────────────────────────────────────────────────
-    const rateCheck = checkRateLimit(`nickname:${tokenData.userId}`, 5, 60000) // 5 per minute
+    const rateCheck = await checkRateLimit(`nickname:${tokenData.userId}`, 5, 60000) // 5 per minute
     if (!rateCheck.allowed) {
       const retryAfter = Math.ceil((rateCheck.retryAfter || 60000) / 1000)
       return NextResponse.json(

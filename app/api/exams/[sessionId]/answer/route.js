@@ -20,7 +20,7 @@ export async function POST(request, { params }) {
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     // ── Rate limiting (15 per 60 sec = one answer every 4 sec) ──────────
-    const rateCheck = checkRateLimit(`exam:answer:${tokenData.userId}`, 15, 60000)
+    const rateCheck = await checkRateLimit(`exam:answer:${tokenData.userId}`, 15, 60000)
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: 'Too many answer submissions' },

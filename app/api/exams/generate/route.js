@@ -119,7 +119,7 @@ export async function POST(request) {
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     // ── Rate limiting (2 per 60 sec to prevent abuse) ────────────────────
-    const rateCheck = checkRateLimit(`exam:generate:${tokenData.userId}`, 2, 60000)
+    const rateCheck = await checkRateLimit(`exam:generate:${tokenData.userId}`, 2, 60000)
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: 'Too many exam generation requests' },
