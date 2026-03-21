@@ -20,29 +20,56 @@ class _PracticeTabState extends ConsumerState<PracticeTab> {
   Future<void> _startExam(String mode) async {
     setState(() => _starting = true);
     try {
+      debugPrint(
+        'PracticeTab: Starting exam mode=$mode, assistance=$_assistanceMode, count=${_questionCount.round()}',
+      );
       final sessionId = await ref
           .read(examRepositoryProvider)
           .startExam(
             mode: mode,
             assistanceMode: _assistanceMode,
             numQuestions: _questionCount.round(),
-          );
+          )
+          .timeout(const Duration(seconds: 30));
+      debugPrint('PracticeTab: Exam started, sessionId=$sessionId');
       if (mounted) {
         context.push('/exam/$sessionId');
       }
     } on AppDataException catch (error) {
+      debugPrint('PracticeTab: AppDataException: ${error.message}');
       if (mounted) {
         _show(error.message);
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      debugPrint('PracticeTab: Error starting exam: $error\n$stackTrace');
       if (mounted) {
-        _show(error.toString());
+        _show(_friendlyError(error));
       }
     } finally {
       if (mounted) {
         setState(() => _starting = false);
       }
     }
+  }
+
+  String _friendlyError(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('socketexception') ||
+        message.contains('host lookup') ||
+        message.contains('no address associated') ||
+        message.contains('network is unreachable') ||
+        message.contains('connection refused')) {
+      return 'No internet connection. Please check your network and try again.';
+    }
+    if (message.contains('timeout') || message.contains('timed out')) {
+      return 'Connection timed out. Please try again.';
+    }
+    if (message.contains('connectionexception') ||
+        message.contains('no master connection') ||
+        message.contains('reset by peer')) {
+      return 'Database connection lost. Please try again.';
+    }
+    return 'Something went wrong. Please try again.';
   }
 
   void _show(String message) {

@@ -137,11 +137,21 @@ class MongoDatabaseService {
         }
       } catch (e) {
         debugPrint('Error connecting (attempt ${i + 1}): $e');
+        // Bail out immediately for unrecoverable errors (DNS/network)
+        final msg = e.toString();
+        if (msg.contains('host lookup') ||
+            msg.contains('No address associated') ||
+            msg.contains('network is unreachable')) {
+          _db = null;
+          throw Exception(
+            'No internet connection. Check your network and try again.',
+          );
+        }
         if (i == 2) {
           _db = null;
           rethrow;
         }
-        await Future<void>.delayed(Duration(seconds: 2 + i));
+        await Future<void>.delayed(Duration(seconds: 1 + i));
       }
     }
   }

@@ -44,12 +44,6 @@ class ExamRepository {
     }
 
     debugPrint('StartExam: Acquiring collections...');
-    final db = await _databaseService.database;
-    final users = db.collection('users');
-    final answersCollection = db.collection('useranswers');
-    final questionsCollection = db.collection('questions');
-    final sessionsCollection = db.collection('examsessions');
-    final flashcardCollection = db.collection('flashcardprogresses');
 
     // Use cache if available and not older than 10 minutes
     final now = DateTime.now();
@@ -69,14 +63,21 @@ class ExamRepository {
 
     for (int i = 0; i < 2; i++) {
       try {
+        // Re-acquire db and collections on every attempt so a reconnect
+        // actually uses the fresh connection instead of stale references.
+        final db = await _databaseService.database;
+        final usersCol = db.collection('users');
+        final answersCol = db.collection('useranswers');
+        final questionsCol = db.collection('questions');
+
         final futures = <Future>[
-          users.findOne(mongo.where.id(userId)),
-          answersCollection.find(mongo.where.eq('userId', userId)).toList(),
+          usersCol.findOne(mongo.where.id(userId)),
+          answersCol.find(mongo.where.eq('userId', userId)).toList(),
         ];
 
         if (!useQuestionsCache) {
           futures.add(
-            questionsCollection
+            questionsCol
                 .find(
                   mongo.where.eq('isActive', true).fields([
                     '_id',
@@ -172,7 +173,8 @@ class ExamRepository {
     }
 
     if (mode == 'spaced_repetition') {
-      final flashcardProgress = await flashcardCollection
+      final flashcardCol = await _databaseService.flashcardProgress;
+      final flashcardProgress = await flashcardCol
           .find(mongo.where.eq('userId', userId))
           .toList();
       final latestByQuestion = <String, Map<String, dynamic>>{};
@@ -282,7 +284,8 @@ class ExamRepository {
       'updatedAt': creationTime,
     };
 
-    await sessionsCollection.insertOne(session);
+    final sessionsCol = await _databaseService.examSessions;
+    await sessionsCol.insertOne(session);
     return objectIdToString(session['_id']);
   }
 
