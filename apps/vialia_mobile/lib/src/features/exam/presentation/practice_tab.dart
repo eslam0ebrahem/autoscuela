@@ -27,17 +27,29 @@ class _PracticeTabState extends ConsumerState<PracticeTab> {
             assistanceMode: _assistanceMode,
             numQuestions: _questionCount.round(),
           );
-      if (!mounted) return;
-      context.push('/exam/$sessionId');
+      if (mounted) {
+        context.push('/exam/$sessionId');
+      }
     } on AppDataException catch (error) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+      if (mounted) {
+        _show(error.message);
+      }
+    } catch (error) {
+      if (mounted) {
+        _show(error.toString());
+      }
     } finally {
       if (mounted) {
         setState(() => _starting = false);
       }
     }
+  }
+
+  void _show(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override

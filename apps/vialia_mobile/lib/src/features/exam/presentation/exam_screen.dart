@@ -36,6 +36,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
       final bundle = await ref
           .read(examRepositoryProvider)
           .fetchSession(widget.sessionId);
+      if (!mounted) return;
       setState(() {
         _bundle = bundle;
         _currentIndex = bundle.session.currentQuestionIndex;
@@ -45,6 +46,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
         _questionStartedAt = DateTime.now();
       });
     } on AppDataException catch (error) {
+      if (!mounted) return;
       _showMessage(error.message);
     } finally {
       if (mounted) {
@@ -72,6 +74,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
             selectedOptionIdx: optionIdx,
             timeTakenSeconds: elapsed,
           );
+      if (!mounted) return;
       setState(() {
         _answers[question.id] = ExamAnswerRecord(
           questionId: question.id,
@@ -81,7 +84,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
         );
       });
 
-      if (feedback.explanation != null && mounted) {
+      if (feedback.explanation != null) {
         await showModalBottomSheet<void>(
           context: context,
           showDragHandle: true,
@@ -104,6 +107,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
           ),
         );
       }
+      if (!mounted) return;
 
       if (_currentIndex < (_bundle?.questions.length ?? 1) - 1) {
         setState(() {
@@ -112,6 +116,7 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
         });
       }
     } on AppDataException catch (error) {
+      if (!mounted) return;
       _showMessage(error.message);
     } finally {
       if (mounted) {
@@ -149,10 +154,10 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
             language: language,
             questionData: questionData?.toJson(),
           );
-      if (mounted) {
-        await _showAiModal('AI Hint', hint);
-      }
+      if (!mounted) return;
+      await _showAiModal('AI Hint', hint);
     } on AppDataException catch (error) {
+      if (!mounted) return;
       _showMessage(error.message);
     } finally {
       if (mounted) {
@@ -177,10 +182,10 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
             selectedIdx: selectedIdx,
             questionData: questionData?.toJson(),
           );
-      if (mounted) {
-        await _showAiModal('AI Deep Explanation', explanation);
-      }
+      if (!mounted) return;
+      await _showAiModal('AI Deep Explanation', explanation);
     } on AppDataException catch (error) {
+      if (!mounted) return;
       _showMessage(error.message);
     } finally {
       if (mounted) {
