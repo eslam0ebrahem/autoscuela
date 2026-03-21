@@ -154,53 +154,37 @@ Map<String, dynamic> calculateSrs(
 List<Map<String, dynamic>> computeTopicStats(
   List<Map<String, dynamic>> answers,
 ) {
-  final topics = <String, Map<String, dynamic>>{};
+  final topics = <String, (int attempted, int correct, int timeSpent)>{};
 
   for (final answer in answers) {
-    final topicMap = Map<String, dynamic>.from(
-      (answer['topic_tag'] as Map?)?.cast<String, dynamic>() ??
-          (answer['topicTag'] as Map?)?.cast<String, dynamic>() ??
-          {'es': 'General', 'en': 'General'},
-    );
-    final topic = topicMap['es']?.toString() ?? 'General';
-    final bucket = topics.putIfAbsent(
-      topic,
-      () => <String, dynamic>{
-        'tag': {'es': topic, 'en': topicMap['en']?.toString() ?? topic},
-        'attempted': 0,
-        'correct': 0,
-        'timeSpentSeconds': 0,
-      },
-    );
+    final rawTag = answer['topic_tag'] ?? answer['topicTag'];
+    final topicName = ((rawTag is Map) ? rawTag['es'] : 'General')?.toString() ?? 'General';
+    final existing = topics[topicName] ?? (0, 0, 0);
 
-    bucket['attempted'] = (bucket['attempted'] as int) + 1;
-    if (answer['is_correct'] == true || answer['isCorrect'] == true) {
-      bucket['correct'] = (bucket['correct'] as int) + 1;
-    }
-    bucket['timeSpentSeconds'] =
-        (bucket['timeSpentSeconds'] as int) +
-        ((answer['time_taken_seconds'] as num?)?.toInt() ??
-            (answer['timeTakenSeconds'] as num?)?.toInt() ??
-            0);
+    final isCorr = answer['is_correct'] == true || answer['isCorrect'] == true;
+    final timeSpent = (answer['time_taken_seconds'] as num?)?.toInt() ??
+                      (answer['timeTakenSeconds'] as num?)?.toInt() ?? 0;
+
+    topics[topicName] = (
+      existing.$1 + 1,
+      existing.$2 + (isCorr ? 1 : 0),
+      existing.$3 + timeSpent,
+    );
   }
 
-  final stats =
-      topics.values.map((topic) {
-        final attempted = topic['attempted'] as int;
-        final correct = topic['correct'] as int;
-        final timeSpent = topic['timeSpentSeconds'] as int;
-        return <String, dynamic>{
-          ...topic,
-          'accuracy': attempted == 0
-              ? 0
-              : ((correct / attempted) * 100).round(),
-          'avgTimeSeconds': attempted == 0
-              ? 0
-              : (timeSpent / attempted).round(),
-        };
-      }).toList()..sort(
-        (a, b) => (a['accuracy'] as int).compareTo(b['accuracy'] as int),
-      );
+  final stats = topics.entries.map((e) {
+    final attempted = e.value.$1;
+    final correct = e.value.$2;
+    final timeSpent = e.value.$3;
+    return <String, dynamic>{
+      'tag': {'es': e.key, 'en': e.key}, // Simplified
+      'attempted': attempted,
+      'correct': correct,
+      'timeSpentSeconds': timeSpent,
+      'accuracy': attempted == 0 ? 0 : ((correct / attempted) * 100).round(),
+      'avgTimeSeconds': attempted == 0 ? 0 : (timeSpent / attempted).round(),
+    };
+  }).toList()..sort((a, b) => (a['accuracy'] as int).compareTo(b['accuracy'] as int));
 
   return stats;
 }
@@ -279,45 +263,50 @@ List<QuestionScore> scoreQuestions({
   required List<Map<String, dynamic>> answers,
   required String mode,
 }) {
-  final topicStats = computeTopicStats(answers);
-  final topicAccuracy = <String, double>{
-    for (final stat in topicStats)
-      ((stat['tag'] as Map)['es']).toString(): (stat['accuracy'] as int) / 100,
-  };
-
+  // Optimized: Single pass over answers to collect all required stats
+  final topicCount = <String, (int attempted, int correct)>{};
   final recentByQuestion = <String, DateTime>{};
   final wrongCountByQuestion = <String, int>{};
+  int totalCorrect = 0;
+
   for (final answer in answers) {
-    final id = _normalizedEntityId(answer['questionId']);
-    if (id.isEmpty) {
-      continue;
-    }
-    final createdAt = answer['createdAt'] is DateTime
-        ? (answer['createdAt'] as DateTime).toUtc()
-        : DateTime.tryParse(answer['createdAt']?.toString() ?? '')?.toUtc() ??
-              DateTime.now().toUtc();
-    final previous = recentByQuestion[id];
-    if (previous == null || createdAt.isAfter(previous)) {
-      recentByQuestion[id] = createdAt;
-    }
-    if (answer['is_correct'] == false || answer['isCorrect'] == false) {
-      wrongCountByQuestion[id] = (wrongCountByQuestion[id] ?? 0) + 1;
+    // 1. Topic Stats
+    final rawTag = answer['topic_tag'] ?? answer['topicTag'];
+    final topicName = ((rawTag is Map) ? rawTag['es'] : 'General')?.toString() ?? 'General';
+    final currentTC = topicCount[topicName] ?? (0, 0);
+    
+    final isCorrect = answer['is_correct'] == true || answer['isCorrect'] == true;
+    topicCount[topicName] = (currentTC.$1 + 1, currentTC.$2 + (isCorrect ? 1 : 0));
+    if (isCorrect) totalCorrect++;
+
+    // 2. Question history and wrong counts
+    final qIdRaw = answer['questionId'];
+    if (qIdRaw != null) {
+      final qId = _normalizedEntityId(qIdRaw);
+      if (qId.isNotEmpty) {
+        final createdAt = answer['createdAt'] is DateTime
+            ? (answer['createdAt'] as DateTime).toUtc()
+            : DateTime.tryParse(answer['createdAt']?.toString() ?? '')?.toUtc() ?? DateTime.now().toUtc();
+        
+        final prev = recentByQuestion[qId];
+        if (prev == null || createdAt.isAfter(prev)) {
+          recentByQuestion[qId] = createdAt;
+        }
+        
+        if (!isCorrect) {
+          wrongCountByQuestion[qId] = (wrongCountByQuestion[qId] ?? 0) + 1;
+        }
+      }
     }
   }
 
-  final correctAnswers = answers
-      .where(
-        (answer) => answer['is_correct'] == true || answer['isCorrect'] == true,
-      )
-      .length;
-  final accuracy = answers.isEmpty
-      ? 0
-      : ((correctAnswers / answers.length) * 100).round();
-
-  final difficultyTarget = switch (calculateSkillLevel(
+  final overallAccuracy = answers.isEmpty ? 0 : ((totalCorrect / answers.length) * 100).round();
+  final skillLevel = calculateSkillLevel(
     totalAnswered: answers.length,
-    overallAccuracy: accuracy,
-  )) {
+    overallAccuracy: overallAccuracy,
+  );
+
+  final difficultyTarget = switch (skillLevel) {
     'beginner' => 1.2,
     'easy' => 1.5,
     'medium' => 2.0,
@@ -326,21 +315,24 @@ List<QuestionScore> scoreQuestions({
   };
 
   const difficultyMap = <String, double>{'easy': 1, 'medium': 2, 'hard': 3};
+  final nowUtc = DateTime.now().toUtc();
 
   return candidates.map((question) {
     final id = _normalizedEntityId(question['_id']);
-    final topic = ((question['topic_tag'] as Map?)?['es'] ?? 'General')
-        .toString();
-    final accuracyOnTopic = topicAccuracy[topic] ?? 0.5;
+    final topic = ((question['topic_tag'] as Map?)?['es'] ?? 'General').toString();
+    
+    final stats = topicCount[topic];
+    final accuracyOnTopic = stats == null ? 0.5 : stats.$2 / stats.$1;
     final weaknessScore = 1 - accuracyOnTopic;
-    final difficulty =
-        difficultyMap[(question['difficulty'] ?? 'medium').toString()] ?? 2;
-    final difficultyScore =
-        1 - ((difficulty - difficultyTarget).abs() / 2).clamp(0, 1);
+    
+    final difficulty = difficultyMap[(question['difficulty'] ?? 'medium').toString()] ?? 2.0;
+    final difficultyScore = 1 - ((difficulty - difficultyTarget).abs() / 2).clamp(0.0, 1.0);
+    
     final recentSeen = recentByQuestion[id];
     final freshnessScore = recentSeen == null
-        ? 1
-        : min(1, DateTime.now().toUtc().difference(recentSeen).inDays / 10);
+        ? 1.0
+        : min(1.0, nowUtc.difference(recentSeen).inDays / 30.0); // 30 days window for freshness
+    
     final mistakeBoost = (wrongCountByQuestion[id] ?? 0) * 0.15;
 
     var score =
@@ -349,15 +341,9 @@ List<QuestionScore> scoreQuestions({
         difficultyScore * 0.2 +
         Random().nextDouble() * 0.1;
 
-    if (mode == 'mistakes') {
-      score += mistakeBoost + 0.25;
-    }
-    if (mode == 'weak_topics') {
-      score += weaknessScore * 0.2;
-    }
-    if (mode == 'bookmarks') {
-      score += 0.15;
-    }
+    if (mode == 'mistakes') score += mistakeBoost + 0.25;
+    if (mode == 'weak_topics') score += weaknessScore * 0.2;
+    if (mode == 'bookmarks') score += 0.15;
 
     return QuestionScore(id: id, score: score);
   }).toList()..sort((a, b) => b.score.compareTo(a.score));

@@ -37,7 +37,7 @@ class ProfileRepository {
     }
 
     final users = await _databaseService.users;
-    final user = await users.findOne(mongo.where.id(userId));
+    final user = await users.findOne(mongo.where.id(userId).fields(['_id']));
     if (user == null) {
       throw const AppDataException('User not found.');
     }
@@ -73,7 +73,7 @@ class ProfileRepository {
     final users = await _databaseService.users;
     final questionsCollection = await _databaseService.questions;
 
-    final user = await users.findOne(mongo.where.id(userId));
+    final user = await users.findOne(mongo.where.id(userId).fields(['bookmarkedQuestions']));
     if (user == null) {
       throw const AppDataException('User not found.');
     }
@@ -113,7 +113,7 @@ class ProfileRepository {
     }
 
     final users = await _databaseService.users;
-    final user = await users.findOne(mongo.where.id(userId));
+    final user = await users.findOne(mongo.where.id(userId).fields(['bookmarkedQuestions']));
     if (user == null) {
       throw const AppDataException('User not found.');
     }

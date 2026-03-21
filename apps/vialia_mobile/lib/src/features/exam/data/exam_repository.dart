@@ -32,12 +32,19 @@ class ExamRepository {
   List<Map<String, dynamic>>? _questionsCache;
   DateTime? _cacheTime;
 
+  // Cache for the questions of the last created/fetched session
+  // This makes the transition from PracticeTab to ExamScreen instant
+  List<ExamQuestion>? _lastQuestions;
+  String? _lastQuestionsId;
+  DateTime? _lastQuestionsTime;
+
   Future<String> startExam({
     required String mode,
     required String assistanceMode,
     required int numQuestions,
     List<String> topicFilters = const [],
   }) async {
+    final sw = Stopwatch()..start();
     final userId = tryParseObjectId(await _secureStorage.readCurrentUserId());
     if (userId == null) {
       throw const AppDataException('Please log in first.');
@@ -63,16 +70,22 @@ class ExamRepository {
 
     for (int i = 0; i < 2; i++) {
       try {
-        // Re-acquire db and collections on every attempt so a reconnect
-        // actually uses the fresh connection instead of stale references.
         final db = await _databaseService.database;
         final usersCol = db.collection('users');
         final answersCol = db.collection('useranswers');
         final questionsCol = db.collection('questions');
 
         final futures = <Future>[
-          usersCol.findOne(mongo.where.id(userId)),
-          answersCol.find(mongo.where.eq('userId', userId)).toList(),
+          // Project only what we need
+          usersCol.findOne(mongo.where.id(userId).fields(['bookmarkedQuestions', 'preferences'])),
+          // Limit to recent 1000 answers for faster profile building
+          answersCol.find(
+            mongo.where
+              .eq('userId', userId)
+              .sortBy('createdAt', descending: true)
+              .limit(1000)
+              .fields(['questionId', 'is_correct', 'topic_tag', 'time_taken_seconds', 'createdAt', 'srs'])
+          ).toList(),
         ];
 
         if (!useQuestionsCache) {
@@ -92,15 +105,11 @@ class ExamRepository {
         final results = await Future.wait(futures);
 
         user = results[0] as Map<String, dynamic>?;
-        answers = (results[1] as List)
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
+        // Use cast/toList instead of expensive Map.from
+        answers = (results[1] as List).cast<Map<String, dynamic>>().toList();
 
         if (!useQuestionsCache) {
-          candidatesRaw = (results[2] as List)
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
-          // Update cache
+          candidatesRaw = (results[2] as List).cast<Map<String, dynamic>>().toList();
           _questionsCache = candidatesRaw;
           _cacheTime = now;
         } else {
@@ -108,159 +117,114 @@ class ExamRepository {
         }
         break;
       } catch (e) {
-        debugPrint(
-          'StartExam: Retryable error in initial fetch (attempt ${i + 1}): $e',
-        );
+        debugPrint('StartExam: Retryable error in initial fetch (attempt ${i + 1}): $e');
         if (i == 1) rethrow;
         await Future.delayed(const Duration(seconds: 1));
-        // Force a database refresh for the next attempt
         await _databaseService.database;
       }
     }
 
-    if (user == null) {
-      throw const AppDataException('User not found.');
-    }
+    if (user == null) throw const AppDataException('User not found.');
 
-    final bookmarkIds =
-        (((user['bookmarkedQuestions'] as List?) ?? const <dynamic>[]))
-            .whereType<mongo.ObjectId>()
-            .map((id) => id.oid)
-            .toSet();
+    final bookmarkIds = (((user['bookmarkedQuestions'] as List?) ?? const []))
+        .map((id) => id is mongo.ObjectId ? id.oid : id.toString())
+        .toSet();
 
-    debugPrint(
-      'StartExam: User found, candidates: ${candidatesRaw.length}, answers: ${answers.length}',
-    );
-    var candidates = candidatesRaw
-        .map((question) => Map<String, dynamic>.from(question))
-        .toList();
+    debugPrint('StartExam: Data fetch took ${sw.elapsedMilliseconds}ms. Candidates: ${candidatesRaw.length}, Answers: ${answers.length}');
+    sw.reset();
+
+    // Use a reference to avoid massive copies
+    List<Map<String, dynamic>> candidates = candidatesRaw;
 
     if (topicFilters.isNotEmpty) {
       candidates = candidates
-          .where(
-            (question) => topicFilters.contains(
-              ((question['topic_tag'] as Map?)?['es'] ?? '').toString(),
-            ),
-          )
+          .where((q) => topicFilters.contains(((q['topic_tag'] as Map?)?['es'] ?? '').toString()))
           .toList();
     }
 
     if (mode == 'bookmarks') {
       candidates = candidates
-          .where(
-            (question) =>
-                bookmarkIds.contains(objectIdToString(question['_id'])),
-          )
+          .where((q) => bookmarkIds.contains(objectIdToString(q['_id'])))
           .toList();
     }
 
     if (mode == 'mistakes') {
       final lastByQuestion = <String, Map<String, dynamic>>{};
       for (final answer in answers) {
-        lastByQuestion[objectIdToString(answer['questionId'])] =
-            Map<String, dynamic>.from(answer);
+        lastByQuestion[objectIdToString(answer['questionId'])] = answer;
       }
       final unresolved = lastByQuestion.values
-          .where((answer) => answer['is_correct'] == false)
-          .map((answer) => objectIdToString(answer['questionId']))
+          .where((a) => a['is_correct'] == false)
+          .map((a) => objectIdToString(a['questionId']))
           .toSet();
-      candidates = candidates
-          .where(
-            (question) =>
-                unresolved.contains(objectIdToString(question['_id'])),
-          )
-          .toList();
+      candidates = candidates.where((q) => unresolved.contains(objectIdToString(q['_id']))).toList();
     }
 
     if (mode == 'spaced_repetition') {
       final flashcardCol = await _databaseService.flashcardProgress;
+      // Also project flashcards
       final flashcardProgress = await flashcardCol
-          .find(mongo.where.eq('userId', userId))
+          .find(mongo.where.eq('userId', userId).fields(['questionId', 'nextReviewDate']))
           .toList();
+      
       final latestByQuestion = <String, Map<String, dynamic>>{};
       for (final answer in answers) {
-        final questionId = objectIdToString(answer['questionId']);
-        final createdAt =
-            parseDate(answer['createdAt']) ??
-            DateTime.fromMillisecondsSinceEpoch(0);
-        final previous = latestByQuestion[questionId];
-        final previousDate =
-            parseDate(previous?['createdAt']) ??
-            DateTime.fromMillisecondsSinceEpoch(0);
+        final qId = objectIdToString(answer['questionId']);
+        final createdAt = parseDate(answer['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final previous = latestByQuestion[qId];
+        final previousDate = parseDate(previous?['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0);
         if (previous == null || createdAt.isAfter(previousDate)) {
-          latestByQuestion[questionId] = Map<String, dynamic>.from(answer);
+          latestByQuestion[qId] = answer;
         }
       }
-      final dueIds =
-          latestByQuestion.values
-              .where((answer) {
-                final nextReview = parseDate(
-                  (answer['srs'] as Map?)?['nextReviewAt'],
-                );
-                return nextReview != null &&
-                    !nextReview.isAfter(DateTime.now().toUtc());
-              })
-              .map((answer) => objectIdToString(answer['questionId']))
-              .toSet()
-            ..addAll(
-              flashcardProgress
-                  .where((item) {
-                    final nextReview = parseDate(item['nextReviewDate']);
-                    return nextReview != null &&
-                        !nextReview.isAfter(DateTime.now().toUtc());
-                  })
-                  .map((item) => objectIdToString(item['questionId'])),
-            );
-      candidates = candidates
-          .where(
-            (question) => dueIds.contains(objectIdToString(question['_id'])),
-          )
-          .toList();
+      final nowUtc = DateTime.now().toUtc();
+      final dueIds = latestByQuestion.values
+          .where((a) {
+            final next = parseDate((a['srs'] as Map?)?['nextReviewAt']);
+            return next != null && !next.isAfter(nowUtc);
+          })
+          .map((a) => objectIdToString(a['questionId']))
+          .toSet();
+      
+      for (final item in flashcardProgress) {
+        final next = parseDate(item['nextReviewDate']);
+        if (next != null && !next.isAfter(nowUtc)) {
+          dueIds.add(objectIdToString(item['questionId']));
+        }
+      }
+      candidates = candidates.where((q) => dueIds.contains(objectIdToString(q['_id']))).toList();
     }
 
     if (mode == 'weak_topics' && topicFilters.isEmpty) {
-      final weakTopics =
-          computeTopicStats(
-                answers
-                    .map((answer) => Map<String, dynamic>.from(answer))
-                    .toList(),
-              )
-              .take(3)
-              .map((topic) => ((topic['tag'] as Map)['es']).toString())
-              .toSet();
-      candidates = candidates
-          .where(
-            (question) => weakTopics.contains(
-              ((question['topic_tag'] as Map?)?['es'] ?? '').toString(),
-            ),
-          )
-          .toList();
+      final weakTopics = computeTopicStats(answers)
+          .take(3)
+          .map((t) => ((t['tag'] as Map)['es']).toString())
+          .toSet();
+      candidates = candidates.where((q) => weakTopics.contains(((q['topic_tag'] as Map?)?['es'] ?? '').toString())).toList();
     }
 
-    if (candidates.isEmpty) {
-      throw const AppDataException('No questions available for this mode.');
-    }
+    if (candidates.isEmpty) throw const AppDataException('No questions available for this mode.');
 
+    // Scoring
     final scored = scoreQuestions(
       candidates: candidates,
-      answers: answers
-          .map((answer) => Map<String, dynamic>.from(answer))
-          .toList(),
+      answers: answers,
       mode: mode,
     );
+    debugPrint('StartExam: Scoring took ${sw.elapsedMilliseconds}ms');
+    sw.reset();
+
     final questionById = {
-      for (final question in candidates)
-        objectIdToString(question['_id']): question,
+      for (final q in candidates) objectIdToString(q['_id']): q,
     };
 
     final totalQuestions = mode == 'official' ? 30 : numQuestions;
-    final selectedQuestions =
-        scored
-            .map((score) => questionById[score.id])
-            .whereType<Map<String, dynamic>>()
-            .take(totalQuestions)
-            .toList()
-          ..shuffle(Random());
+    final selectedQuestions = scored
+        .map((s) => questionById[s.id])
+        .whereType<Map<String, dynamic>>()
+        .take(totalQuestions)
+        .toList()
+      ..shuffle(Random());
 
     final creationTime = DateTime.now().toUtc();
     final session = <String, dynamic>{
@@ -268,25 +232,41 @@ class ExamRepository {
       'userId': userId,
       'mode': mode,
       'status': 'in_progress',
-      'language': ((user['preferences'] as Map?)?['language'] ?? 'es')
-          .toString(),
+      'language': ((user['preferences'] as Map?)?['language'] ?? 'es').toString(),
       'topicFilters': topicFilters,
       'assistanceMode': assistanceMode == 'instant' ? 'instant' : 'exam',
-      'questionIds': selectedQuestions
-          .map((question) => question['_id'] as mongo.ObjectId)
-          .toList(),
+      'questionIds': selectedQuestions.map((q) => q['_id'] as mongo.ObjectId).toList(),
       'answers': <Map<String, dynamic>>[],
       'currentQuestionIndex': 0,
-      'expiresAt': mode == 'official'
-          ? creationTime.add(const Duration(minutes: 30))
-          : null,
+      'expiresAt': mode == 'official' ? creationTime.add(const Duration(minutes: 30)) : null,
       'createdAt': creationTime,
       'updatedAt': creationTime,
     };
 
     final sessionsCol = await _databaseService.examSessions;
     await sessionsCol.insertOne(session);
-    return objectIdToString(session['_id']);
+    final sessionId = objectIdToString(session['_id']);
+
+    // Proactively fetch full questions and cache them to make transition instant
+    try {
+      final qCol = await _databaseService.questions;
+      final fullQs = await qCol.find(mongo.where.oneFrom('_id', session['questionIds'] as List)).toList();
+      final qMap = {for (final q in fullQs) objectIdToString(q['_id']): q};
+      final qList = (session['questionIds'] as List)
+          .map((id) => qMap[objectIdToString(id)])
+          .whereType<Map<String, dynamic>>()
+          .map((q) => ExamQuestion.fromJson(publicQuestionMap(q)))
+          .toList();
+      
+      _lastQuestionsId = sessionId;
+      _lastQuestions = qList;
+      _lastQuestionsTime = DateTime.now();
+      debugPrint('StartExam: Proactively cached $sessionId bundle.');
+    } catch (e) {
+      debugPrint('StartExam: Cache warmup failed (ignoring): $e');
+    }
+
+    return sessionId;
   }
 
   Future<ExamSessionBundle> fetchSession(String sessionId) async {
@@ -297,50 +277,49 @@ class ExamRepository {
     }
 
     final sessionsCollection = await _databaseService.examSessions;
-    final questionsCollection = await _databaseService.questions;
-
     final session = await sessionsCollection.findOne(
       mongo.where.id(parsedSessionId).eq('userId', userId),
     );
-    if (session == null) {
-      throw const AppDataException('Session not found.');
+    if (session == null) throw const AppDataException('Session not found.');
+
+    List<ExamQuestion> orderedQuestions;
+    final now = DateTime.now();
+    if (_lastQuestionsId == sessionId && 
+        _lastQuestions != null && 
+        _lastQuestionsTime != null && 
+        now.difference(_lastQuestionsTime!) < const Duration(minutes: 5)) {
+      debugPrint('FetchSession: Returning cached questions for $sessionId');
+      orderedQuestions = _lastQuestions!;
+    } else {
+      final questionsCollection = await _databaseService.questions;
+      final qIds = (session['questionIds'] as List).cast<mongo.ObjectId>().toList();
+      final questions = await questionsCollection.find(mongo.where.oneFrom('_id', qIds)).toList();
+      final qMap = {for (final q in questions) objectIdToString(q['_id']): q};
+      orderedQuestions = qIds
+          .map((id) => qMap[id.oid])
+          .whereType<Map<String, dynamic>>()
+          .map((q) => ExamQuestion.fromJson(publicQuestionMap(q, includeSolution: session['status'] == 'completed')))
+          .toList();
+      
+      _lastQuestionsId = sessionId;
+      _lastQuestions = orderedQuestions;
+      _lastQuestionsTime = now;
     }
 
-    final questionIds =
-        (((session['questionIds'] as List?) ?? const <dynamic>[]))
-            .whereType<mongo.ObjectId>()
-            .toList();
-    final questions = await questionsCollection
-        .find(mongo.where.oneFrom('_id', questionIds))
-        .toList();
-    final questionById = {
-      for (final question in questions)
-        objectIdToString(question['_id']): Map<String, dynamic>.from(question),
-    };
-    final orderedQuestions = questionIds
-        .map((id) => questionById[id.oid])
-        .whereType<Map<String, dynamic>>()
-        .map(
-          (question) => publicQuestionMap(
-            question,
-            includeSolution: session['status'] == 'completed',
-          ),
-        )
-        .map(ExamQuestion.fromJson)
-        .toList();
+    return _createBundleFromSession(session, orderedQuestions);
+  }
 
-    final answers = (((session['answers'] as List?) ?? const <dynamic>[]))
-        .map((answer) => Map<String, dynamic>.from(answer as Map))
-        .map(
-          (answer) => <String, dynamic>{
-            'questionId': objectIdToString(answer['questionId']),
-            'selectedOptionIdx':
-                (answer['selectedOptionIdx'] as num?)?.toInt() ?? 0,
-            'isCorrect': answer['isCorrect'] == true,
-            'timeTakenSeconds':
-                (answer['timeTakenSeconds'] as num?)?.toInt() ?? 0,
-          },
-        )
+  ExamSessionBundle _createBundleFromSession(Map<String, dynamic> session, List<ExamQuestion> questions) {
+    final answers = (session['answers'] as List? ?? [])
+        .map((a) {
+          final m = a as Map;
+          return <String, dynamic>{
+            'questionId': objectIdToString(m['questionId']),
+            'selectedOptionIdx': (m['selectedOptionIdx'] as num?)?.toInt() ?? 0,
+            'isCorrect': m['isCorrect'] == true || m['is_correct'] == true,
+            'timeTakenSeconds': (m['timeTakenSeconds'] as num?)?.toInt() ?? (m['time_taken_seconds'] as num?)?.toInt() ?? 0,
+          };
+        })
         .toList();
 
     return ExamSessionBundle(
@@ -350,14 +329,15 @@ class ExamRepository {
         'status': session['status'],
         'language': session['language'],
         'assistanceMode': session['assistanceMode'],
-        'currentQuestionIndex': session['currentQuestionIndex'],
+        'currentQuestionIndex': (session['currentQuestionIndex'] as num?)?.toInt() ?? 0,
         'answers': answers,
         'score': session['score'],
         'passed': session['passed'],
       }),
-      questions: orderedQuestions,
+      questions: questions,
     );
   }
+
 
   Future<ExamAnswerFeedback> submitAnswer({
     required String sessionId,
@@ -380,7 +360,8 @@ class ExamRepository {
       mongo.where
           .id(parsedSessionId)
           .eq('userId', userId)
-          .eq('status', 'in_progress'),
+          .eq('status', 'in_progress')
+          .fields(['questionIds', 'answers', 'expiresAt', 'assistanceMode']),
     );
     if (session == null) {
       throw const AppDataException('Active session not found.');
@@ -396,12 +377,10 @@ class ExamRepository {
     }
 
     final answers = (((session['answers'] as List?) ?? const <dynamic>[]))
-        .map((answer) => Map<String, dynamic>.from(answer as Map))
+        .cast<Map<String, dynamic>>()
         .toList();
-    if (answers.any(
-      (answer) =>
-          objectIdToString(answer['questionId']) == parsedQuestionId.oid,
-    )) {
+    
+    if (answers.any((answer) => objectIdToString(answer['questionId']) == parsedQuestionId.oid)) {
       throw const AppDataException('Question already answered.');
     }
 
@@ -411,7 +390,7 @@ class ExamRepository {
     }
 
     final question = await questionsCollection.findOne(
-      mongo.where.id(parsedQuestionId),
+      mongo.where.id(parsedQuestionId).fields(['correct_option_idx', 'topic_tag', 'metadata']),
     );
     if (question == null) {
       throw const AppDataException('Question not found.');
@@ -492,13 +471,16 @@ class ExamRepository {
       mongo.where
           .id(parsedSessionId)
           .eq('userId', userId)
-          .eq('status', 'in_progress'),
+          .eq('status', 'in_progress')
+          .fields(['answers', 'questionIds', 'language', 'mode']),
     );
     if (session == null) {
       throw const AppDataException('Session not found.');
     }
 
-    final user = await users.findOne(mongo.where.id(userId));
+    final user = await users.findOne(
+      mongo.where.id(userId).fields(['gamification', 'stats', 'examLanguagesCompleted', 'badges', 'skillProfile']),
+    );
     if (user == null) {
       throw const AppDataException('User not found.');
     }
@@ -548,19 +530,33 @@ class ExamRepository {
     );
 
     final allAnswers = await answersCollection
-        .find(mongo.where.eq('userId', userId))
-        .toList();
-    final correctAnswers = allAnswers
-        .where(
-          (answer) =>
-              answer['is_correct'] == true || answer['isCorrect'] == true,
+        .find(
+          mongo.where.eq('userId', userId).fields([
+            'is_correct',
+            'isCorrect',
+            'createdAt',
+            'topic_tag',
+            'topicTag'
+          ]),
         )
-        .length;
+        .toList();
+
+    int correctAnswersCount = 0;
+    int todayQuestionCount = 0;
+    for (final ans in allAnswers) {
+      if (ans['is_correct'] == true || ans['isCorrect'] == true) {
+        correctAnswersCount++;
+      }
+      if (isSameStudyDay(parseDate(ans['createdAt']), now)) {
+        todayQuestionCount++;
+      }
+    }
+
     final overallAccuracy = allAnswers.isEmpty
         ? 0
-        : ((correctAnswers / allAnswers.length) * 100).round();
+        : ((correctAnswersCount / allAnswers.length) * 100).round();
 
-    final userMap = Map<String, dynamic>.from(user);
+    final userMap = user.cast<String, dynamic>();
     final gamification = gamificationMap(userMap);
     final stats = statsMap(userMap);
     var newStreak = (gamification['currentStreak'] as num?)?.toInt() ?? 0;
@@ -570,24 +566,20 @@ class ExamRepository {
       newStreak += 1;
     }
 
-    final todayQuestionCount = allAnswers.where((answer) {
-      return isSameStudyDay(parseDate(answer['createdAt']), now);
-    }).length;
-
     final examLanguages = readExamLanguages(userMap);
     final sessionLanguage = (session['language'] ?? 'es').toString();
     if (!examLanguages.contains(sessionLanguage)) {
       examLanguages.add(sessionLanguage);
     }
 
-    final masteredFlashcards = await flashcardCollection
-        .find(mongo.where.eq('userId', userId).eq('status', 'mastered'))
-        .length;
+    final masteredFlashcards = await flashcardCollection.count(
+      mongo.where.eq('userId', userId).eq('status', 'mastered'),
+    );
 
     final xpEarned = (passed ? 10 : 5) + (accuracy >= 90 ? 10 : 0);
-    final totalXp =
-        ((gamification['totalXP'] as num?)?.toInt() ?? 0) + xpEarned;
+    final totalXp = ((gamification['totalXP'] as num?)?.toInt() ?? 0) + xpEarned;
     final updatedWeeklyXp = effectiveWeeklyXp(userMap, now) + xpEarned;
+    
     final newBadges = determineNewBadges(
       user: userMap,
       totalAnswered: allAnswers.length,
@@ -614,12 +606,16 @@ class ExamRepository {
       overallAccuracy: overallAccuracy,
       currentStreak: newStreak,
     );
-    final weakTopics = computeTopicStats(
-      allAnswers.map((answer) => Map<String, dynamic>.from(answer)).toList(),
-    ).take(3).map((topic) => ((topic['tag'] as Map)['es']).toString()).toList();
-    final completedExamCount = await sessionsCollection
-        .find(mongo.where.eq('userId', userId).eq('status', 'completed'))
-        .length;
+    
+    final topicStats = computeTopicStats(allAnswers.cast<Map<String, dynamic>>().toList());
+    final weakTopics = topicStats
+        .take(3)
+        .map((topic) => ((topic['tag'] as Map)['es']).toString())
+        .toList();
+
+    final completedExamCount = await sessionsCollection.count(
+      mongo.where.eq('userId', userId).eq('status', 'completed'),
+    );
     final weekStart = startOfCurrentWeekUtc(now);
 
     await users.updateOne(
