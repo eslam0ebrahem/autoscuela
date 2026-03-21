@@ -18,7 +18,18 @@ class MongoDatabaseService {
   Future<void>? _opening;
 
   Future<mongo.Db> get database async {
+    bool isStale = false;
     if (_db != null && _db!.isConnected) {
+      try {
+        // In mongo_dart, isConnected can be true while master connection is lost.
+        // Accessing masterConnection will throw if it's not ready.
+        _db!.masterConnection;
+      } catch (_) {
+        isStale = true;
+      }
+    }
+
+    if (_db != null && _db!.isConnected && !isStale) {
       return _db!;
     }
 
