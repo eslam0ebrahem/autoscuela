@@ -9,6 +9,15 @@ node_modules/
 
 # Production build
 /build
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/ios/Pods/
+**/ios/.symlinks/
+**/android/.gradle/
+**/pubspec.lock
 
 # Env files
 .env
@@ -16,6 +25,7 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
+apps/vialia_mobile/.env
 
 # Logs
 npm-debug.log*

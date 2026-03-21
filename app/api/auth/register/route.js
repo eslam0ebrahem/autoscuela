@@ -115,6 +115,7 @@ export async function POST(request) {
     const response = NextResponse.json(
       {
         message: 'Account created successfully. Please verify your email to unlock all features.',
+        token, // Return token for mobile clients
         user: {
           id: user._id,
           email: user.email,

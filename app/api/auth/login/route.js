@@ -116,6 +116,7 @@ export async function POST(request) {
     // ── Prepare response ───────────────────────────────────────────────
     const response = NextResponse.json({
       message: 'Logged in successfully',
+      token, // Return token for mobile clients
       user: {
         id: user._id,
         email: user.email,
