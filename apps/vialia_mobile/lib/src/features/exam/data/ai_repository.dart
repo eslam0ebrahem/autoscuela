@@ -21,7 +21,9 @@ class AiRepository {
     // But for the prompt, passing data is easier if the UI has it.
     Map<String, dynamic>? questionData,
   }) async {
-    if (questionData == null) return 'Piense en la regla general de conducción.';
+    if (questionData == null) {
+      return 'Piense en la regla general de conducción.';
+    }
 
     try {
       final qText = language == 'en'
@@ -33,7 +35,9 @@ class AiRepository {
           .entries
           .map((e) {
             final idx = ['A', 'B', 'C', 'D'][e.key];
-            final text = language == 'en' ? e.value['text_en'] : e.value['text_es'];
+            final text = language == 'en'
+                ? e.value['text_en']
+                : e.value['text_es'];
             return '$idx) $text';
           })
           .join('\n');
@@ -58,7 +62,8 @@ Return ONLY valid JSON.
           {'role': 'system', 'content': systemPrompt},
           {
             'role': 'user',
-            'content': 'Language: $language\nQuestion: $qText\nOptions:\n$opts\nGive a hint.'
+            'content':
+                'Language: $language\nQuestion: $qText\nOptions:\n$opts\nGive a hint.',
           },
         ],
       );
@@ -91,8 +96,14 @@ Return ONLY valid JSON.
           .entries
           .map((e) {
             final label = ['A', 'B', 'C', 'D'][e.key];
-            final text = language == 'en' ? e.value['text_en'] : e.value['text_es'];
-            final mark = e.key == correctIdx ? ' ✅ CORRECT' : e.key == selectedIdx ? ' ❌ SELECTED' : '';
+            final text = language == 'en'
+                ? e.value['text_en']
+                : e.value['text_es'];
+            final mark = e.key == correctIdx
+                ? ' ✅ CORRECT'
+                : e.key == selectedIdx
+                ? ' ❌ SELECTED'
+                : '';
             return '$label) $text$mark';
           })
           .join('\n');
@@ -126,8 +137,8 @@ Return ONLY valid JSON.
               'Manual Reference: $helpHtml',
               'Student chose: ${['A', 'B', 'C', 'D'][selectedIdx]}',
               'Correct answer: ${['A', 'B', 'C', 'D'][correctIdx]}',
-              'Explain.'
-            ].join('\n')
+              'Explain.',
+            ].join('\n'),
           },
         ],
       );
@@ -137,8 +148,12 @@ Return ONLY valid JSON.
 
       final sText = data['summary'] ?? '';
       final cText = data['correct_explanation'] ?? '';
-      final wText = data['wrong_explanation'] != null ? '\n\n${data['wrong_explanation']}' : '';
-      final mText = data['memory_tip'] != null ? '\n\n💡 Tip: ${data['memory_tip']}' : '';
+      final wText = data['wrong_explanation'] != null
+          ? '\n\n${data['wrong_explanation']}'
+          : '';
+      final mText = data['memory_tip'] != null
+          ? '\n\n💡 Tip: ${data['memory_tip']}'
+          : '';
 
       return '$sText\n\n$cText$wText$mText';
     } catch (e) {
@@ -175,13 +190,18 @@ Return ONLY valid JSON.
           {'role': 'system', 'content': systemPrompt},
           {
             'role': 'user',
-            'content': 'Language: $language\nExam Results:\n${jsonEncode(examSummary)}\nGenerate coach feedback.'
+            'content':
+                'Language: $language\nExam Results:\n${jsonEncode(examSummary)}\nGenerate coach feedback.',
           },
         ],
       );
 
       final data = _groq.safeParseJson(result);
-      return data ?? {'headline': 'Keep going!', 'summary': 'Continue practicing for better results.'};
+      return data ??
+          {
+            'headline': 'Keep going!',
+            'summary': 'Continue practicing for better results.',
+          };
     } catch (e) {
       throw AppDataException('AI Coach error: $e');
     }
@@ -194,9 +214,12 @@ Return ONLY valid JSON.
     Map<String, dynamic>? skillProfile,
   }) async {
     try {
-      final daysUntilExam = DateTime.parse(targetDate).difference(DateTime.now()).inDays;
+      final daysUntilExam = DateTime.parse(
+        targetDate,
+      ).difference(DateTime.now()).inDays;
 
-      final prompt = '''
+      final prompt =
+          '''
 You are a DGT Spanish driving exam coach. Create a personalized study plan.
 Student profile:
 - Skill Data: ${jsonEncode(skillProfile)}
@@ -222,7 +245,9 @@ Language: $language. Return ONLY valid JSON.
 ''';
 
       final result = await _groq.chatCompletion(
-        messages: [{'role': 'user', 'content': prompt}],
+        messages: [
+          {'role': 'user', 'content': prompt},
+        ],
       );
 
       final data = _groq.safeParseJson(result);
@@ -234,7 +259,8 @@ Language: $language. Return ONLY valid JSON.
       final weeksCount = (data['weeks'] as List?)?.length ?? 0;
 
       return {
-        'recommendations': '$summary\n\nPlan for $weeksCount weeks:\n$tip\n\nGood luck!'
+        'recommendations':
+            '$summary\n\nPlan for $weeksCount weeks:\n$tip\n\nGood luck!',
       };
     } catch (e) {
       throw AppDataException('AI Study Plan error: $e');
@@ -248,7 +274,8 @@ Language: $language. Return ONLY valid JSON.
     try {
       final groupsText = jsonEncode(mistakeGroups);
 
-      final prompt = '''
+      final prompt =
+          '''
 You are a DGT Spanish driving exam expert. Analyze these mistake patterns and identify conceptual knowledge gaps.
 Data: $groupsText
 
@@ -268,21 +295,27 @@ Language: $language. Return ONLY valid JSON.
 ''';
 
       final result = await _groq.chatCompletion(
-        messages: [{'role': 'user', 'content': prompt}],
+        messages: [
+          {'role': 'user', 'content': prompt},
+        ],
       );
 
       final data = _groq.safeParseJson(result);
-      if (data == null) throw AppDataException('Mistake analysis parsing failed.');
+      if (data == null) {
+        throw AppDataException('Mistake analysis parsing failed.');
+      }
 
       final priority = data['priority_fix'] ?? '';
       final tip = data['study_tip'] ?? '';
-      final patternsList = (data['patterns'] as List?)
+      final patternsList =
+          (data['patterns'] as List?)
               ?.map((p) => "- ${p['concept']}: ${p['root_cause']}")
               .join('\n') ??
           '';
 
       return {
-        'analysis': 'Priority: $priority\n\nDetected Patterns:\n$patternsList\n\nStudy Tip: $tip'
+        'analysis':
+            'Priority: $priority\n\nDetected Patterns:\n$patternsList\n\nStudy Tip: $tip',
       };
     } catch (e) {
       throw AppDataException('AI Mistake Analysis error: $e');

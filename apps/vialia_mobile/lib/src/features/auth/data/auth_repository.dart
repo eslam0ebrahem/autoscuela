@@ -162,7 +162,9 @@ class AuthRepository {
     }
 
     final users = await _databaseService.users;
-    final user = await users.findOne(mongo.where.id(mongo.ObjectId.fromHexString(userId)));
+    final user = await users.findOne(
+      mongo.where.id(mongo.ObjectId.fromHexString(userId)),
+    );
     if (user == null) {
       throw const AppDataException('User not found.');
     }

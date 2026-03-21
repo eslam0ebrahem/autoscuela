@@ -7,10 +7,26 @@ import '../../profile/presentation/bookmarks_tab.dart';
 import '../../profile/presentation/profile_tab.dart';
 import 'dashboard_tab.dart';
 
-class HomeShellScreen extends StatelessWidget {
+class HomeShellScreen extends StatefulWidget {
   const HomeShellScreen({super.key, required this.currentIndex});
 
   final int currentIndex;
+
+  @override
+  State<HomeShellScreen> createState() => _HomeShellScreenState();
+}
+
+class _HomeShellScreenState extends State<HomeShellScreen> {
+  late int _currentIndex;
+
+  // Keep page instances alive across tab switches
+  static const _pages = <Widget>[
+    DashboardTab(),
+    PracticeTab(),
+    FlashcardsTab(),
+    BookmarksTab(),
+    ProfileTab(),
+  ];
 
   static const _paths = [
     '/dashboard',
@@ -21,15 +37,22 @@ class HomeShellScreen extends StatelessWidget {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.currentIndex;
+  }
+
+  @override
+  void didUpdateWidget(HomeShellScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.currentIndex != oldWidget.currentIndex) {
+      setState(() => _currentIndex = widget.currentIndex);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final pages = [
-      const DashboardTab(),
-      const PracticeTab(),
-      const FlashcardsTab(),
-      const BookmarksTab(),
-      const ProfileTab(),
-    ];
 
     return Scaffold(
       extendBody: true,
@@ -40,19 +63,22 @@ class HomeShellScreen extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: [
               colorScheme.surface,
-              colorScheme.primary.withOpacity(0.06),
-              colorScheme.secondary.withOpacity(0.08),
+              colorScheme.primary.withValues(alpha: 0.06),
+              colorScheme.secondary.withValues(alpha: 0.08),
             ],
           ),
         ),
         child: SafeArea(
           bottom: false,
-          child: IndexedStack(index: currentIndex, children: pages),
+          child: IndexedStack(index: _currentIndex, children: _pages),
         ),
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: currentIndex,
-        onDestinationSelected: (index) => context.go(_paths[index]),
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) {
+          setState(() => _currentIndex = index);
+          context.go(_paths[index]);
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.space_dashboard_outlined),

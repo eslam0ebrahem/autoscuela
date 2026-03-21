@@ -16,42 +16,65 @@ class MongoDatabaseService {
   final String _uri;
   mongo.Db? _db;
   Future<void>? _opening;
+  DateTime? _lastAccess;
 
   Future<mongo.Db> get database async {
-    bool isStale = false;
-    if (_db != null && _db!.isConnected) {
-      try {
-        // In mongo_dart, isConnected can be true while master connection is lost.
-        // Accessing masterConnection will throw if it's not ready.
-        _db!.masterConnection;
-      } catch (_) {
-        isStale = true;
-      }
-    }
-
-    if (_db != null && _db!.isConnected && !isStale) {
-      return _db!;
-    }
-
-    if (_opening != null) {
-      await _opening;
+    // We'll try to get/restore the connection up to 3 times
+    for (int i = 0; i < 3; i++) {
+      bool isStale = false;
       if (_db != null && _db!.isConnected) {
+        try {
+          // Heartbeat check for older connections (more than 2 minutes idle)
+          final now = DateTime.now();
+          if (_lastAccess != null &&
+              now.difference(_lastAccess!) > const Duration(minutes: 2)) {
+            // Use pingCommand for a much lighter and faster health check than findOne
+            await _db!.pingCommand().timeout(const Duration(seconds: 2));
+          } else {
+            // Normal check for topology discovery readiness
+            _db!.masterConnection;
+          }
+        } catch (e) {
+          debugPrint(
+            'MongoDB connection detected as stale/closed (${e.runtimeType}), reconnecting...',
+          );
+          isStale = true;
+        }
+      }
+
+      if (_db != null && _db!.isConnected && !isStale) {
+        _lastAccess = DateTime.now();
+        return _db!;
+      }
+
+      // If stale or disconnected, wait for any pending opening or start a new one
+      if (_opening != null) {
+        await _opening;
+        if (_db != null && _db!.isConnected) {
+          _lastAccess = DateTime.now();
+          return _db!;
+        }
+      }
+
+      _opening = _open();
+      try {
+        await _opening;
+      } catch (e) {
+        debugPrint('Failed to open database in attempt ${i + 1}: $e');
+        if (i == 2) rethrow;
+        await Future<void>.delayed(Duration(seconds: 1 + i));
+        continue;
+      } finally {
+        _opening = null;
+      }
+
+      if (_db != null && _db!.isConnected) {
+        _lastAccess = DateTime.now();
         return _db!;
       }
     }
 
-    _opening = _open();
-    try {
-      await _opening;
-    } finally {
-      _opening = null;
-    }
-
-    if (_db == null || !_db!.isConnected) {
-      throw Exception('Failed to establish MongoDB connection');
-    }
-
-    return _db!;
+    throw Exception('Failed to establish MongoDB connection after retries');
   }
 
   Future<mongo.DbCollection> get users async =>
@@ -80,17 +103,18 @@ class MongoDatabaseService {
         }
 
         _db = await mongo.Db.create(_uri);
-        
+
         // Pass secure: true if URI indicates TLS/SSL or it's an Atlas SRV connection
-        final isSecure = _uri.contains('tls=true') || 
-                         _uri.contains('ssl=true') || 
-                         _uri.startsWith('mongodb+srv');
-        
+        final isSecure =
+            _uri.contains('tls=true') ||
+            _uri.contains('ssl=true') ||
+            _uri.startsWith('mongodb+srv');
+
         await _db!.open(secure: isSecure);
 
         if (_db!.isConnected) {
           debugPrint('MongoDB opened, waiting for master discovery...');
-          
+
           // Atlas can take a moment to discover the topology
           // We'll try to find a document with a timeout
           try {
@@ -102,7 +126,9 @@ class MongoDatabaseService {
           } catch (pingError) {
             debugPrint('Verification failed after connected: $pingError');
             // If verification fails, we should close and retry
-            try { await _db!.close(); } catch (_) {}
+            try {
+              await _db!.close();
+            } catch (_) {}
             _db = null;
             throw Exception('Connection verification failed: $pingError');
           }

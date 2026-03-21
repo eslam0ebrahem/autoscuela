@@ -5,25 +5,34 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFF7EEE2), Color(0xFFE6F4F1), Color(0xFFF3D4BD)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.primary.withValues(alpha: 0.08),
+              colorScheme.secondary.withValues(alpha: 0.12),
+            ],
           ),
         ),
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'Vialia',
-                style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  color: colorScheme.onSurface,
+                ),
               ),
-              SizedBox(height: 16),
-              CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              const CircularProgressIndicator(),
             ],
           ),
         ),

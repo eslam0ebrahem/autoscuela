@@ -61,7 +61,9 @@ class _BookmarksTabState extends ConsumerState<BookmarksTab> {
         context.push('/exam/$sessionId');
       }
     } on AppDataException catch (error) {
-      _show(error.message);
+      if (mounted) _show(error.message);
+    } catch (error) {
+      if (mounted) _show(error.toString());
     }
   }
 
@@ -97,6 +99,34 @@ class _BookmarksTabState extends ConsumerState<BookmarksTab> {
           ],
         ),
         const SizedBox(height: 12),
+        if (_bookmarks.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.bookmark_outline,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No bookmarks yet',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap the bookmark icon during an exam to save questions here.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ..._bookmarks.map(
           (question) => Padding(
             padding: const EdgeInsets.only(bottom: 12),

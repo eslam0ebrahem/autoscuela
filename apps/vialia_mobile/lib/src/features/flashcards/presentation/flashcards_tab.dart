@@ -192,6 +192,34 @@ class _FlashcardsTabState extends ConsumerState<FlashcardsTab> {
           style: Theme.of(context).textTheme.bodyLarge,
         ),
         const SizedBox(height: 18),
+        if (_decks.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.style_outlined,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No flashcard decks yet',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Complete some practice exams first — flashcard decks are generated from your question bank.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ..._decks.map(
           (deck) => Padding(
             padding: const EdgeInsets.only(bottom: 12),

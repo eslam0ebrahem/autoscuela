@@ -61,13 +61,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFF8F2EA), Color(0xFFECF7F4), Color(0xFFF3E0CC)],
+            colors: [
+              colorScheme.surface,
+              colorScheme.primary.withValues(alpha: 0.08),
+              colorScheme.secondary.withValues(alpha: 0.14),
+            ],
           ),
         ),
         child: SafeArea(

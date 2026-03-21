@@ -4,8 +4,8 @@ class AppConfig {
   static String get mongoUri {
     const value = String.fromEnvironment('MONGODB_URI');
     if (value.isEmpty) {
-      // Re-configuring for standard Atlassrv connection with TLS
-      return 'mongodb+srv://eslam1v:2tPMAytvUxLwFlcy@cluster0.ksezl1d.mongodb.net/gala_exams?retryWrites=true&w=majority&authSource=admin&tls=true&safeAtlas=true';
+      // Standard Atlas SRV connection with safeAtlas=true as recommended by driver for concurrent requests
+      return 'mongodb+srv://eslam1v:2tPMAytvUxLwFlcy@cluster0.ksezl1d.mongodb.net/gala_exams?retryWrites=true&w=majority&authSource=admin&tls=true&safeAtlas=true&connectTimeoutMS=10000&socketTimeoutMS=60000';
     }
     return value;
   }

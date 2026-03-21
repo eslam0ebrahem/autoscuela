@@ -5,15 +5,17 @@ import '../config/app_config.dart';
 
 final groqClientProvider = Provider<GroqClient>((ref) {
   return GroqClient(
-    dio: Dio(BaseOptions(
-      baseUrl: 'https://api.groq.com/openai/v1',
-      headers: {
-        'Authorization': 'Bearer ${AppConfig.groqApiKey}',
-        'Content-Type': 'application/json',
-      },
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-    )),
+    dio: Dio(
+      BaseOptions(
+        baseUrl: 'https://api.groq.com/openai/v1',
+        headers: {
+          'Authorization': 'Bearer ${AppConfig.groqApiKey}',
+          'Content-Type': 'application/json',
+        },
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+      ),
+    ),
   );
 });
 
@@ -41,11 +43,14 @@ class GroqClient {
         },
       );
 
-      final content = response.data['choices'][0]['message']['content'] as String;
+      final content =
+          response.data['choices'][0]['message']['content'] as String;
       return content;
     } on DioException catch (e) {
       final status = e.response?.statusCode;
-      final message = e.response?.data?['error']?['message'] ?? 'AI service unavailable ($status)';
+      final message =
+          e.response?.data?['error']?['message'] ??
+          'AI service unavailable ($status)';
       throw Exception(message);
     } catch (e) {
       throw Exception('Unexpected AI error: $e');

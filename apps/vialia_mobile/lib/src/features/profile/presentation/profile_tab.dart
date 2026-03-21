@@ -65,6 +65,10 @@ class ProfileTab extends ConsumerWidget {
                       value: '${user.currentStreak}d',
                     ),
                     _TinyMetric(label: 'XP', value: '${user.totalXp}'),
+                    _TinyMetric(
+                      label: 'Plan',
+                      value: user.isPremium ? 'Premium' : 'Free',
+                    ),
                   ],
                 ),
               ],
@@ -151,7 +155,7 @@ class _TinyMetric extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

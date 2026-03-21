@@ -64,8 +64,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             end: Alignment.bottomRight,
             colors: [
               colorScheme.surface,
-              colorScheme.primary.withOpacity(0.08),
-              colorScheme.secondary.withOpacity(0.14),
+              colorScheme.primary.withValues(alpha: 0.08),
+              colorScheme.secondary.withValues(alpha: 0.14),
             ],
           ),
         ),

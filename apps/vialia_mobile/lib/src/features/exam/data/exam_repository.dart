@@ -1,5 +1,5 @@
 import 'dart:math';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
 
@@ -28,6 +28,10 @@ class ExamRepository {
   final MongoDatabaseService _databaseService;
   final SecureStorageService _secureStorage;
 
+  // In-memory cache for questions to avoid heavy fetches on every exam start
+  List<Map<String, dynamic>>? _questionsCache;
+  DateTime? _cacheTime;
+
   Future<String> startExam({
     required String mode,
     required String assistanceMode,
@@ -39,13 +43,80 @@ class ExamRepository {
       throw const AppDataException('Please log in first.');
     }
 
-    final users = await _databaseService.users;
-    final answersCollection = await _databaseService.userAnswers;
-    final questionsCollection = await _databaseService.questions;
-    final sessionsCollection = await _databaseService.examSessions;
-    final flashcardCollection = await _databaseService.flashcardProgress;
+    debugPrint('StartExam: Acquiring collections...');
+    final db = await _databaseService.database;
+    final users = db.collection('users');
+    final answersCollection = db.collection('useranswers');
+    final questionsCollection = db.collection('questions');
+    final sessionsCollection = db.collection('examsessions');
+    final flashcardCollection = db.collection('flashcardprogresses');
 
-    final user = await users.findOne(mongo.where.id(userId));
+    // Use cache if available and not older than 10 minutes
+    final now = DateTime.now();
+    bool useQuestionsCache =
+        _questionsCache != null &&
+        _cacheTime != null &&
+        now.difference(_cacheTime!) < const Duration(minutes: 10);
+
+    debugPrint(
+      'StartExam: Fetching user ${userId.oid} and data... (Cache: $useQuestionsCache)',
+    );
+
+    // We wrap the initial heavy queries in a retry to handle "reset by peer"
+    Map<String, dynamic>? user;
+    List<Map<String, dynamic>> answers = [];
+    List<Map<String, dynamic>> candidatesRaw = [];
+
+    for (int i = 0; i < 2; i++) {
+      try {
+        final futures = <Future>[
+          users.findOne(mongo.where.id(userId)),
+          answersCollection.find(mongo.where.eq('userId', userId)).toList(),
+        ];
+
+        if (!useQuestionsCache) {
+          futures.add(
+            questionsCollection
+                .find(
+                  mongo.where.eq('isActive', true).fields([
+                    '_id',
+                    'topic_tag',
+                    'difficulty',
+                  ]),
+                )
+                .toList(),
+          );
+        }
+
+        final results = await Future.wait(futures);
+
+        user = results[0] as Map<String, dynamic>?;
+        answers = (results[1] as List)
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+
+        if (!useQuestionsCache) {
+          candidatesRaw = (results[2] as List)
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+          // Update cache
+          _questionsCache = candidatesRaw;
+          _cacheTime = now;
+        } else {
+          candidatesRaw = _questionsCache!;
+        }
+        break;
+      } catch (e) {
+        debugPrint(
+          'StartExam: Retryable error in initial fetch (attempt ${i + 1}): $e',
+        );
+        if (i == 1) rethrow;
+        await Future.delayed(const Duration(seconds: 1));
+        // Force a database refresh for the next attempt
+        await _databaseService.database;
+      }
+    }
+
     if (user == null) {
       throw const AppDataException('User not found.');
     }
@@ -56,12 +127,9 @@ class ExamRepository {
             .map((id) => id.oid)
             .toSet();
 
-    final answers = await answersCollection
-        .find(mongo.where.eq('userId', userId))
-        .toList();
-    final candidatesRaw = await questionsCollection
-        .find(mongo.where.eq('isActive', true))
-        .toList();
+    debugPrint(
+      'StartExam: User found, candidates: ${candidatesRaw.length}, answers: ${answers.length}',
+    );
     var candidates = candidatesRaw
         .map((question) => Map<String, dynamic>.from(question))
         .toList();
@@ -192,7 +260,7 @@ class ExamRepository {
             .toList()
           ..shuffle(Random());
 
-    final now = DateTime.now().toUtc();
+    final creationTime = DateTime.now().toUtc();
     final session = <String, dynamic>{
       '_id': mongo.ObjectId(),
       'userId': userId,
@@ -208,10 +276,10 @@ class ExamRepository {
       'answers': <Map<String, dynamic>>[],
       'currentQuestionIndex': 0,
       'expiresAt': mode == 'official'
-          ? now.add(const Duration(minutes: 30))
+          ? creationTime.add(const Duration(minutes: 30))
           : null,
-      'createdAt': now,
-      'updatedAt': now,
+      'createdAt': creationTime,
+      'updatedAt': creationTime,
     };
 
     await sessionsCollection.insertOne(session);

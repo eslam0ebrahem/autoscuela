@@ -59,21 +59,21 @@ class AppTheme {
     return base.copyWith(
       cardTheme: CardThemeData(
         color: scheme.brightness == Brightness.dark
-            ? scheme.surfaceContainerHighest.withOpacity(0.72)
-            : Colors.white.withOpacity(0.92),
+            ? scheme.surfaceContainerHighest.withValues(alpha: 0.72)
+            : Colors.white.withValues(alpha: 0.92),
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(28),
-          side: BorderSide(color: scheme.outlineVariant.withOpacity(0.4)),
+          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.4)),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 76,
         backgroundColor: scheme.brightness == Brightness.dark
             ? const Color(0xFF0E1315)
-            : Colors.white.withOpacity(0.9),
-        indicatorColor: scheme.primary.withOpacity(0.14),
+            : Colors.white.withValues(alpha: 0.9),
+        indicatorColor: scheme.primary.withValues(alpha: 0.14),
         labelTextStyle: WidgetStateProperty.all(
           base.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
@@ -90,8 +90,8 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.brightness == Brightness.dark
-            ? scheme.surfaceContainerHighest.withOpacity(0.55)
-            : Colors.white.withOpacity(0.9),
+            ? scheme.surfaceContainerHighest.withValues(alpha: 0.55)
+            : Colors.white.withValues(alpha: 0.9),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide.none,

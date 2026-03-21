@@ -36,10 +36,10 @@ class QuestionOption {
   }
 
   Map<String, dynamic> toJson() => {
-        'idx': idx,
-        'text_es': textEs,
-        'text_en': textEn,
-      };
+    'idx': idx,
+    'text_es': textEs,
+    'text_en': textEn,
+  };
 }
 
 class ExamQuestion {
@@ -95,14 +95,14 @@ class ExamQuestion {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'question': {'es': questionEs, 'en': questionEn},
-        'options': options.map((o) => o.toJson()).toList(),
-        'topicTag': topicTag.toJson(),
-        'difficulty': difficulty,
-        'metadata': {'helpText': helpText, 'imageUrl': imageUrl},
-        'correctOptionIdx': correctOptionIdx,
-      };
+    'id': id,
+    'question': {'es': questionEs, 'en': questionEn},
+    'options': options.map((o) => o.toJson()).toList(),
+    'topicTag': topicTag.toJson(),
+    'difficulty': difficulty,
+    'metadata': {'helpText': helpText, 'imageUrl': imageUrl},
+    'correctOptionIdx': correctOptionIdx,
+  };
 
   String questionFor(String language) =>
       language == 'en' ? questionEn : questionEs;
@@ -285,15 +285,15 @@ class ExamResultViewData {
   }
 
   Map<String, dynamic> toJson() => {
-        'score': score,
-        'total': total,
-        'errors': errors,
-        'passed': passed,
-        'accuracy': accuracy,
-        'xpEarned': xpEarned,
-        'newStreak': newStreak,
-        'totalTimeSeconds': totalTimeSeconds,
-        'readinessScore': readinessScore,
-        'coachFeedback': coachFeedback.toJson(),
-      };
+    'score': score,
+    'total': total,
+    'errors': errors,
+    'passed': passed,
+    'accuracy': accuracy,
+    'xpEarned': xpEarned,
+    'newStreak': newStreak,
+    'totalTimeSeconds': totalTimeSeconds,
+    'readinessScore': readinessScore,
+    'coachFeedback': coachFeedback.toJson(),
+  };
 }

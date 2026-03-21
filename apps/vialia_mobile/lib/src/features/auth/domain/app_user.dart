@@ -68,10 +68,3 @@ class AppUser {
     );
   }
 }
-
-class AuthSession {
-  const AuthSession({required this.userId, required this.user});
-
-  final String userId;
-  final AppUser user;
-}

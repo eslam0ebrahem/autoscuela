@@ -6,6 +6,7 @@ import '../../../core/database/data_exception.dart';
 import '../data/exam_repository.dart';
 import '../data/ai_repository.dart';
 import '../domain/exam_models.dart';
+import '../../profile/data/profile_repository.dart';
 
 class ExamScreen extends ConsumerStatefulWidget {
   const ExamScreen({super.key, required this.sessionId});
@@ -19,10 +20,12 @@ class ExamScreen extends ConsumerStatefulWidget {
 class _ExamScreenState extends ConsumerState<ExamScreen> {
   ExamSessionBundle? _bundle;
   bool _loading = true;
+  String? _errorMessage;
   bool _submitting = false;
   int _currentIndex = 0;
   DateTime _questionStartedAt = DateTime.now();
   final Map<String, ExamAnswerRecord> _answers = {};
+  final Set<String> _bookmarkedIds = {};
 
   @override
   void initState() {
@@ -47,7 +50,13 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
       });
     } on AppDataException catch (error) {
       if (!mounted) return;
+      setState(() => _errorMessage = error.message);
       _showMessage(error.message);
+    } catch (error, stackTrace) {
+      if (!mounted) return;
+      debugPrint('Error loading exam: $error\n$stackTrace');
+      setState(() => _errorMessage = 'An error occurred: $error');
+      _showMessage('Error loading exam: $error');
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -118,6 +127,9 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
     } on AppDataException catch (error) {
       if (!mounted) return;
       _showMessage(error.message);
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('Error: $error');
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -135,11 +147,31 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
         context.go('/exam/${widget.sessionId}/review', extra: result);
       }
     } on AppDataException catch (error) {
-      _showMessage(error.message);
+      if (mounted) _showMessage(error.message);
+    } catch (error) {
+      if (mounted) _showMessage('Error: $error');
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
       }
+    }
+  }
+
+  Future<void> _toggleBookmark(String questionId) async {
+    try {
+      await ref.read(profileRepositoryProvider).toggleBookmark(questionId);
+      if (!mounted) return;
+      setState(() {
+        if (_bookmarkedIds.contains(questionId)) {
+          _bookmarkedIds.remove(questionId);
+          _showMessage('Bookmark removed');
+        } else {
+          _bookmarkedIds.add(questionId);
+          _showMessage('Bookmarked');
+        }
+      });
+    } catch (e) {
+      if (mounted) _showMessage('Could not toggle bookmark');
     }
   }
 
@@ -159,6 +191,9 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
     } on AppDataException catch (error) {
       if (!mounted) return;
       _showMessage(error.message);
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('Error: $error');
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -187,6 +222,9 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
     } on AppDataException catch (error) {
       if (!mounted) return;
       _showMessage(error.message);
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('Error: $error');
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -238,19 +276,72 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_errorMessage != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Error')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                const SizedBox(height: 16),
+                Text(_errorMessage!, textAlign: TextAlign.center),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: () => context.go('/practice'),
+                  child: const Text('Go back'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     if (_loading || _bundle == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    if (_bundle!.questions.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('No questions')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('No questions were found for this session.'),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => context.go('/practice'),
+                child: const Text('Go back'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final bundle = _bundle!;
-    final question = bundle.questions[_currentIndex];
+    var validIndex = _currentIndex;
+    if (validIndex >= bundle.questions.length) {
+      validIndex = bundle.questions.length - 1;
+    }
+    final question = bundle.questions[validIndex];
     final hasAnswered = _answers.containsKey(question.id);
     final language = bundle.session.language;
+    final isBookmarked = _bookmarkedIds.contains(question.id);
 
     return Scaffold(
       appBar: AppBar(
         title: Text('Question ${_currentIndex + 1}/${bundle.questions.length}'),
         actions: [
+          IconButton(
+            onPressed: () => _toggleBookmark(question.id),
+            icon: Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_border),
+            tooltip: 'Bookmark',
+          ),
           TextButton(
             onPressed: _submitting ? null : _finishExam,
             child: const Text('Finish'),
@@ -268,7 +359,9 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
           const SizedBox(height: 20),
           Card(
             elevation: 0,
-            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            color: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
             ),
@@ -290,8 +383,29 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
                   ),
                   const SizedBox(height: 20),
                   ...question.options.map((option) {
-                    final selected =
-                        _answers[question.id]?.selectedOptionIdx == option.idx;
+                    final answer = _answers[question.id];
+                    final selected = answer?.selectedOptionIdx == option.idx;
+                    final isCorrect =
+                        hasAnswered &&
+                        bundle.session.assistanceMode == 'instant' &&
+                        option.idx == question.correctOptionIdx;
+                    final isWrong =
+                        hasAnswered &&
+                        bundle.session.assistanceMode == 'instant' &&
+                        selected &&
+                        answer?.isCorrect == false;
+
+                    Color? bgColor;
+                    if (isCorrect) {
+                      bgColor = Colors.green.withValues(alpha: 0.12);
+                    } else if (isWrong) {
+                      bgColor = Colors.red.withValues(alpha: 0.12);
+                    } else if (selected) {
+                      bgColor = Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.12);
+                    }
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: OutlinedButton(
@@ -299,17 +413,36 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
                             ? null
                             : () => _answerQuestion(question, option.idx),
                         style: OutlinedButton.styleFrom(
-                          backgroundColor: selected
-                              ? Theme.of(
-                                  context,
-                                ).colorScheme.primary.withOpacity(0.12)
-                              : null,
+                          backgroundColor: bgColor,
                           alignment: Alignment.centerLeft,
+                          side: isCorrect
+                              ? const BorderSide(color: Colors.green, width: 2)
+                              : isWrong
+                              ? const BorderSide(color: Colors.red, width: 2)
+                              : null,
                         ),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Text(
-                            question.optionLabelFor(option, language),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  question.optionLabelFor(option, language),
+                                ),
+                              ),
+                              if (isCorrect)
+                                const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                  size: 20,
+                                ),
+                              if (isWrong)
+                                const Icon(
+                                  Icons.cancel,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                            ],
                           ),
                         ),
                       ),
@@ -321,15 +454,14 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
                       children: [
                         Expanded(
                           child: FilledButton(
-                            onPressed:
-                                _currentIndex < bundle.questions.length - 1
+                            onPressed: validIndex < bundle.questions.length - 1
                                 ? () => setState(() {
                                     _currentIndex += 1;
                                     _questionStartedAt = DateTime.now();
                                   })
                                 : _finishExam,
                             child: Text(
-                              _currentIndex < bundle.questions.length - 1
+                              validIndex < bundle.questions.length - 1
                                   ? 'Next question'
                                   : 'Finish exam',
                             ),

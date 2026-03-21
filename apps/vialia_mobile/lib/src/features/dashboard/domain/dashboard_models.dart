@@ -111,14 +111,14 @@ class CoachFeedback {
   }
 
   Map<String, dynamic> toJson() => {
-        'headline': headline,
-        'summary': summary,
-        'focus': focus,
-        'confidence': confidence,
-        'trend': trend,
-        'improvementPct': improvementPct,
-        'consistencyScore': consistencyScore,
-      };
+    'headline': headline,
+    'summary': summary,
+    'focus': focus,
+    'confidence': confidence,
+    'trend': trend,
+    'improvementPct': improvementPct,
+    'consistencyScore': consistencyScore,
+  };
 }
 
 class StatsOverview {

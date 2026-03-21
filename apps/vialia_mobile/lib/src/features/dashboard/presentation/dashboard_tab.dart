@@ -21,11 +21,13 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
   Future<void> _showStudyPlan() async {
     setState(() => _loadingAi = true);
     try {
-      final targetDate = DateFormat('yyyy-MM-dd').format(
-        DateTime.now().add(const Duration(days: 30)),
-      );
+      final targetDate = DateFormat(
+        'yyyy-MM-dd',
+      ).format(DateTime.now().add(const Duration(days: 30)));
       final dashboard = ref.read(dashboardProvider).value;
-      final plan = await ref.read(aiRepositoryProvider).getStudyPlan(
+      final plan = await ref
+          .read(aiRepositoryProvider)
+          .getStudyPlan(
             targetDate: targetDate,
             skillProfile: {
               'overallLevel': dashboard?.skillLevel ?? 'beginner',
@@ -34,14 +36,17 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
           );
       if (mounted) {
         setState(() => _loadingAi = false);
-        _showAiModal('AI Study Plan', plan['recommendations']?.toString() ?? 'No plan available yet.');
+        _showAiModal(
+          'AI Study Plan',
+          plan['recommendations']?.toString() ?? 'No plan available yet.',
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _loadingAi = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not generate plan: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not generate plan: $e')));
       }
     }
   }
@@ -50,15 +55,19 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
     setState(() => _loadingAi = true);
     try {
       final dashboard = ref.read(dashboardProvider).value;
-      final analysis = await ref.read(aiRepositoryProvider).getMistakePatterns(
-            mistakeGroups: dashboard?.weakTopics.map((t) => {
-              'topic': t.name,
-              'count': t.attempted,
-            }).toList(),
+      final analysis = await ref
+          .read(aiRepositoryProvider)
+          .getMistakePatterns(
+            mistakeGroups: dashboard?.weakTopics
+                .map((t) => {'topic': t.name, 'count': t.attempted})
+                .toList(),
           );
       if (mounted) {
         setState(() => _loadingAi = false);
-        _showAiModal('Mistake Analysis', analysis['analysis']?.toString() ?? 'No patterns found yet.');
+        _showAiModal(
+          'Mistake Analysis',
+          analysis['analysis']?.toString() ?? 'No patterns found yet.',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -87,23 +96,26 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.auto_awesome, color: Colors.purple, size: 24),
+                  const Icon(
+                    Icons.auto_awesome,
+                    color: Colors.purple,
+                    size: 24,
+                  ),
                   const SizedBox(width: 12),
                   Text(
                     title,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
               Text(
                 content,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      height: 1.6,
-                      fontSize: 16,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(height: 1.6, fontSize: 16),
               ),
             ],
           ),
@@ -128,8 +140,8 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
               Text(
                 'Study momentum',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -150,9 +162,8 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
                       const SizedBox(height: 8),
                       Text(
                         '${data.readinessScore}%',
-                        style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                              fontWeight: FontWeight.w900,
-                            ),
+                        style: Theme.of(context).textTheme.displaySmall
+                            ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: 8),
                       Text(data.coachFeedback.summary),
@@ -223,62 +234,103 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
               const SizedBox(height: 18),
               _SectionCard(
                 title: 'Weak topics',
-                child: Column(
-                  children: data.weakTopics.take(3).map((topic) {
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(topic.name),
-                      subtitle: Text('${topic.attempted} attempts'),
-                      trailing: Text('${topic.accuracy}%'),
-                    );
-                  }).toList(),
-                ),
+                child: data.weakTopics.isEmpty
+                    ? Text(
+                        'No study data yet. Complete a practice exam to see your weak topics.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                      )
+                    : Column(
+                        children: data.weakTopics.take(3).map((topic) {
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(topic.name),
+                            subtitle: Text('${topic.attempted} attempts'),
+                            trailing: Text('${topic.accuracy}%'),
+                          );
+                        }).toList(),
+                      ),
               ),
               const SizedBox(height: 18),
               _SectionCard(
                 title: 'Recent rhythm',
-                child: Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: data.trend.take(7).map((point) {
-                    return Container(
-                      width: 88,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                child: data.trend.isEmpty
+                    ? Text(
+                        'Start studying to see your progress over time.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                      )
+                    : Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: data.trend.take(7).map((point) {
+                          return Container(
+                            width: 88,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.08),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  point.date.substring(5),
+                                  style: Theme.of(context).textTheme.labelLarge,
+                                ),
+                                const SizedBox(height: 6),
+                                Text('${point.questions} q'),
+                                Text('${point.accuracy}%'),
+                              ],
+                            ),
+                          );
+                        }).toList(),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            point.date.substring(5),
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                          const SizedBox(height: 6),
-                          Text('${point.questions} q'),
-                          Text('${point.accuracy}%'),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
               ),
               const SizedBox(height: 18),
               _SectionCard(
                 title: 'Leaderboard',
-                child: Column(
-                  children: data.leaderboard.take(5).map((entry) {
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(child: Text('${entry.rank}')),
-                      title: Text(entry.nickname),
-                      subtitle: Text('${entry.weeklyXp} XP this week'),
-                      trailing: entry.isCurrentUser ? const Text('You') : null,
-                    );
-                  }).toList(),
-                ),
+                child: data.leaderboard.isEmpty
+                    ? Text(
+                        'No leaderboard data available.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                      )
+                    : Column(
+                        children: data.leaderboard.take(5).map((entry) {
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(child: Text('${entry.rank}')),
+                            title: Text(entry.nickname),
+                            subtitle: Text('${entry.weeklyXp} XP this week'),
+                            trailing: entry.isCurrentUser
+                                ? const Text('You')
+                                : null,
+                          );
+                        }).toList(),
+                      ),
               ),
+              if (data.badges.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                _SectionCard(
+                  title: 'Earned badges',
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: data.badges.map((badge) {
+                      return Chip(
+                        avatar: const Icon(Icons.emoji_events, size: 18),
+                        label: Text(badge.title),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
             ],
           ),
         );
@@ -308,7 +360,9 @@ class _MetricChip extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
         ],
       ),
@@ -332,7 +386,9 @@ class _SectionCard extends StatelessWidget {
           children: [
             Text(
               title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 14),
             child,
@@ -360,12 +416,12 @@ class _AiActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 0,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: InkWell(
         onTap: onTap,
@@ -379,22 +435,26 @@ class _AiActionCard extends StatelessWidget {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.auto_awesome, size: 12, color: Colors.purple),
+                  const Icon(
+                    Icons.auto_awesome,
+                    size: 12,
+                    color: Colors.purple,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     'AI Powered',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Colors.purple,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      color: Colors.purple,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),

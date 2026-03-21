@@ -103,7 +103,7 @@ class _ExamReviewScreenState extends ConsumerState<ExamReviewScreen> {
             color: _aiFeedback != null
                 ? Theme.of(
                     context,
-                  ).colorScheme.primaryContainer.withOpacity(0.3)
+                  ).colorScheme.primaryContainer.withValues(alpha: 0.3)
                 : null,
             child: Padding(
               padding: const EdgeInsets.all(20),
