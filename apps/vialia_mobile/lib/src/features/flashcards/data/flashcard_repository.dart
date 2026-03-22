@@ -38,7 +38,7 @@ class FlashcardRepository {
     final progressCollection = await _databaseService.flashcardProgress;
 
     final questions = await questionsCollection
-        .find(mongo.where.eq('isActive', true))
+        .find(mongo.where.eq('isActive', true).fields(['_id', 'topic_tag']))
         .toList();
     final progress = await progressCollection
         .find(mongo.where.eq('userId', userId))
@@ -83,7 +83,7 @@ class FlashcardRepository {
     final normalizedTopic = normalizeString(topic);
 
     final questions = await questionsCollection
-        .find(mongo.where.eq('isActive', true))
+        .find(mongo.where.eq('isActive', true).fields(['_id', 'topic_tag']))
         .toList();
     final progress = await progressCollection
         .find(mongo.where.eq('userId', userId))
@@ -111,33 +111,45 @@ class FlashcardRepository {
               normalizedTopic;
         })
         .toList();
+        
+    final selectedIds = <mongo.ObjectId>[];
 
-    final dueCards = filteredQuestions
+    final dueCardCandidates = filteredQuestions
         .where((question) => dueIds.contains(objectIdToString(question['_id'])))
         .take(20)
-        .map(
-          (question) => ExamQuestion.fromJson(
-            publicQuestionMap(question, includeSolution: true),
-          ),
-        )
+        .map((q) => q['_id'] as mongo.ObjectId)
         .toList();
+        
+    selectedIds.addAll(dueCardCandidates);
 
-    if (dueCards.length < 20) {
-      final newCards = filteredQuestions
+    if (selectedIds.length < 20) {
+      final newCardCandidates = filteredQuestions
           .where(
             (question) => !seenIds.contains(objectIdToString(question['_id'])),
           )
-          .take(20 - dueCards.length)
-          .map(
-            (question) => ExamQuestion.fromJson(
-              publicQuestionMap(question, includeSolution: true),
-            ),
-          )
+          .take(20 - selectedIds.length)
+          .map((q) => q['_id'] as mongo.ObjectId)
           .toList();
-      dueCards.addAll(newCards);
+      selectedIds.addAll(newCardCandidates);
     }
-
-    return dueCards;
+    
+    if (selectedIds.isEmpty) return const [];
+    
+    final fullQuestions = await questionsCollection
+        .find(mongo.where.oneFrom('_id', selectedIds))
+        .toList();
+        
+    final qMap = {for (final q in fullQuestions) objectIdToString(q['_id']): q};
+    
+    return selectedIds
+        .map((id) => qMap[id.oid])
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (q) => ExamQuestion.fromJson(
+            publicQuestionMap(q, includeSolution: true),
+          ),
+        )
+        .toList();
   }
 
   Future<FlashcardReviewResult> review({

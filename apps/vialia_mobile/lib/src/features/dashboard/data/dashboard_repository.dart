@@ -16,6 +16,7 @@ final dashboardRepositoryProvider = Provider<DashboardRepository>((ref) {
 });
 
 final dashboardProvider = FutureProvider<DashboardBundle>((ref) async {
+  ref.keepAlive();
   return ref.watch(dashboardRepositoryProvider).loadDashboard();
 });
 
@@ -45,7 +46,7 @@ class DashboardRepository {
     }
 
     final answers = await answersCollection
-        .find(mongo.where.eq('userId', userId))
+        .find(mongo.where.eq('userId', userId).sortBy('createdAt', descending: true).limit(1000))
         .toList();
     final completedSessions = await sessionsCollection
         .find(mongo.where.eq('userId', userId).eq('status', 'completed'))
@@ -53,6 +54,10 @@ class DashboardRepository {
     final leaderboardUsers = await users.find().toList();
     final now = DateTime.now().toUtc();
 
+    final totalAnsweredLifetime =
+        (((user['stats'] as Map?)?['totalQuestionsAnswered'] as num?)?.toInt() ??
+        answers.length);
+        
     final correctAnswers = answers
         .where(
           (answer) =>
@@ -66,7 +71,7 @@ class DashboardRepository {
         (((user['gamification'] as Map?)?['currentStreak'] as num?)?.toInt() ??
         0);
     final readinessScore = calculateReadinessScore(
-      totalAnswered: answers.length,
+      totalAnswered: totalAnsweredLifetime,
       overallAccuracy: accuracy,
       currentStreak: currentStreak,
     );
@@ -159,11 +164,11 @@ class DashboardRepository {
     return DashboardBundle(
       readinessScore: readinessScore,
       skillLevel: calculateSkillLevel(
-        totalAnswered: answers.length,
+        totalAnswered: totalAnsweredLifetime,
         overallAccuracy: accuracy,
       ),
       streak: currentStreak,
-      totalAnswered: answers.length,
+      totalAnswered: totalAnsweredLifetime,
       accuracy: accuracy,
       totalExams: completedSessions.length,
       passedExams: completedSessions
@@ -177,9 +182,9 @@ class DashboardRepository {
       badges: badges,
       coachFeedback: coachFeedback,
       stats: StatsOverview(
-        totalQuestions: answers.length,
-        correctAnswers: correctAnswers,
-        incorrectAnswers: answers.length - correctAnswers,
+        totalQuestions: totalAnsweredLifetime,
+        correctAnswers: correctAnswers, // recent correct
+        incorrectAnswers: answers.length - correctAnswers, // recent incorrect
         accuracy: accuracy,
         currentStreak: currentStreak,
         totalExams: completedSessions.length,

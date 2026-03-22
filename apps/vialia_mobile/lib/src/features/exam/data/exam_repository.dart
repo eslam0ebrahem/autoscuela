@@ -531,7 +531,11 @@ class ExamRepository {
 
     final allAnswers = await answersCollection
         .find(
-          mongo.where.eq('userId', userId).fields([
+          mongo.where
+              .eq('userId', userId)
+              .sortBy('createdAt', descending: true)
+              .limit(1000)
+              .fields([
             'is_correct',
             'isCorrect',
             'createdAt',
@@ -579,10 +583,11 @@ class ExamRepository {
     final xpEarned = (passed ? 10 : 5) + (accuracy >= 90 ? 10 : 0);
     final totalXp = ((gamification['totalXP'] as num?)?.toInt() ?? 0) + xpEarned;
     final updatedWeeklyXp = effectiveWeeklyXp(userMap, now) + xpEarned;
+    final totalQuestionsAnsweredCurrent = ((stats['totalQuestionsAnswered'] as num?)?.toInt() ?? 0) + sessionAnswers.length;
     
     final newBadges = determineNewBadges(
       user: userMap,
-      totalAnswered: allAnswers.length,
+      totalAnswered: totalQuestionsAnsweredCurrent,
       questionsToday: todayQuestionCount,
       currentStreak: newStreak,
       totalXp: totalXp,
@@ -598,11 +603,11 @@ class ExamRepository {
     }.toList();
 
     final skillLevel = calculateSkillLevel(
-      totalAnswered: allAnswers.length,
+      totalAnswered: totalQuestionsAnsweredCurrent,
       overallAccuracy: overallAccuracy,
     );
     final readinessScore = calculateReadinessScore(
-      totalAnswered: allAnswers.length,
+      totalAnswered: totalQuestionsAnsweredCurrent,
       overallAccuracy: overallAccuracy,
       currentStreak: newStreak,
     );
@@ -641,7 +646,7 @@ class ExamRepository {
             'badges',
             buildLegacyBadgeEntries(updatedEarnedBadges, unlockedAt: now),
           )
-          .set('stats.totalQuestionsAnswered', allAnswers.length)
+          .inc('stats.totalQuestionsAnswered', sessionAnswers.length)
           .set(
             'stats.flashcardsReviewed',
             (stats['flashcardsReviewed'] as num?)?.toInt() ?? 0,

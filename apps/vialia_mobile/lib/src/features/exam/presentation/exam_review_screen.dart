@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../data/ai_repository.dart';
 import '../domain/exam_models.dart';
 import '../../dashboard/domain/dashboard_models.dart';
+import '../../dashboard/data/dashboard_repository.dart';
 
 class ExamReviewScreen extends ConsumerStatefulWidget {
   const ExamReviewScreen({
@@ -226,7 +227,10 @@ class _ExamReviewScreenState extends ConsumerState<ExamReviewScreen> {
           ],
           const SizedBox(height: 20),
           FilledButton(
-            onPressed: () => context.go('/dashboard'),
+            onPressed: () {
+              ref.invalidate(dashboardProvider);
+              context.go('/dashboard');
+            },
             child: const Text('Back to dashboard'),
           ),
         ],
