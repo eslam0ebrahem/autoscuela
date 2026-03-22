@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getExamRecommendation } from '@/lib/groq'
-import ExamSession from '@/models/ExamSession'
 import connectDB from '@/lib/db'
 import { checkRateLimit } from '@/lib/utils'
 import { AIRecommendSchema, parseQueryParams } from '@/lib/schemas'
+import { getRecentSessions } from '@/lib/services/analytics'
 
 export const runtime = 'nodejs'
 export const maxDuration = 15
@@ -39,14 +39,7 @@ export async function GET(request) {
     await connectDB()
 
     // Aggregate last 10 exams for context
-    const recentSessions = await ExamSession.find({
-      userId: tokenData.userId,
-      status: 'completed',
-    })
-      .sort({ completedAt: -1 })
-      .limit(10)
-      .select('score errorCount passed mode topicBreakdown completedAt')
-      .lean()
+    const recentSessions = await getRecentSessions(tokenData.userId, 10)
 
     if (recentSessions.length === 0) {
       return NextResponse.json({

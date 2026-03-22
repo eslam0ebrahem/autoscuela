@@ -71,6 +71,23 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
+    // Incremental stats for fast skill profiling
+    stats: {
+      totalAnswers: { type: Number, default: 0 },
+      correctAnswers: { type: Number, default: 0 },
+      topicStats: {
+        type: Map,
+        of: new mongoose.Schema(
+          {
+            attempted: { type: Number, default: 0 },
+            correct: { type: Number, default: 0 },
+            totalTime: { type: Number, default: 0 },
+          },
+          { _id: false }
+        ),
+      },
+    },
+
     // User skill profile (v4) with caching
     skillProfile: {
       overallLevel: {

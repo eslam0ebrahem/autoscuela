@@ -4,6 +4,7 @@ import connectDB from '@/lib/db'
 import ExamSession from '@/models/ExamSession'
 import Question from '@/models/Question'
 import UserAnswer from '@/models/UserAnswer'
+import User from '@/models/User'
 import { getCurrentUser } from '@/lib/auth'
 import { isValidObjectId, clamp, checkRateLimit } from '@/lib/utils'
 import { getQuestionExplanation } from '@/lib/groq'
@@ -136,10 +137,24 @@ export async function POST(request, { params }) {
       await txSession.endSession()
     }
 
-    // ── Non-critical: update per-question stats (fire outside transaction) ──
-    await Question.findByIdAndUpdate(question._id, {
-      $inc: { 'stats.timesAnswered': 1, ...(isCorrect ? { 'stats.timesCorrect': 1 } : {}) },
-    })
+    // ── Non-critical: update per-question stats and user incremental stats (fire outside transaction) ──
+    const topicTag = question.topic_tag?.es || 'General'
+    const incUserStats = {
+      'stats.totalAnswers': 1,
+      ...(isCorrect ? { 'stats.correctAnswers': 1 } : {}),
+      [`stats.topicStats.${topicTag}.attempted`]: 1,
+      ...(isCorrect ? { [`stats.topicStats.${topicTag}.correct`]: 1 } : {}),
+      [`stats.topicStats.${topicTag}.totalTime`]: sanitizedTime,
+    }
+
+    Promise.all([
+      Question.findByIdAndUpdate(question._id, {
+        $inc: { 'stats.timesAnswered': 1, ...(isCorrect ? { 'stats.timesCorrect': 1 } : {}) },
+      }).catch((err) => console.error('[answer] Question stats update failed:', err)),
+      User.findByIdAndUpdate(tokenData.userId, {
+        $inc: incUserStats,
+      }).catch((err) => console.error('[answer] User stats update failed:', err)),
+    ])
 
     // ── Update SRS state for this question (critical for long-term memory) ──
     try {
