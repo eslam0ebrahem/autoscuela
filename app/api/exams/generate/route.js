@@ -220,10 +220,17 @@ export async function POST(request) {
       const now = new Date()
       const objectId = new mongoose.Types.ObjectId(tokenData.userId)
       const dueAnswers = await UserAnswer.aggregate([
-        { $match: { userId: objectId, 'srs.nextReviewAt': { $lte: now } } },
-        { $sort: { 'srs.nextReviewAt': 1 } },
-        { $limit: requestedCount * 3 },
-        { $group: { _id: '$questionId' } },
+        { $match: { userId: objectId, 'srs.nextReviewAt': { $exists: true } } },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: '$questionId',
+            lastNextReview: { $first: '$srs.nextReviewAt' },
+          },
+        },
+        { $match: { lastNextReview: { $lte: now } } },
+        { $sort: { lastNextReview: 1 } },
+        { $limit: requestedCount },
       ])
       const dueIds = dueAnswers.map((a) => a._id)
       if (dueIds.length === 0) {

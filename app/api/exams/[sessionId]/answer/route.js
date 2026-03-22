@@ -141,24 +141,29 @@ export async function POST(request, { params }) {
       $inc: { 'stats.timesAnswered': 1, ...(isCorrect ? { 'stats.timesCorrect': 1 } : {}) },
     })
 
-    // Fire-and-forget: update SRS state for this question
-    Promise.resolve().then(async () => {
-      try {
-        const existing = await UserAnswer.findOne(
-          { userId: tokenData.userId, questionId: question._id },
-          { srs: 1 }
-        )
-          .sort({ createdAt: -1 })
-          .lean()
-        const grade = answerToGrade(isCorrect, sanitizedTime)
-        const newSRS = calculateSRS(existing?.srs || {}, grade)
-        await UserAnswer.findByIdAndUpdate(savedAnswer._id, {
-          $set: { srs: { ...newSRS, lastGrade: grade } },
-        })
-      } catch {
-        // SRS update failure is non-critical
-      }
-    })
+    // ── Update SRS state for this question (critical for long-term memory) ──
+    try {
+      const existing = await UserAnswer.findOne(
+        {
+          userId: tokenData.userId,
+          questionId: question._id,
+          _id: { $ne: savedAnswer._id }, // Ignore current record to find history
+        },
+        { srs: 1 }
+      )
+        .sort({ createdAt: -1 })
+        .lean()
+
+      const grade = answerToGrade(isCorrect, sanitizedTime)
+      const newSRS = calculateSRS(existing?.srs || {}, grade)
+
+      await UserAnswer.findByIdAndUpdate(savedAnswer._id, {
+        $set: { srs: { ...newSRS, lastGrade: grade } },
+      })
+    } catch (srsErr) {
+      console.error('[answer] SRS update failed:', srsErr)
+      // SRS update failure is non-critical for the response, but we tried
+    }
 
     // ── Build response ────────────────────────────────────────────────────
     const response = { isCorrect }
