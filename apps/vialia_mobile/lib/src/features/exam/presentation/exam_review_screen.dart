@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/utils/ui_helpers.dart';
 import '../data/ai_repository.dart';
 import '../domain/exam_models.dart';
 import '../../dashboard/domain/dashboard_models.dart';
@@ -44,9 +45,7 @@ class _ExamReviewScreenState extends ConsumerState<ExamReviewScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _loadingAi = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not get AI analysis: $e')),
-        );
+        context.showErrorSnackbar('Could not get AI analysis: $e');
       }
     }
   }

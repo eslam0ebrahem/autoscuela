@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/database/data_exception.dart';
+import '../../../core/utils/ui_helpers.dart';
 import 'auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -15,7 +15,6 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _submitting = false;
 
   @override
   void dispose() {
@@ -25,37 +24,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    setState(() => _submitting = true);
-    try {
-      await ref
-          .read(authControllerProvider.notifier)
-          .login(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
-      if (mounted) {
-        context.go('/dashboard');
-      }
-    } on AppDataException catch (error) {
-      _showError(error.message);
-    } catch (error) {
-      _showError(error.toString());
-    } finally {
-      if (mounted) {
-        setState(() => _submitting = false);
-      }
-    }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    // Focus scope un-focus to dismiss keyboard before starting action
+    FocusScope.of(context).unfocus();
+    await ref.read(authControllerProvider.notifier).login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final authState = ref.watch(authControllerProvider);
+    final isLoading = authState.isLoading;
+
+    ref.listen(authControllerProvider, (previous, next) {
+      if (next.hasError) {
+        context.showErrorSnackbar(next.error.toString());
+      } else if (next.hasValue && next.value != null && previous?.value == null) {
+         // Only navigate if we just got a user (went from null to not null)
+         context.go('/dashboard');
+      }
+    });
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -96,6 +87,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: const InputDecoration(labelText: 'Email'),
+                          enabled: !isLoading,
                         ),
                         const SizedBox(height: 16),
                         TextField(
@@ -104,22 +96,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           decoration: const InputDecoration(
                             labelText: 'Password',
                           ),
+                          enabled: !isLoading,
                         ),
                         const SizedBox(height: 20),
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton(
-                            onPressed: _submitting ? null : _submit,
-                            child: Text(
-                              _submitting ? 'Signing in...' : 'Sign in',
-                            ),
+                            onPressed: isLoading ? null : _submit,
+                            child: isLoading 
+                              ? const SizedBox(
+                                  height: 20, 
+                                  width: 20, 
+                                  child: CircularProgressBinding()
+                                )
+                              : const Text('Sign in'),
                           ),
                         ),
                         const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton(
-                            onPressed: _submitting
+                            onPressed: isLoading
                                 ? null
                                 : () => context.go('/register'),
                             child: const Text('Create account'),
@@ -134,6 +131,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class CircularProgressBinding extends StatelessWidget {
+  const CircularProgressBinding({super.key});
+  
+  @override
+  Widget build(BuildContext context) {
+    return CircularProgressIndicator(
+      strokeWidth: 2,
+      color: Theme.of(context).colorScheme.onPrimary,
     );
   }
 }

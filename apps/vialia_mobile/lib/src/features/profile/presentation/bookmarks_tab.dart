@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/data_exception.dart';
+import '../../../core/utils/ui_helpers.dart';
 import '../../exam/data/exam_repository.dart';
 import '../../exam/domain/exam_models.dart';
 import '../data/profile_repository.dart';
@@ -34,7 +35,7 @@ class _BookmarksTabState extends ConsumerState<BookmarksTab> {
       setState(() => _bookmarks = bookmarks);
     } on AppDataException catch (error) {
       if (!mounted) return;
-      _show(error.message);
+      context.showErrorSnackbar(error.message);
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -61,16 +62,10 @@ class _BookmarksTabState extends ConsumerState<BookmarksTab> {
         context.push('/exam/$sessionId');
       }
     } on AppDataException catch (error) {
-      if (mounted) _show(error.message);
+      if (mounted) context.showErrorSnackbar(error.message);
     } catch (error) {
-      if (mounted) _show(error.toString());
+      if (mounted) context.showErrorSnackbar(error.toString());
     }
-  }
-
-  void _show(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/data_exception.dart';
+import '../../../core/utils/ui_helpers.dart';
 import '../data/exam_repository.dart';
 import '../data/ai_repository.dart';
 import '../domain/exam_models.dart';
@@ -51,12 +52,12 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
     } on AppDataException catch (error) {
       if (!mounted) return;
       setState(() => _errorMessage = error.message);
-      _showMessage(error.message);
+      context.showErrorSnackbar(error.message);
     } catch (error, stackTrace) {
       if (!mounted) return;
       debugPrint('Error loading exam: $error\n$stackTrace');
       setState(() => _errorMessage = 'An error occurred: $error');
-      _showMessage('Error loading exam: $error');
+      context.showErrorSnackbar('Error loading exam: $error');
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -126,10 +127,10 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
       }
     } on AppDataException catch (error) {
       if (!mounted) return;
-      _showMessage(error.message);
+      context.showErrorSnackbar(error.message);
     } catch (error) {
       if (!mounted) return;
-      _showMessage('Error: $error');
+      context.showErrorSnackbar('Error: $error');
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -147,9 +148,9 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
         context.go('/exam/${widget.sessionId}/review', extra: result);
       }
     } on AppDataException catch (error) {
-      if (mounted) _showMessage(error.message);
+      if (mounted) context.showErrorSnackbar(error.message);
     } catch (error) {
-      if (mounted) _showMessage('Error: $error');
+      if (mounted) context.showErrorSnackbar('Error: $error');
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -164,14 +165,14 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
       setState(() {
         if (_bookmarkedIds.contains(questionId)) {
           _bookmarkedIds.remove(questionId);
-          _showMessage('Bookmark removed');
+          context.showSuccessSnackbar('Bookmark removed');
         } else {
           _bookmarkedIds.add(questionId);
-          _showMessage('Bookmarked');
+          context.showSuccessSnackbar('Bookmarked');
         }
       });
     } catch (e) {
-      if (mounted) _showMessage('Could not toggle bookmark');
+      if (mounted) context.showErrorSnackbar('Could not toggle bookmark');
     }
   }
 
@@ -190,10 +191,10 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
       await _showAiModal('AI Hint', hint);
     } on AppDataException catch (error) {
       if (!mounted) return;
-      _showMessage(error.message);
+      context.showErrorSnackbar(error.message);
     } catch (error) {
       if (!mounted) return;
-      _showMessage('Error: $error');
+      context.showErrorSnackbar('Error: $error');
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -221,10 +222,10 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
       await _showAiModal('AI Deep Explanation', explanation);
     } on AppDataException catch (error) {
       if (!mounted) return;
-      _showMessage(error.message);
+      context.showErrorSnackbar(error.message);
     } catch (error) {
       if (!mounted) return;
-      _showMessage('Error: $error');
+      context.showErrorSnackbar('Error: $error');
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -266,12 +267,6 @@ class _ExamScreenState extends ConsumerState<ExamScreen> {
         ),
       ),
     );
-  }
-
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

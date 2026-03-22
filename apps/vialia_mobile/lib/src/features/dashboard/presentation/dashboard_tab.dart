@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/utils/ui_helpers.dart';
 import '../../../core/widgets/async_state_view.dart';
 import '../data/dashboard_repository.dart';
 import '../domain/dashboard_models.dart';
@@ -44,9 +45,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
     } catch (e) {
       if (mounted) {
         setState(() => _loadingAi = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not generate plan: $e')));
+        context.showErrorSnackbar('Could not generate plan: $e');
       }
     }
   }
@@ -72,9 +71,7 @@ class _DashboardTabState extends ConsumerState<DashboardTab> {
     } catch (e) {
       if (mounted) {
         setState(() => _loadingAi = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not analyze mistakes: $e')),
-        );
+        context.showErrorSnackbar('Could not analyze mistakes: $e');
       }
     }
   }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/data_exception.dart';
+import '../../../core/utils/ui_helpers.dart';
 import '../data/exam_repository.dart';
 
 class PracticeTab extends ConsumerStatefulWidget {
@@ -38,12 +39,12 @@ class _PracticeTabState extends ConsumerState<PracticeTab> {
     } on AppDataException catch (error) {
       debugPrint('PracticeTab: AppDataException: ${error.message}');
       if (mounted) {
-        _show(error.message);
+        context.showErrorSnackbar(error.message);
       }
     } catch (error, stackTrace) {
       debugPrint('PracticeTab: Error starting exam: $error\n$stackTrace');
       if (mounted) {
-        _show(_friendlyError(error));
+        context.showErrorSnackbar(_friendlyError(error));
       }
     } finally {
       if (mounted) {
@@ -70,13 +71,6 @@ class _PracticeTabState extends ConsumerState<PracticeTab> {
       return 'Database connection lost. Please try again.';
     }
     return 'Something went wrong. Please try again.';
-  }
-
-  void _show(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

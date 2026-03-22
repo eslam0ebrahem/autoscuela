@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/data_exception.dart';
+import '../../../core/utils/ui_helpers.dart';
 import '../../exam/domain/exam_models.dart';
 import '../data/flashcard_repository.dart';
 import '../domain/flashcard_models.dart';
@@ -34,7 +35,7 @@ class _FlashcardsTabState extends ConsumerState<FlashcardsTab> {
       setState(() => _decks = decks);
     } on AppDataException catch (error) {
       if (!mounted) return;
-      _show(error.message);
+      context.showErrorSnackbar(error.message);
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -58,7 +59,7 @@ class _FlashcardsTabState extends ConsumerState<FlashcardsTab> {
       });
     } on AppDataException catch (error) {
       if (!mounted) return;
-      _show(error.message);
+      context.showErrorSnackbar(error.message);
     } finally {
       if (mounted) {
         setState(() => _loading = false);
@@ -76,7 +77,7 @@ class _FlashcardsTabState extends ConsumerState<FlashcardsTab> {
       if (_index < _cards.length - 1) {
         setState(() => _index += 1);
       } else {
-        _show('Deck complete.');
+        context.showSuccessSnackbar('Deck complete.');
         await _loadDecks();
         if (!mounted) return;
         setState(() {
@@ -86,14 +87,8 @@ class _FlashcardsTabState extends ConsumerState<FlashcardsTab> {
       }
     } on AppDataException catch (error) {
       if (!mounted) return;
-      _show(error.message);
+      context.showErrorSnackbar(error.message);
     }
-  }
-
-  void _show(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
