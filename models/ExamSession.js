@@ -5,7 +5,15 @@ const examSessionSchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     mode: {
       type: String,
-      enum: ['official', 'custom', 'daily_challenge', 'mistakes', 'weak_topics'],
+      enum: [
+        'official',
+        'custom',
+        'daily_challenge',
+        'mistakes',
+        'weak_topics',
+        'bookmarks',
+        'spaced_repetition',
+      ],
       required: true,
     },
     status: {

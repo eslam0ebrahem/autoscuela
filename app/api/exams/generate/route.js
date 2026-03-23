@@ -90,22 +90,40 @@ function buildAdaptiveOptions(mode, topicFilters) {
 // ---------------------------------------------------------------------------
 // AI HELPER: Estimate pass probability from skill profile (local, no AI call)
 // ---------------------------------------------------------------------------
-function estimatePassProbability(skillProfile, mode, topicFilters) {
+function estimatePassProbability(skillProfile, mode, topicFilters, userStats) {
   if (!skillProfile?.overallLevel) return null
 
-  // Map skill level (0-5) to base pass probability
-  const baseProb = Math.min(95, Math.max(5, (skillProfile.overallLevel / 5) * 100))
+  // Map skill level string to numeric value
+  const levelMap = { beginner: 1, easy: 2, medium: 3, hard: 4, expert: 5 }
+  const levelNum = levelMap[skillProfile.overallLevel] || 1
+  const baseProb = Math.min(95, Math.max(5, (levelNum / 5) * 100))
 
   // Adjust for mode difficulty
   const modeAdjust = {
     official: 0,
     custom: topicFilters?.length > 0 ? -5 : 0,
-    mistakes: -15, // Mistake reviews are harder
+    mistakes: -15,
     weak_topics: -10,
     bookmarks: -5,
+    spaced_repetition: -8,
   }
 
-  const adjustedProb = Math.round(Math.min(95, Math.max(5, baseProb + (modeAdjust[mode] ?? 0))))
+  // Factor in topic-level weakness count
+  let weakTopicPenalty = 0
+  if (skillProfile.topics?.length > 0) {
+    const weakTopics = skillProfile.topics.filter((t) => t.accuracy < 60)
+    weakTopicPenalty = Math.min(10, weakTopics.length * 2)
+  }
+
+  // Factor in overall answer count (more experience = more reliable estimate)
+  const experienceBonus = userStats?.totalAnswers > 100 ? 5 : 0
+
+  const adjustedProb = Math.round(
+    Math.min(
+      95,
+      Math.max(5, baseProb + (modeAdjust[mode] ?? 0) - weakTopicPenalty + experienceBonus)
+    )
+  )
 
   return {
     probability: adjustedProb,
@@ -280,7 +298,12 @@ export async function POST(request) {
     const expiresAt = calculateExpiration(mode, questionIds.length)
 
     // ── AI: Estimate pass probability (local, instant, no API call) ───
-    const passPrediction = estimatePassProbability(user.skillProfile, mode, topicFilters)
+    const passPrediction = estimatePassProbability(
+      user.skillProfile,
+      mode,
+      topicFilters,
+      user.stats
+    )
 
     // ── Create session ────────────────────────────────────────────────
     const session = await ExamSession.create({
