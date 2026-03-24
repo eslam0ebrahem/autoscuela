@@ -38,7 +38,6 @@ const refreshTokenSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
       required: true,
-      index: true,
     },
 
     // IP address from which token was issued (for security checks)

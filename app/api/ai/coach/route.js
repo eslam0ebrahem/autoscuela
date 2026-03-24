@@ -6,6 +6,7 @@ import connectDB from '@/lib/db'
 import { isValidObjectId, checkRateLimit } from '@/lib/utils'
 import { AICoachSchema, parseSchema } from '@/lib/schemas'
 import { getRecentSessions, getExamSummary } from '@/lib/services/analytics'
+import { getUserSkillProfile } from '@/lib/user-skill'
 
 export const runtime = 'nodejs'
 export const maxDuration = 25
@@ -57,6 +58,14 @@ export async function POST(request) {
     // Build exam summary for AI
     const examSummary = await getExamSummary(session)
 
+    // Fetch skill profile for richer AI context
+    let skillProfile = null
+    try {
+      skillProfile = await getUserSkillProfile(tokenData.userId)
+    } catch {
+      // Graceful: proceed without skill profile
+    }
+
     // Fetch last 5 completed sessions for trend analysis
     let sessionHistory = []
     try {
@@ -70,11 +79,15 @@ export async function POST(request) {
     }
 
     try {
-      const feedback = await getExamCoachFeedback({ examSummary, sessionHistory, lang })
+      const feedback = await getExamCoachFeedback({
+        examSummary,
+        sessionHistory,
+        skillProfile,
+        lang,
+      })
       return NextResponse.json({ feedback })
     } catch (aiError) {
       console.error('[api/ai/coach] AI generation failed:', aiError.message)
-      // Graceful degradation: show user-friendly message instead of blank response
       return NextResponse.json(
         {
           success: false,

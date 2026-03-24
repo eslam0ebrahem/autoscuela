@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 import connectDB from '@/lib/db'
 import { checkRateLimit } from '@/lib/utils'
 import UserAnswer from '@/models/UserAnswer'
+import User from '@/models/User'
 import { getMistakePatterns } from '@/lib/groq'
 
 export const runtime = 'nodejs'
@@ -93,8 +94,21 @@ export async function GET(request) {
       })),
     }))
 
+    // ── Fetch overall context for richer AI analysis ───────────────────────
+    const userDoc = await User.findById(tokenData.userId).select('stats').lean()
+    const totalQuestions = userDoc?.stats?.totalAnswers || null
+    const overallAccuracy =
+      totalQuestions > 0
+        ? Math.round(((userDoc?.stats?.correctAnswers || 0) / totalQuestions) * 100)
+        : null
+
     // ── Generate AI patterns ──────────────────────────────────────────────
-    const result = await getMistakePatterns({ mistakeGroups: groups, lang })
+    const result = await getMistakePatterns({
+      mistakeGroups: groups,
+      totalQuestions,
+      overallAccuracy,
+      lang,
+    })
 
     return NextResponse.json({
       ...result,

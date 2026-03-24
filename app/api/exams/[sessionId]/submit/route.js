@@ -14,7 +14,7 @@ import {
   updateLeaderboardRank,
 } from '@/lib/gamification'
 import { getUserSkillProfile, invalidateSkillProfile } from '@/lib/user-skill'
-import { getExamCoachFeedback } from '@/lib/groq'
+import { getExamCoachFeedback, getSessionQuickSummary } from '@/lib/groq'
 
 const MAX_ERRORS_TO_PASS = 3
 
@@ -233,10 +233,25 @@ export async function POST(request, { params }) {
         } catch {
           // Graceful: proceed without history
         }
-        const feedback = await getExamCoachFeedback({ examSummary, sessionHistory, lang })
+        const [feedback, quickSummary] = await Promise.all([
+          getExamCoachFeedback({ examSummary, sessionHistory, lang }),
+          getSessionQuickSummary({
+            correctCount,
+            totalCount: totalQuestions,
+            timeSeconds: totalTime,
+            mode: session.mode,
+            topicBreakdown,
+            lang,
+          }),
+        ])
+
         if (feedback && !feedback._fallback) {
           await ExamSession.findByIdAndUpdate(session._id, {
-            $set: { aiCoachFeedback: feedback, aiCoachGeneratedAt: new Date() },
+            $set: {
+              aiCoachFeedback: feedback,
+              aiQuickSummary: quickSummary,
+              aiCoachGeneratedAt: new Date(),
+            },
           })
         }
       })

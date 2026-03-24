@@ -101,7 +101,10 @@ export async function GET(request) {
     }
 
     // ── Aggregate & call Groq ────────────────────────────────────────────────
-    const aggregatedData = await UserAnswer.aggregateForAI(user._id)
+    const [aggregatedData, studyTrends] = await Promise.all([
+      UserAnswer.aggregateForAI(user._id),
+      UserAnswer.getStudyTrends(user._id, 14).catch(() => null),
+    ])
 
     if (!aggregatedData || Object.keys(aggregatedData).length === 0) {
       return NextResponse.json(
@@ -110,7 +113,7 @@ export async function GET(request) {
       )
     }
 
-    const insights = await getAIInsights(lang, aggregatedData)
+    const insights = await getAIInsights(lang, aggregatedData, studyTrends)
 
     // ── Persist to cache ─────────────────────────────────────────────────────
     await User.findByIdAndUpdate(user._id, { $set: insightsToDoc(insights) })

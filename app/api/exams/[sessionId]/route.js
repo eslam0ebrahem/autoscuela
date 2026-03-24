@@ -4,6 +4,7 @@ import ExamSession from '@/models/ExamSession'
 import Question from '@/models/Question'
 import { getCurrentUser } from '@/lib/auth'
 import { getSmartHint } from '@/lib/groq'
+import UserAnswer from '@/models/UserAnswer'
 
 /**
  * GET /api/exams/[sessionId]
@@ -80,11 +81,30 @@ export async function PATCH(request, { params }) {
         .lean()
       if (question) {
         const lang = session.language || 'es'
+
+        // Fetch user history for this question for a better tip
+        let userHistory = null
+        try {
+          const attempts = await UserAnswer.countDocuments({
+            userId: tokenData.userId,
+            questionId: question._id,
+          })
+          const correctCount = await UserAnswer.countDocuments({
+            userId: tokenData.userId,
+            questionId: question._id,
+            is_correct: true,
+          })
+          userHistory = { attempts, correctCount }
+        } catch {
+          // Graceful
+        }
+
         aiTip = await getSmartHint({
           question: question.question,
           options: question.options,
           correctIdx: question.correct_option_idx - 1,
           lang,
+          userHistory,
         }).catch(() => null)
       }
     }

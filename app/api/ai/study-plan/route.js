@@ -5,6 +5,7 @@ import { checkRateLimit } from '@/lib/utils'
 import { getUserSkillProfile } from '@/lib/user-skill'
 import { getStudyPlan } from '@/lib/groq'
 import { AIStudyPlanSchema, parseQueryParams } from '@/lib/schemas'
+import UserAnswer from '@/models/UserAnswer'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -60,8 +61,16 @@ export async function GET(request) {
       )
     }
 
+    // ── Fetch study trends for consistency context ─────────────────────────
+    let studyTrends = null
+    try {
+      studyTrends = await UserAnswer.getStudyTrends(tokenData.userId, 14)
+    } catch {
+      // Graceful: proceed without trends
+    }
+
     // ── Generate plan ─────────────────────────────────────────────────────
-    const plan = await getStudyPlan({ skillProfile, targetDate, dailyMinutes, lang })
+    const plan = await getStudyPlan({ skillProfile, targetDate, dailyMinutes, studyTrends, lang })
 
     return NextResponse.json({
       plan,

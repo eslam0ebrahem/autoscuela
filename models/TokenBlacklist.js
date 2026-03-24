@@ -38,7 +38,6 @@ const tokenBlacklistSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
       required: true,
-      index: true,
     },
   },
   { timestamps: true }

@@ -5,6 +5,7 @@ import Question from '@/models/Question'
 import connectDB from '@/lib/db'
 import { isValidObjectId, checkRateLimit } from '@/lib/utils'
 import { AIHintSchema, parseSchema } from '@/lib/schemas'
+import UserAnswer from '@/models/UserAnswer'
 
 export const runtime = 'nodejs'
 export const maxDuration = 15
@@ -53,12 +54,30 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Question not found' }, { status: 404 })
     }
 
+    // Fetch user history for this question to provide better hints
+    let userHistory = null
+    try {
+      const attempts = await UserAnswer.countDocuments({
+        userId: tokenData.userId,
+        questionId: question._id,
+      })
+      const correctCount = await UserAnswer.countDocuments({
+        userId: tokenData.userId,
+        questionId: question._id,
+        is_correct: true,
+      })
+      userHistory = { attempts, correctCount }
+    } catch {
+      // Graceful
+    }
+
     try {
       const hint = await getSmartHint({
         question: question.question,
         options: question.options,
         correctIdx: question.correct_option_idx - 1,
         lang,
+        userHistory,
       })
       return NextResponse.json({ hint })
     } catch (aiError) {

@@ -5,6 +5,7 @@ import connectDB from '@/lib/db'
 import { checkRateLimit } from '@/lib/utils'
 import { AIRecommendSchema, parseQueryParams } from '@/lib/schemas'
 import { getRecentSessions } from '@/lib/services/analytics'
+import { getUserSkillProfile } from '@/lib/user-skill'
 
 export const runtime = 'nodejs'
 export const maxDuration = 15
@@ -38,6 +39,14 @@ export async function GET(request) {
 
     await connectDB()
 
+    // Fetch skill profile for richer context
+    let skillProfile = null
+    try {
+      skillProfile = await getUserSkillProfile(tokenData.userId)
+    } catch {
+      // Graceful
+    }
+
     // Aggregate last 10 exams for context
     const recentSessions = await getRecentSessions(tokenData.userId, 10)
 
@@ -56,6 +65,9 @@ export async function GET(request) {
             lang === 'es'
               ? '¡Completa tu primer examen para análisis personalizados!'
               : 'Complete your first exam for personalized analysis!',
+          warm_up_suggestion: null,
+          expected_outcome: null,
+          alternative_mode: null,
           _fallback: true,
         },
       })
@@ -75,7 +87,7 @@ export async function GET(request) {
       topicBreakdown: recentSessions[0]?.topicBreakdown || [],
     }
 
-    const recommendation = await getExamRecommendation({ recentStats, lang })
+    const recommendation = await getExamRecommendation({ recentStats, skillProfile, lang })
     return NextResponse.json({ recommendation })
   } catch (error) {
     console.error('[api/ai/recommend] Error:', error)

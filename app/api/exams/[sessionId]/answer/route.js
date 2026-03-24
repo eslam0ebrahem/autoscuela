@@ -7,8 +7,9 @@ import UserAnswer from '@/models/UserAnswer'
 import User from '@/models/User'
 import { getCurrentUser } from '@/lib/auth'
 import { isValidObjectId, clamp, checkRateLimit } from '@/lib/utils'
-import { getQuestionExplanation } from '@/lib/groq'
+import { getQuestionExplanation, getQuestionDeepDive } from '@/lib/groq'
 import { ExamAnswerSchema, parseSchema } from '@/lib/schemas'
+import { getUserSkillProfile } from '@/lib/user-skill'
 import { JSDOM } from 'jsdom'
 import DOMPurifyFactory from 'dompurify'
 import { calculateSRS, answerToGrade } from '@/lib/srs'
@@ -83,7 +84,50 @@ export async function POST(request, { params }) {
     // ── AI: Start explanation generation in parallel with DB writes ───────
     // Only for instant mode wrong answers (most educational value)
     let aiExplanationPromise = null
+    let aiDeepDivePromise = null
+
     if (session.assistanceMode === 'instant' && !isCorrect) {
+      // ── Determine if this is a repeat mistake for Deep Dive analysis ──
+      const previousMistakes = await UserAnswer.find({
+        userId: tokenData.userId,
+        questionId: question._id,
+        is_correct: false,
+      })
+        .sort({ createdAt: -1 })
+        .limit(3)
+        .lean()
+
+      const isRepeatMistake = previousMistakes.length >= 1
+
+      // ── Fetch user topic accuracy for better explanation ──────────────
+      let userTopicAccuracy = null
+      try {
+        const skillProfile = await getUserSkillProfile(tokenData.userId)
+        const topicStats = skillProfile.topics?.find(
+          (t) => t.tag === (question.topic_tag?.es || 'General')
+        )
+        if (topicStats) userTopicAccuracy = topicStats.accuracy / 100
+      } catch {
+        // Graceful
+      }
+
+      if (isRepeatMistake) {
+        // ✨ New AI Deep Dive for repeat errors
+        aiDeepDivePromise = getQuestionDeepDive({
+          question: question.question,
+          options: question.options,
+          correctIdx: question.correct_option_idx - 1,
+          userAnswerHistory: previousMistakes.map((m) => ({
+            selected: m.selected_option_idx - 1,
+            correct: m.is_correct,
+            timeSec: m.time_taken_seconds,
+          })),
+          helpHtml: question.metadata?.help_html,
+          lang,
+        }).catch(() => null)
+      }
+
+      // Always do standard explanation too, but with richer context
       aiExplanationPromise = getQuestionExplanation({
         question: question.question,
         options: question.options,
@@ -91,7 +135,8 @@ export async function POST(request, { params }) {
         selectedIdx: selected_option_idx - 1,
         helpHtml: question.metadata?.help_html,
         lang,
-      }).catch(() => null) // never throws
+        userTopicAccuracy,
+      }).catch(() => null)
     }
 
     // ── Atomic transaction: record UserAnswer + update ExamSession ────────
@@ -190,16 +235,25 @@ export async function POST(request, { params }) {
         ? DOMPurify.sanitize(question.metadata.help_html)
         : null
 
-      // ── Wait for AI explanation (with timeout) ──────────────────────
-      if (aiExplanationPromise) {
-        const aiExplanation = await Promise.race([
-          aiExplanationPromise,
-          new Promise((r) => setTimeout(() => r(null), AI_EXPLANATION_TIMEOUT_MS)),
+      // ── Wait for AI (with timeout) ──────────────────────────────────
+      if (aiExplanationPromise || aiDeepDivePromise) {
+        const results = await Promise.all([
+          aiExplanationPromise
+            ? Promise.race([
+                aiExplanationPromise,
+                new Promise((r) => setTimeout(() => r(null), AI_EXPLANATION_TIMEOUT_MS)),
+              ])
+            : null,
+          aiDeepDivePromise
+            ? Promise.race([
+                aiDeepDivePromise,
+                new Promise((r) => setTimeout(() => r(null), AI_EXPLANATION_TIMEOUT_MS)),
+              ])
+            : null,
         ])
 
-        if (aiExplanation) {
-          response.aiExplanation = aiExplanation // { summary, correct_explanation, wrong_explanation, memory_tip, law_reference }
-        }
+        if (results[0]) response.aiExplanation = results[0]
+        if (results[1]) response.aiDeepDive = results[1]
       }
     }
 

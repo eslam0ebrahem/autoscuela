@@ -5,6 +5,7 @@ import Question from '@/models/Question'
 import connectDB from '@/lib/db'
 import { isValidObjectId, checkRateLimit } from '@/lib/utils'
 import { AIExplainSchema, parseSchema } from '@/lib/schemas'
+import { getUserSkillProfile } from '@/lib/user-skill'
 
 export const runtime = 'nodejs'
 export const maxDuration = 20
@@ -53,6 +54,19 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Question not found' }, { status: 404 })
     }
 
+    // Fetch user knowledge level for this topic to tailor the explanation
+    let userTopicAccuracy = null
+    try {
+      const skillProfile = await getUserSkillProfile(tokenData.userId)
+      const topicTag = question.topic_tag?.es || 'General'
+      const topicStats = skillProfile.topics?.find((t) => t.tag === topicTag)
+      if (topicStats) {
+        userTopicAccuracy = topicStats.accuracy / 100
+      }
+    } catch {
+      // Graceful
+    }
+
     try {
       const explanation = await getQuestionExplanation({
         question: question.question,
@@ -61,6 +75,7 @@ export async function POST(request) {
         selectedIdx: selectedIdx - 1,
         helpHtml: question.metadata?.help_html,
         lang,
+        userTopicAccuracy,
       })
       return NextResponse.json({ explanation })
     } catch (aiError) {
