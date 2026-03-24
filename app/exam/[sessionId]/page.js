@@ -9,7 +9,6 @@ import {
   CloseOutlined,
   ClockCircleOutlined,
   CheckOutlined,
-  // FIX 8: Removed unused SearchOutlined import
   StarOutlined,
   StarFilled,
   ArrowRightOutlined,
@@ -20,7 +19,141 @@ import {
   RobotOutlined,
   LoadingOutlined,
   ExperimentOutlined,
+  RocketOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons'
+
+/**
+ * KEYBOARD SHORTCUTS MODAL
+ */
+function KeyboardShortcutsModal({ onClose, t }) {
+  return (
+    <div
+      className="fixed inset-0 z-[150] bg-black/50 flex items-center justify-center p-4 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-black">{t('Atajos de Teclado', 'Keyboard Shortcuts')}</h3>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-ink-light hover:text-ink"
+          >
+            <CloseOutlined />
+          </button>
+        </div>
+        <div className="space-y-3 text-sm">
+          {[
+            ['1–4 / A–D', t('Seleccionar opción', 'Select option')],
+            ['Enter / Space', t('Siguiente pregunta', 'Next question')],
+            ['E', t('Mostrar/ocultar ayuda', 'Toggle explanation')],
+            ['S', t('Guardar marcador', 'Toggle bookmark')],
+            ['Esc', t('Cerrar modal', 'Close modal')],
+            ['?', t('Mostrar atajos', 'Show shortcuts')],
+          ].map(([key, desc]) => (
+            <div key={key} className="flex items-center justify-between gap-4">
+              <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded-lg font-mono text-xs font-bold shrink-0">
+                {key}
+              </kbd>
+              <span className="text-ink-light text-right">{desc}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * SESSION INTRO OVERLAY
+ */
+function SessionIntroOverlay({ session, onStart, t }) {
+  const prediction = session?.aiPassPrediction
+  const tip = session?.aiSessionTip
+
+  return (
+    <div className="fixed inset-0 z-[100] glass flex items-center justify-center p-4 animate-fade-in">
+      <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-12 max-w-2xl w-full shadow-2xl border-4 border-slate-100 dark:border-slate-800 animate-scale-in text-center">
+        <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center text-white text-4xl mx-auto mb-8 shadow-xl shadow-primary/20">
+          <RocketOutlined />
+        </div>
+
+        <h2 className="text-3xl md:text-4xl font-black text-ink dark:text-white mb-4">
+          {t('Sesión Preparada', 'Session Ready')}
+        </h2>
+
+        <p className="text-lg text-ink-light dark:text-slate-400 mb-10 max-w-md mx-auto">
+          {t(
+            'Hemos seleccionado las mejores preguntas para tu nivel actual.',
+            'We have selected the best questions for your current level.'
+          )}
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 text-left">
+          {prediction && (
+            <div className="p-6 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800">
+              <p className="text-[10px] font-black uppercase tracking-widest text-ink-light mb-2">
+                {t('Probabilidad de Éxito', 'Pass Probability')}
+              </p>
+              <div className="flex items-end gap-2">
+                <span
+                  className={`text-4xl font-black ${
+                    prediction.level === 'high'
+                      ? 'text-success'
+                      : prediction.level === 'medium'
+                        ? 'text-warning'
+                        : 'text-danger'
+                  }`}
+                >
+                  {prediction.probability}%
+                </span>
+                <span className="text-xs font-bold text-ink-light mb-1">
+                  {prediction.level === 'high'
+                    ? t('Alta', 'High')
+                    : prediction.level === 'medium'
+                      ? t('Media', 'Medium')
+                      : t('Baja', 'Low')}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {tip && (
+            <div className="p-6 rounded-3xl bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-900/30">
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">
+                {t('Consejo de la IA', 'AI Session Tip')}
+              </p>
+              <p className="text-sm font-bold text-ink dark:text-white italic">"{tip}"</p>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={onStart}
+          className="w-full btn-primary py-5 rounded-3xl font-black text-xl shadow-2xl shadow-primary/30 active:scale-95 transition-all flex items-center justify-center gap-3"
+        >
+          {t('¡Empezar ahora!', 'Start Now!')}
+          <ArrowRightOutlined />
+        </button>
+
+        <p className="mt-6 text-xs text-ink-light dark:text-slate-500 font-medium">
+          {session.mode === 'official'
+            ? t(
+                'El cronómetro de 30 minutos empezará al hacer clic.',
+                'The 30-minute timer will start upon clicking.'
+              )
+            : t(
+                'Sin límite de tiempo. Tómate tu tiempo para aprender.',
+                'No time limit. Take your time to learn.'
+              )}
+        </p>
+      </div>
+    </div>
+  )
+}
 
 function sanitizeHtml(html) {
   if (typeof window === 'undefined') return ''
@@ -288,6 +421,7 @@ function ExamInterface() {
   const [confetti, setConfetti] = useState(false)
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState(new Set())
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [isSessionStarted, setIsSessionStarted] = useState(false)
 
   // ── AI States ──
   const [aiHint, setAiHint] = useState(null)
@@ -367,9 +501,13 @@ function ExamInterface() {
               passed: examData.session.passed,
               total: examData.questions?.length || 0,
             })
+            setIsSessionStarted(true)
           } else {
             setCurrentIdx(examData.session.currentQuestionIndex || 0)
-            setStartTime(Date.now())
+            if (examData.session.currentQuestionIndex > 0) {
+              setIsSessionStarted(true)
+              setStartTime(Date.now())
+            }
           }
         } else {
           console.error('Session not found or error:', examData?.error)
@@ -400,7 +538,7 @@ function ExamInterface() {
   }, [sessionId, soundEnabled])
 
   useEffect(() => {
-    if (!session?.expiresAt || result) return
+    if (!session?.expiresAt || result || !isSessionStarted) return
     const endTime = new Date(session.expiresAt).getTime()
     const checkTime = () => {
       const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000))
@@ -414,7 +552,7 @@ function ExamInterface() {
     checkTime()
     timerRef.current = setInterval(checkTime, 1000)
     return () => clearInterval(timerRef.current)
-  }, [session, result, handleSubmitExam])
+  }, [session, result, isSessionStarted, handleSubmitExam])
 
   const handleSelectOption = useCallback(
     (optIdx) => {
@@ -514,7 +652,7 @@ function ExamInterface() {
     const handleKeyDown = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
-      if (expandedImage || showShortcuts) {
+      if (expandedImage || showShortcuts || !isSessionStarted) {
         if (e.key === 'Escape') {
           setExpandedImage(null)
           setShowShortcuts(false)
@@ -549,6 +687,7 @@ function ExamInterface() {
     currentQuestion,
     expandedImage,
     showShortcuts,
+    isSessionStarted,
     handleSelectOption,
     handleNext,
     toggleBookmark,
@@ -649,6 +788,17 @@ function ExamInterface() {
 
   return (
     <div className="max-w-4xl mx-auto flex flex-col min-h-[calc(100vh-12rem)] px-4">
+      {!isSessionStarted && (
+        <SessionIntroOverlay
+          session={session}
+          onStart={() => {
+            setIsSessionStarted(true)
+            setStartTime(Date.now())
+          }}
+          t={t}
+        />
+      )}
+
       {/* FIX 7: timer warning with a dismiss button so it doesn't stay forever */}
       {timerWarning && (
         <div
@@ -882,44 +1032,7 @@ function ExamInterface() {
       )}
 
       {/* FIX 6: keyboard shortcuts modal */}
-      {showShortcuts && (
-        <div
-          className="fixed inset-0 z-[150] bg-black/50 flex items-center justify-center p-4 animate-fade-in"
-          onClick={() => setShowShortcuts(false)}
-        >
-          <div
-            className="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-black">{t('Atajos de Teclado', 'Keyboard Shortcuts')}</h3>
-              <button
-                onClick={() => setShowShortcuts(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-ink-light hover:text-ink"
-              >
-                <CloseOutlined />
-              </button>
-            </div>
-            <div className="space-y-3 text-sm">
-              {[
-                ['1–4 / A–D', t('Seleccionar opción', 'Select option')],
-                ['Enter / Space', t('Siguiente pregunta', 'Next question')],
-                ['E', t('Mostrar/ocultar ayuda', 'Toggle explanation')],
-                ['S', t('Guardar marcador', 'Toggle bookmark')],
-                ['Esc', t('Cerrar modal', 'Close modal')],
-                ['?', t('Mostrar atajos', 'Show shortcuts')],
-              ].map(([key, desc]) => (
-                <div key={key} className="flex items-center justify-between gap-4">
-                  <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded-lg font-mono text-xs font-bold shrink-0">
-                    {key}
-                  </kbd>
-                  <span className="text-ink-light text-right">{desc}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} t={t} />}
     </div>
   )
 }

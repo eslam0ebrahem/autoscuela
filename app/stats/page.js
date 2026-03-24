@@ -69,7 +69,7 @@ const getAccuracyColors = (accuracy) => {
 /**
  * Topic progress bar component
  */
-function TopicBar({ tag, accuracy, attempted, total = 100, lang, onPractice }) {
+function TopicBar({ tag, originalTag, accuracy, attempted, total = 100, lang, onPractice }) {
   const colors = getAccuracyColors(accuracy)
   const percentage = Math.round(accuracy)
 
@@ -94,7 +94,7 @@ function TopicBar({ tag, accuracy, attempted, total = 100, lang, onPractice }) {
         </span>
         {onPractice && (
           <button
-            onClick={() => onPractice(tag)}
+            onClick={() => onPractice(originalTag || tag)}
             className="text-primary hover:text-indigo-700 font-semibold transition-colors"
           >
             {lang === 'es' ? 'Practicar' : 'Practice'} →
@@ -163,7 +163,7 @@ function ProgressContent() {
 
         const [statsRes, insightsRes, topicsRes] = await Promise.all([
           fetch('/api/stats/overall'),
-          fetch('/api/stats/ai-insights'),
+          fetch(`/api/stats/ai-insights${force ? '?force=true' : ''}`),
           fetch('/api/stats/topics'),
         ])
 
@@ -346,6 +346,7 @@ function ProgressContent() {
               <TopicBar
                 key={index}
                 tag={getLocalizedText(topic.tag, lang)}
+                originalTag={topic.tag.es}
                 accuracy={topic.accuracy}
                 attempted={topic.attempted}
                 lang={lang}
@@ -368,6 +369,7 @@ function ProgressContent() {
               <TopicBar
                 key={index}
                 tag={getLocalizedText(topic.tag, lang)}
+                originalTag={topic.tag.es}
                 accuracy={topic.accuracy}
                 attempted={topic.attempted}
                 lang={lang}
@@ -389,6 +391,7 @@ function ProgressContent() {
               <TopicBar
                 key={index}
                 tag={getLocalizedText(topic.tag, lang)}
+                originalTag={topic.tag.es}
                 accuracy={topic.accuracy}
                 attempted={topic.attempted}
                 lang={lang}

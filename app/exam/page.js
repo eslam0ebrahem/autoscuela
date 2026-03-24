@@ -33,6 +33,15 @@ const EXAM_MODES = {
     color: 'from-primary to-indigo-600',
     recommended: true,
   },
+  spaced_repetition: {
+    id: 'spaced_repetition',
+    icon: ThunderboltOutlined,
+    titleKey: 'Repaso Inteligente (SRS)',
+    titleEn: 'Spaced Repetition (SRS)',
+    descKey: 'Repasa lo que vas a olvidar',
+    descEn: 'Review what you are about to forget',
+    color: 'from-blue-500 to-indigo-600',
+  },
   custom: {
     id: 'custom',
     icon: ToolOutlined,
@@ -220,6 +229,30 @@ function TopicSelector({ topics, selected, onToggle, loading, t }) {
 }
 
 /**
+ * Question count selector component
+ */
+function QuestionCountSelector({ value, onChange, t }) {
+  const options = [10, 20, 30, 50, 100]
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          onClick={() => onChange(opt)}
+          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+            value === opt
+              ? 'bg-primary text-white shadow-md'
+              : 'bg-slate-100 dark:bg-slate-800 text-ink dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          {opt} {t('preguntas', 'questions')}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/**
  * AI RECOMMENDATION BANNER
  */
 function AIRecommendBanner({ lang, t, onApply }) {
@@ -342,6 +375,7 @@ function ExamSetup() {
   const [mode, setMode] = useState(urlMode || (isAI ? 'custom' : 'official'))
   const [assistanceMode, setAssistanceMode] = useState('exam')
   const [selectedTopics, setSelectedTopics] = useState(aiTopics)
+  const [numQuestions, setNumQuestions] = useState(30)
   const [availableTopics, setAvailableTopics] = useState([])
   const [loading, setLoading] = useState(false)
   const [topicsLoading, setTopicsLoading] = useState(true)
@@ -424,6 +458,7 @@ function ExamSetup() {
           mode,
           topic_filter: mode === 'custom' && selectedTopics.length > 0 ? selectedTopics : null,
           assistance_mode: assistanceMode,
+          num_questions: numQuestions,
         }),
       })
 
@@ -479,8 +514,8 @@ function ExamSetup() {
         ? t('Modo examen', 'Exam mode')
         : t('Retroalimentación inmediata', 'Instant feedback')
 
-    return `${topicText} · ${modeText}`
-  }, [mode, selectedTopics, assistanceMode, t, availableTopics])
+    return `${topicText} · ${numQuestions}Q · ${modeText}`
+  }, [mode, selectedTopics, assistanceMode, numQuestions, t, availableTopics])
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -555,6 +590,16 @@ function ExamSetup() {
         </h2>
         <AssistanceModeToggle selected={assistanceMode} onChange={setAssistanceMode} t={t} />
       </div>
+
+      {/* ── Question Count (Non-official only) ─────────────────────── */}
+      {mode !== 'official' && (
+        <div className="card">
+          <h2 className="text-lg font-black text-ink dark:text-white mb-4">
+            {t('Número de Preguntas', 'Number of Questions')}
+          </h2>
+          <QuestionCountSelector value={numQuestions} onChange={setNumQuestions} t={t} />
+        </div>
+      )}
 
       {/* ── Summary & Start Button ─────────────────────────────────── */}
       <div className="card bg-gradient-to-br from-primary to-indigo-600 text-white border-0">

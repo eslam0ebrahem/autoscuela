@@ -51,6 +51,7 @@ const examSessionSchema = new mongoose.Schema(
 
     // ✨ AI-powered additions
     aiSessionTip: { type: String },
+    aiPassPrediction: { type: Object }, // { probability, level, message }
     aiQuickSummary: { type: Object }, // { one_liner, emoji_verdict, micro_tip }
     aiCoachFeedback: { type: Object }, // { headline, summary, strengths, weaknesses, next_step, confidence_boost, verdict }
     aiCoachGeneratedAt: { type: Date },

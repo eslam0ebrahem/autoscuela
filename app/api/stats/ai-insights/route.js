@@ -20,23 +20,31 @@ const CACHE_HOURS = 4
 const hoursSince = (date) => (Date.now() - new Date(date).getTime()) / 3_600_000
 
 /**
- * Map snake_case AI insight keys to the camelCase schema stored in MongoDB.
- * Storing all fields keeps the cached copy fully usable on the client.
- * @param {object} insights
- * @returns {object}
+ * Map snake_case AI insight keys to the camelCase schema.
  */
-function insightsToDoc(insights) {
+function normalizeInsights(insights) {
   return {
-    'aiInsights.readinessScore': insights.readiness_score,
-    'aiInsights.weakTopics': insights.weak_topics,
-    'aiInsights.coachMessage': insights.coach_message,
-    'aiInsights.recommendedAction': insights.recommended_action,
-    'aiInsights.predictedReadyDate': insights.predicted_ready_date,
-    'aiInsights.improvementRate': insights.improvement_rate,
-    'aiInsights.studyTips': insights.study_tips,
-    'aiInsights.topicPriorityOrder': insights.topic_priority_order,
-    'aiInsights.lastUpdated': new Date(),
+    readinessScore: insights.readiness_score,
+    weakTopics: insights.weak_topics,
+    coachMessage: insights.coach_message,
+    recommendedAction: insights.recommended_action,
+    predictedReadyDate: insights.predicted_ready_date,
+    improvementRate: insights.improvement_rate,
+    studyTips: insights.study_tips,
+    topicPriorityOrder: insights.topic_priority_order,
+    lastUpdated: new Date(),
   }
+}
+
+/**
+ * Convert normalized insights to MongoDB update document.
+ */
+function insightsToUpdateDoc(normalized) {
+  const update = {}
+  for (const [key, value] of Object.entries(normalized)) {
+    update[`aiInsights.${key}`] = value
+  }
+  return update
 }
 
 // ---------------------------------------------------------------------------
@@ -116,9 +124,10 @@ export async function GET(request) {
     const insights = await getAIInsights(lang, aggregatedData, studyTrends)
 
     // ── Persist to cache ─────────────────────────────────────────────────────
-    await User.findByIdAndUpdate(user._id, { $set: insightsToDoc(insights) })
+    const normalized = normalizeInsights(insights)
+    await User.findByIdAndUpdate(user._id, { $set: insightsToUpdateDoc(normalized) })
 
-    return NextResponse.json({ insights, cached: false })
+    return NextResponse.json({ insights: normalized, cached: false })
   } catch (error) {
     console.error('[ai-insights] Unhandled error:', error)
     return NextResponse.json(

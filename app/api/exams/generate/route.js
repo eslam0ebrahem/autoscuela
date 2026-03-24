@@ -233,13 +233,13 @@ export async function POST(request) {
     const adaptiveOptions = buildAdaptiveOptions(mode, topicFilters)
     const language = user.preferences?.language ?? 'en'
 
-    let questionIds
+    let questionIds = []
     if (mode === 'spaced_repetition') {
       const now = new Date()
       const objectId = new mongoose.Types.ObjectId(tokenData.userId)
       const dueAnswers = await UserAnswer.aggregate([
         { $match: { userId: objectId, 'srs.nextReviewAt': { $exists: true } } },
-        { $sort: { createdAt: -1 } },
+        { $sort: { createdAt: -1 } }, // Newest answer per question first
         {
           $group: {
             _id: '$questionId',
@@ -247,11 +247,26 @@ export async function POST(request) {
           },
         },
         { $match: { lastNextReview: { $lte: now } } },
-        { $sort: { lastNextReview: 1 } },
+        { $sort: { lastNextReview: 1 } }, // Prioritize most overdue
         { $limit: requestedCount },
       ])
-      const dueIds = dueAnswers.map((a) => a._id)
-      if (dueIds.length === 0) {
+
+      questionIds = dueAnswers.map((a) => a._id)
+
+      // ✨ ENHANCEMENT: If not enough SRS due, fill with adaptive selection
+      if (questionIds.length < requestedCount) {
+        const remainingCount = requestedCount - questionIds.length
+        const fillIds = await selectAdaptiveQuestions(tokenData.userId, remainingCount, {
+          ...adaptiveOptions,
+          excludeQuestionIds: questionIds, // Don't repeat what we just picked
+        })
+        questionIds = [...questionIds, ...fillIds]
+      }
+
+      // Shuffle so SRS and fill questions are mixed
+      questionIds = questionIds.sort(() => Math.random() - 0.5)
+
+      if (questionIds.length === 0) {
         return NextResponse.json(
           {
             error: 'no_reviews_due',
@@ -263,7 +278,6 @@ export async function POST(request) {
           { status: 200 }
         )
       }
-      questionIds = dueIds.slice(0, requestedCount).sort(() => Math.random() - 0.5)
     } else {
       try {
         questionIds = await selectAdaptiveQuestions(tokenData.userId, requestedCount, {
@@ -315,6 +329,7 @@ export async function POST(request) {
       questionIds,
       expiresAt,
       source,
+      aiPassPrediction: passPrediction, // ✨ Save prediction
     })
 
     // ── AI: Fire-and-forget session tip (stored in session, used on setup confirmation) ──
