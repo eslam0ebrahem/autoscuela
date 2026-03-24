@@ -19,6 +19,8 @@ import {
   BulbOutlined,
   WarningOutlined,
   ClockCircleOutlined,
+  InteractionOutlined,
+  BookOutlined,
 } from '@ant-design/icons'
 
 // ---------------------------------------------------------------------------
@@ -202,8 +204,8 @@ function ProgressContent() {
 
   // ── Computed values ────────────────────────────────────────────────────
   const overallAccuracy = useMemo(() => {
-    if (!stats?.totalQuestions || stats.totalQuestions === 0) return 0
-    return Math.round((stats.correctAnswers / stats.totalQuestions) * 100)
+    if (!stats?.answeredQuestions || stats.answeredQuestions === 0) return 0
+    return Math.round((stats.correctAnswers / stats.answeredQuestions) * 100)
   }, [stats])
 
   const weakTopics = useMemo(() => {
@@ -295,7 +297,7 @@ function ProgressContent() {
 
       {/* ── Overall Stats ───────────────────────────────────────────── */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <StatCard
             icon={<LineChartOutlined />}
             label={t('Precisión Global', 'Overall Accuracy')}
@@ -321,6 +323,18 @@ function ProgressContent() {
             label={t('Racha Actual', 'Current Streak')}
             value={`${stats.currentStreak || 0} ${t('días', 'days')}`}
             color="orange-500"
+          />
+          <StatCard
+            icon={<InteractionOutlined />}
+            label={t('Preguntas Realizadas', 'Attempted')}
+            value={stats.answeredQuestions || 0}
+            color="blue-500"
+          />
+          <StatCard
+            icon={<BookOutlined />}
+            label={t('Banco de Preguntas', 'Question Bank')}
+            value={stats.totalQuestionsInDB || 0}
+            color="indigo-500"
           />
         </div>
       )}

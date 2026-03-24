@@ -16,7 +16,7 @@ export async function GET(request) {
     const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000)
 
-    const [allTimeStats, thisWeekStats, lastWeekStats, user] = await Promise.all([
+    const [allTimeStats, thisWeekStats, lastWeekStats, user, totalDB] = await Promise.all([
       // All-time stats
       UserAnswer.aggregate([
         { $match: { userId: new mongoose.Types.ObjectId(tokenData.userId) } },
@@ -61,6 +61,7 @@ export async function GET(request) {
         },
       ]),
       User.findById(tokenData.userId).select('gamification.currentStreak'),
+      mongoose.models.Question.countDocuments({ isActive: true }),
     ])
 
     const allTime = allTimeStats[0] || { total: 0, correct: 0 }
@@ -73,12 +74,13 @@ export async function GET(request) {
     const weeklyAccuracyChange = Math.round(thisWeekAcc - lastWeekAcc)
 
     const stats = {
-      totalQuestions: allTime.total,
+      answeredQuestions: allTime.total,
       correctAnswers: allTime.correct,
       incorrectAnswers: allTime.total - allTime.correct,
       currentStreak: user?.gamification?.currentStreak || 0,
       weeklyTrend: weeklyAccuracyChange !== 0,
       weeklyAccuracyChange,
+      totalQuestionsInDB: totalDB,
     }
 
     return NextResponse.json({ stats })

@@ -221,6 +221,15 @@ function TopicSelector({ topics, selected, onToggle, loading, t }) {
             }`}
           >
             {t(topic.tag, topic.tagEn || topic.tag)}
+            <span
+              className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full ${
+                isSelected
+                  ? 'bg-white/20 text-white'
+                  : 'bg-slate-200 dark:bg-slate-700 text-ink-light dark:text-slate-400'
+              }`}
+            >
+              {topic.count || 0}
+            </span>
           </button>
         )
       })}
