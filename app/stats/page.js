@@ -333,7 +333,7 @@ function ProgressContent() {
           <StatCard
             icon={<BookOutlined />}
             label={t('Banco de Preguntas', 'Question Bank')}
-            value={stats.totalQuestionsInDB || 0}
+            value={`${stats.seenQuestions || 0} / ${stats.totalQuestionsInDB || 0}`}
             color="indigo-500"
           />
         </div>
