@@ -25,7 +25,11 @@ const examSessionSchema = new mongoose.Schema(
     topicFilters: [{ type: String }],
     assistanceMode: { type: String, enum: ['instant', 'exam'], default: 'exam' },
 
-    // Array of question IDs to lock test order
+    // Origin of the exam (e.g. 'web', 'mobile', 'api')
+    // FIX: field was written in route.js but missing from schema
+    source: { type: String },
+
+    // Array of question IDs — locks test order at creation time
     questionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
 
     // User answers stored here for review
@@ -46,14 +50,53 @@ const examSessionSchema = new mongoose.Schema(
     completedAt: { type: Date },
     expiresAt: { type: Date },
 
+    // Set when a session transitions from in_progress to abandoned
+    // FIX: written by cleanupAbandonedSessions() but missing from schema
+    abandonedAt: { type: Date },
+
     // Total time tracking
     totalTimeTakenSeconds: { type: Number },
 
-    // ✨ AI-powered additions
+    // Per-topic breakdown computed at submission time
+    // FIX: written by submit route but missing from schema — caused silent data loss
+    topicBreakdown: [
+      {
+        tag: { type: String },
+        correct: { type: Number },
+        total: { type: Number },
+        accuracy: { type: Number }, // 0–100
+        avgTimeSec: { type: Number },
+      },
+    ],
+
+    // ── AI-powered fields ─────────────────────────────────────────────────
+    // Short tip shown before the exam starts (fire-and-forget from generate)
     aiSessionTip: { type: String },
-    aiPassPrediction: { type: Object }, // { probability, level, message }
-    aiQuickSummary: { type: Object }, // { one_liner, emoji_verdict, micro_tip }
-    aiCoachFeedback: { type: Object }, // { headline, summary, strengths, weaknesses, next_step, confidence_boost, verdict }
+
+    // Pass probability estimated at session creation: { probability, level, message }
+    aiPassPrediction: {
+      probability: { type: Number },
+      level: { type: String, enum: ['high', 'medium', 'low'] },
+      message: { type: String },
+    },
+
+    // One-liner result shown immediately after submission (fire-and-forget from submit)
+    aiQuickSummary: {
+      one_liner: { type: String },
+      emoji_verdict: { type: String },
+      micro_tip: { type: String },
+    },
+
+    // Full coach feedback populated asynchronously after submission
+    aiCoachFeedback: {
+      headline: { type: String },
+      summary: { type: String },
+      strengths: [{ type: String }],
+      weaknesses: [{ type: String }],
+      next_step: { type: String },
+      confidence_boost: { type: String },
+      verdict: { type: String },
+    },
     aiCoachGeneratedAt: { type: Date },
   },
   { timestamps: true }

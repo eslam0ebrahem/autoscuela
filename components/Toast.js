@@ -112,6 +112,7 @@ export function ToastProvider({ children }) {
   }, [])
 
   const toast = {
+    showToast: addToast,
     success: (msg, dur) => addToast(msg, 'success', dur),
     error: (msg, dur) => addToast(msg, 'error', dur || 5000),
     warning: (msg, dur) => addToast(msg, 'warning', dur),

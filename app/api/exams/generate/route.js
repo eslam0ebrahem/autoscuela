@@ -38,7 +38,7 @@ const DURATIONS = {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers (unchanged)
+// Helpers
 // ---------------------------------------------------------------------------
 async function checkSessionLimits(userId) {
   const activeCount = await ExamSession.countDocuments({ userId, status: 'in_progress' })
@@ -81,24 +81,24 @@ function buildAdaptiveOptions(mode, topicFilters) {
       options.prioritizeMistakes = true
       break
     case 'official':
-      options.balanced = true
+      options.balanced = true // Consumed by selectAdaptiveQuestions to enforce difficulty dist
       break
   }
   return options
 }
 
 // ---------------------------------------------------------------------------
-// AI HELPER: Estimate pass probability from skill profile (local, no AI call)
+// Estimate pass probability from skill profile and contextual signals.
+// This runs locally — no AI API call — so the exam generation response is instant.
 // ---------------------------------------------------------------------------
-function estimatePassProbability(skillProfile, mode, topicFilters, userStats) {
+function estimatePassProbability(skillProfile, mode, topicFilters, userStats, user) {
   if (!skillProfile?.overallLevel) return null
 
-  // Map skill level string to numeric value
   const levelMap = { beginner: 1, easy: 2, medium: 3, hard: 4, expert: 5 }
   const levelNum = levelMap[skillProfile.overallLevel] || 1
   const baseProb = Math.min(95, Math.max(5, (levelNum / 5) * 100))
 
-  // Adjust for mode difficulty
+  // Mode-specific adjustment
   const modeAdjust = {
     official: 0,
     custom: topicFilters?.length > 0 ? -5 : 0,
@@ -108,20 +108,47 @@ function estimatePassProbability(skillProfile, mode, topicFilters, userStats) {
     spaced_repetition: -8,
   }
 
-  // Factor in topic-level weakness count
+  // Penalty for weak topics
   let weakTopicPenalty = 0
   if (skillProfile.topics?.length > 0) {
     const weakTopics = skillProfile.topics.filter((t) => t.accuracy < 60)
     weakTopicPenalty = Math.min(10, weakTopics.length * 2)
   }
 
-  // Factor in overall answer count (more experience = more reliable estimate)
+  // For custom/weak_topics mode, increase penalty if selected topics are specifically weak
+  let targetTopicPenalty = 0
+  if (topicFilters?.length > 0 && skillProfile.topics?.length > 0) {
+    const weakTargetTopics = skillProfile.topics.filter(
+      (t) => topicFilters.includes(t.tag) && t.accuracy < 60
+    )
+    targetTopicPenalty = Math.min(10, weakTargetTopics.length * 3)
+  }
+
+  // Bonus for experience (more data = more reliable estimate → express higher confidence)
   const experienceBonus = userStats?.totalAnswers > 100 ? 5 : 0
+
+  // Streak bonus: consistent daily study is a strong predictor of readiness
+  const streak = user?.gamification?.currentStreak ?? 0
+  const streakBonus = streak >= 7 ? 5 : streak >= 3 ? 2 : 0
+
+  // Recent session trend: if last 3 sessions were passed, bump probability
+  // (pulled from user.gamification or would need a session lookup — use what's available)
+  const recentPassRate = user?.stats?.recentPassRate ?? null
+  const trendBonus = recentPassRate !== null ? Math.round((recentPassRate - 0.5) * 10) : 0
 
   const adjustedProb = Math.round(
     Math.min(
       95,
-      Math.max(5, baseProb + (modeAdjust[mode] ?? 0) - weakTopicPenalty + experienceBonus)
+      Math.max(
+        5,
+        baseProb +
+          (modeAdjust[mode] ?? 0) -
+          weakTopicPenalty -
+          targetTopicPenalty +
+          experienceBonus +
+          streakBonus +
+          trendBonus
+      )
     )
   )
 
@@ -177,7 +204,7 @@ export async function POST(request) {
     }
 
     // ── Cleanup abandoned sessions ─────────────────────────────────────
-    const abandonedCount = await cleanupAbandonedSessions(user._id)
+    await cleanupAbandonedSessions(user._id)
 
     // ── Check session limits ──────────────────────────────────────────
     const { allowed, activeCount } = await checkSessionLimits(user._id)
@@ -211,7 +238,11 @@ export async function POST(request) {
     const { mode, topic_filter, assistance_mode, num_questions, source } = validated
 
     // ── Question count ─────────────────────────────────────────────────
-    const requestedCount = mode === 'official' ? OFFICIAL_EXAM_QUESTIONS : num_questions
+    // Official mode is always fixed; custom modes are clamped to safe limits
+    const requestedCount =
+      mode === 'official'
+        ? OFFICIAL_EXAM_QUESTIONS
+        : clamp(num_questions ?? QUESTION_LIMITS.MIN, QUESTION_LIMITS.MIN, QUESTION_LIMITS.MAX)
 
     // ── Bookmarks mode ─────────────────────────────────────────────────
     let bookmarkIds = []
@@ -239,7 +270,7 @@ export async function POST(request) {
       const objectId = new mongoose.Types.ObjectId(tokenData.userId)
       const dueAnswers = await UserAnswer.aggregate([
         { $match: { userId: objectId, 'srs.nextReviewAt': { $exists: true } } },
-        { $sort: { createdAt: -1 } }, // Newest answer per question first
+        { $sort: { createdAt: -1 } },
         {
           $group: {
             _id: '$questionId',
@@ -247,23 +278,22 @@ export async function POST(request) {
           },
         },
         { $match: { lastNextReview: { $lte: now } } },
-        { $sort: { lastNextReview: 1 } }, // Prioritize most overdue
+        { $sort: { lastNextReview: 1 } }, // Most overdue first
         { $limit: requestedCount },
       ])
 
       questionIds = dueAnswers.map((a) => a._id)
 
-      // ✨ ENHANCEMENT: If not enough SRS due, fill with adaptive selection
+      // Fill any shortfall with adaptive selection
       if (questionIds.length < requestedCount) {
         const remainingCount = requestedCount - questionIds.length
         const fillIds = await selectAdaptiveQuestions(tokenData.userId, remainingCount, {
           ...adaptiveOptions,
-          excludeQuestionIds: questionIds, // Don't repeat what we just picked
+          excludeQuestionIds: questionIds,
         })
         questionIds = [...questionIds, ...fillIds]
       }
 
-      // Shuffle so SRS and fill questions are mixed
       questionIds = questionIds.sort(() => Math.random() - 0.5)
 
       if (questionIds.length === 0) {
@@ -311,12 +341,13 @@ export async function POST(request) {
     // ── Calculate expiration ──────────────────────────────────────────
     const expiresAt = calculateExpiration(mode, questionIds.length)
 
-    // ── AI: Estimate pass probability (local, instant, no API call) ───
+    // ── Estimate pass probability (local, instant, no API call) ───────
     const passPrediction = estimatePassProbability(
       user.skillProfile,
       mode,
       topicFilters,
-      user.stats
+      user.stats,
+      user // FIX: pass full user for streak/trend signals
     )
 
     // ── Create session ────────────────────────────────────────────────
@@ -329,11 +360,10 @@ export async function POST(request) {
       questionIds,
       expiresAt,
       source,
-      aiPassPrediction: passPrediction, // ✨ Save prediction
+      aiPassPrediction: passPrediction,
     })
 
-    // ── AI: Fire-and-forget session tip (stored in session, used on setup confirmation) ──
-    // If AI fails, session still succeeds with null tip (graceful degradation)
+    // ── Fire-and-forget: session tip (stored async, non-critical) ─────
     const lang = user.preferences?.language ?? 'en'
     getExamRecommendation({
       recentStats: {
@@ -349,12 +379,11 @@ export async function POST(request) {
         if (rec && !rec._fallback) {
           ExamSession.findByIdAndUpdate(session._id, {
             $set: { aiSessionTip: rec?.tip ?? null },
-          }).catch(() => {}) // Silently fail - non-critical
+          }).catch(() => {})
         }
       })
       .catch((err) => {
         console.error('[exam-generate] AI recommendation failed (non-critical):', err.message)
-        // Session continues without AI tip
       })
 
     // ── Response ──────────────────────────────────────────────────────
@@ -367,7 +396,6 @@ export async function POST(request) {
       expiresAt,
       duration: expiresAt ? DURATIONS[mode] : null,
       topicFilters: topicFilters.length > 0 ? topicFilters : null,
-      // ✨ AI-powered additions
       aiPassPrediction: passPrediction, // { probability, level, message }
     })
   } catch (error) {

@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import connectDB from '@/lib/db'
 import ExamSession from '@/models/ExamSession'
 import User from '@/models/User'
+import Question from '@/models/Question'
 import UserAnswer from '@/models/UserAnswer'
 import { getCurrentUser } from '@/lib/auth'
 import {
@@ -18,16 +19,36 @@ import { getExamCoachFeedback, getSessionQuickSummary } from '@/lib/groq'
 
 const MAX_ERRORS_TO_PASS = 3
 
+// How long to wait for AI coach before giving up (ms). Keeps fire-and-forget bounded.
+const AI_COACH_TIMEOUT_MS = 15_000
+
 // ---------------------------------------------------------------------------
-// AI HELPER: Compute topic-level breakdown from session answers
+// Build a questionId → topicTag lookup from the database.
+// FIX: The original computeTopicBreakdown read a.topic_tag from ExamSession.answers,
+//      but that field doesn't exist there — only questionId is stored. Without this
+//      lookup every answer was mapped to the 'General' fallback, making topicBreakdown
+//      completely useless for the review page and AI feedback.
 // ---------------------------------------------------------------------------
-function computeTopicBreakdown(answers) {
+async function buildTopicLookup(questionIds) {
+  if (!questionIds?.length) return {}
+  const questions = await Question.find(
+    { _id: { $in: questionIds } },
+    { _id: 1, 'topic_tag.es': 1 }
+  ).lean()
+  return Object.fromEntries(questions.map((q) => [q._id.toString(), q.topic_tag?.es || 'General']))
+}
+
+// ---------------------------------------------------------------------------
+// Compute per-topic breakdown from session answers + topic lookup.
+// ---------------------------------------------------------------------------
+function computeTopicBreakdown(answers, topicLookup) {
   const topicMap = {}
 
   for (const a of answers) {
-    const tag = a.topic_tag?.es || a.topicTag?.es || 'General'
+    // FIX: use the lookup map keyed by questionId instead of reading a non-existent field
+    const tag = topicLookup[a.questionId?.toString()] || 'General'
     if (!topicMap[tag]) {
-      topicMap[tag] = { tag, correct: 0, total: 0, avgTimeSec: 0, totalTimeSec: 0 }
+      topicMap[tag] = { tag, correct: 0, total: 0, totalTimeSec: 0 }
     }
     topicMap[tag].total++
     if (a.isCorrect) topicMap[tag].correct++
@@ -35,25 +56,20 @@ function computeTopicBreakdown(answers) {
   }
 
   return Object.values(topicMap).map((t) => ({
-    ...t,
+    tag: t.tag,
+    correct: t.correct,
+    total: t.total,
     accuracy: t.total > 0 ? Math.round((t.correct / t.total) * 100) : 0,
     avgTimeSec: t.total > 0 ? Math.round(t.totalTimeSec / t.total) : 0,
   }))
 }
 
 // ---------------------------------------------------------------------------
-// AI HELPER: Compute smart XP bonus for notable improvements
+// Compute smart XP bonus for notable achievements
 // ---------------------------------------------------------------------------
-function computeAIXPBonus(session, skillProfile, passed) {
+function computeAIXPBonus(session, skillProfile, passed, accuracy) {
   let bonus = 0
   const reasons = []
-
-  const accuracy =
-    session.questionIds.length > 0
-      ? Math.round(
-          (session.answers.filter((a) => a.isCorrect).length / session.questionIds.length) * 100
-        )
-      : 0
 
   if (passed && accuracy === 100) {
     bonus += 50
@@ -71,14 +87,37 @@ function computeAIXPBonus(session, skillProfile, passed) {
     bonus += 20
     reasons.push('Mastered weak topics')
   }
+  if (session.mode === 'official' && passed) {
+    bonus += 10
+    reasons.push('Passed official exam')
+  }
 
-  // Skill level up bonus
+  // Expert-level skill bonus
   if (skillProfile?.overallLevel >= 4) {
     bonus += 15
     reasons.push('Expert level')
   }
 
+  // Speed bonus: finished in under half the expected time with high accuracy
+  const expectedTimeSec = session.questionIds.length * 60
+  const actualTime = session.answers.reduce((sum, a) => sum + (a.timeTakenSeconds || 0), 0)
+  if (passed && accuracy >= 80 && actualTime < expectedTimeSec / 2) {
+    bonus += 10
+    reasons.push('Speed run')
+  }
+
   return { bonus, reasons }
+}
+
+// ---------------------------------------------------------------------------
+// Wrap a promise with a timeout. Rejects with a timeout error if the
+// promise does not resolve within `ms` milliseconds.
+// ---------------------------------------------------------------------------
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms)),
+  ])
 }
 
 // ---------------------------------------------------------------------------
@@ -109,16 +148,21 @@ export async function POST(request, { params }) {
     const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0
     const lang = session.language || 'es'
 
-    // ── Topic breakdown (AI context + cached for review page) ───────────
-    const topicBreakdown = computeTopicBreakdown(session.answers)
+    // ── Topic breakdown ─────────────────────────────────────────────────
+    // FIX: fetch actual topic tags from the Question collection before computing breakdown
+    const topicLookup = await buildTopicLookup(session.questionIds)
+    const topicBreakdown = computeTopicBreakdown(session.answers, topicLookup)
 
-    // ── Gamification (computed before transaction — reads only) ──────────
+    // ── Gamification ─────────────────────────────────────────────────────
     const user = await User.findById(tokenData.userId)
     const skillProfile = await getUserSkillProfile(tokenData.userId)
+
+    // Pass accuracy into XP bonus so it doesn't re-compute it internally
     const { bonus: aiBonus, reasons: bonusReasons } = computeAIXPBonus(
       session,
       skillProfile,
-      passed
+      passed,
+      accuracy
     )
     const xpEarned = (passed ? XP.EXAM_PASS : XP.EXAM_FAIL) + aiBonus
 
@@ -146,11 +190,9 @@ export async function POST(request, { params }) {
     )
 
     // ── Atomic transaction: update ExamSession + User together ──────────
-    // Using txSession to avoid naming collision with the `session` ExamSession doc.
     const txSession = await mongoose.startSession()
     try {
       await txSession.withTransaction(async () => {
-        // Update session fields and save within the transaction
         session.score = correctCount
         session.errorCount = errors
         session.passed = passed
@@ -160,7 +202,6 @@ export async function POST(request, { params }) {
         session.topicBreakdown = topicBreakdown
         await session.save({ session: txSession })
 
-        // Update user gamification within the same transaction
         await User.findByIdAndUpdate(
           tokenData.userId,
           {
@@ -186,19 +227,19 @@ export async function POST(request, { params }) {
       await txSession.endSession()
     }
 
-    // ── Fire-and-forget: Update leaderboard rank (non-critical) ──
+    // ── Fire-and-forget: leaderboard rank update (non-critical) ──────────
     updateLeaderboardRank(tokenData.userId).catch((err) =>
       console.error('[submit] Rank update failed (non-critical):', err)
     )
 
-    // ── Fire-and-forget: Invalidate skill profile cache (non-critical) ──
-    // Forces recalculation on next adaptive selection with fresh data
+    // ── Fire-and-forget: invalidate skill profile cache (non-critical) ───
     invalidateSkillProfile(tokenData.userId).catch((err) =>
       console.error('[submit] Skill profile invalidation failed (non-critical):', err)
     )
 
-    // ── AI: Fire-and-forget coach feedback (stored in session for review page) ──
-    // This runs in background so exam submission response is instant
+    // ── Fire-and-forget: AI coach feedback ───────────────────────────────
+    // Runs in background so submission response stays instant.
+    // FIX: wrapped in withTimeout so a slow AI call can't run forever.
     const examSummary = {
       score: correctCount,
       errorCount: errors,
@@ -210,14 +251,13 @@ export async function POST(request, { params }) {
       timeSpentSeconds: totalTime,
       questionsDetail: session.answers.map((a) => ({
         isCorrect: a.isCorrect,
-        topic: a.topic_tag?.es || 'General',
+        topic: topicLookup[a.questionId?.toString()] || 'General', // FIX: use lookup
         timeTaken: a.timeTakenSeconds,
       })),
     }
 
     Promise.resolve()
       .then(async () => {
-        // Fetch recent session history for trend analysis
         let sessionHistory = []
         try {
           sessionHistory = await ExamSession.find({
@@ -229,21 +269,25 @@ export async function POST(request, { params }) {
             .limit(5)
             .select('score errorCount passed completedAt mode')
             .lean()
-          sessionHistory.reverse() // oldest first
+          sessionHistory.reverse()
         } catch {
-          // Graceful: proceed without history
+          // Proceed without history
         }
-        const [feedback, quickSummary] = await Promise.all([
-          getExamCoachFeedback({ examSummary, sessionHistory, lang }),
-          getSessionQuickSummary({
-            correctCount,
-            totalCount: totalQuestions,
-            timeSeconds: totalTime,
-            mode: session.mode,
-            topicBreakdown,
-            lang,
-          }),
-        ])
+
+        const [feedback, quickSummary] = await withTimeout(
+          Promise.all([
+            getExamCoachFeedback({ examSummary, sessionHistory, lang }),
+            getSessionQuickSummary({
+              correctCount,
+              totalCount: totalQuestions,
+              timeSeconds: totalTime,
+              mode: session.mode,
+              topicBreakdown,
+              lang,
+            }),
+          ]),
+          AI_COACH_TIMEOUT_MS
+        )
 
         if (feedback && !feedback._fallback) {
           await ExamSession.findByIdAndUpdate(session._id, {
@@ -257,7 +301,6 @@ export async function POST(request, { params }) {
       })
       .catch((err) => {
         console.error('[submit] AI coach fire-and-forget failed (non-critical):', err.message)
-        // Exam submission succeeds even if coach feedback fails
       })
 
     // ── Response ────────────────────────────────────────────────────────
@@ -274,9 +317,8 @@ export async function POST(request, { params }) {
         accuracy,
         skillLevel: skillProfile.overallLevel,
         topicBreakdown,
-        // ✨ AI-powered additions
         aiXPBonus: aiBonus > 0 ? { bonus: aiBonus, reasons: bonusReasons } : null,
-        aiCoachReady: false, // Will be populated asynchronously in session
+        aiCoachReady: false, // Populated asynchronously — poll session for updates
       },
     })
   } catch (error) {
