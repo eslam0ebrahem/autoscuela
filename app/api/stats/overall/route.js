@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import connectDB from '@/lib/db'
 import UserAnswer from '@/models/UserAnswer'
 import User from '@/models/User'
+import Question from '@/models/Question'
 import { getCurrentUser } from '@/lib/auth'
 
 export async function GET(request) {
@@ -62,7 +63,7 @@ export async function GET(request) {
           },
         ]),
         User.findById(tokenData.userId).select('gamification.currentStreak'),
-        mongoose.models.Question.countDocuments({ isActive: true }),
+        Question.countDocuments({ isActive: true }),
         // Unique questions seen
         UserAnswer.aggregate([
           { $match: { userId: new mongoose.Types.ObjectId(tokenData.userId) } },

@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
+import ExamSession from '@/models/ExamSession'
 import { getCurrentUser } from '@/lib/auth'
 import { getMadridStartOfWeek } from '@/lib/gamification'
+import { startOfDay } from 'date-fns'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -61,6 +63,13 @@ export async function GET(request) {
       currentUserRank = usersAbove + 1
     }
 
+    // ── Exams Taken Today ─────────────────────────────────────────────────────
+    const startOfToday = startOfDay(new Date())
+    const examsTakenToday = await ExamSession.countDocuments({
+      userId: tokenData.userId,
+      createdAt: { $gte: startOfToday },
+    })
+
     // ── Response payload ─────────────────────────────────────────────────────
     return NextResponse.json({
       insights: user.aiInsights ?? null,
@@ -70,6 +79,7 @@ export async function GET(request) {
       currentUserRank,
       readinessScore: user.aiInsights?.readinessScore ?? 0,
       weekStart: currentWeekStart.toISOString(),
+      examsTakenToday,
     })
   } catch (error) {
     console.error('[dashboard] Unhandled error:', error)

@@ -22,6 +22,7 @@ import {
   ArrowRightOutlined,
   TrophyFilled,
   ReloadOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons'
 
 // ---------------------------------------------------------------------------
@@ -155,6 +156,7 @@ function DashboardContent() {
   const [trends, setTrends] = useState([])
   const [leaderboard, setLeaderboard] = useState([])
   const [readinessScore, setReadinessScore] = useState(null)
+  const [examsTakenToday, setExamsTakenToday] = useState(0)
   const [loading, setLoading] = useState(true)
   const [startingExam, setStartingExam] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -188,6 +190,7 @@ function DashboardContent() {
             setBadges(dashRes.badges ?? [])
             setLeaderboard(dashRes.leaderboard ?? [])
             setReadinessScore(dashRes.readinessScore != null ? Number(dashRes.readinessScore) : 0)
+            setExamsTakenToday(dashRes.examsTakenToday ?? 0)
           }
         } else {
           // dashResult.status === 'rejected'
@@ -290,7 +293,7 @@ function DashboardContent() {
       </div>
 
       {/* ── Quick Stats ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card text-center hover:shadow-lg transition-shadow">
           <div className="text-3xl md:text-4xl font-black text-primary">{badges.length}</div>
           <p className="text-xs md:text-sm text-ink-light dark:text-slate-400 mt-1 font-semibold">
@@ -305,7 +308,15 @@ function DashboardContent() {
             {t('Racha', 'Streak')}
           </p>
         </div>
-        <div className="card text-center hover:shadow-lg transition-shadow col-span-2 md:col-span-1">
+        <div className="card text-center hover:shadow-lg transition-shadow">
+          <div className="text-3xl md:text-4xl font-black text-indigo-500 flex items-center justify-center gap-2">
+            <CheckCircleOutlined /> {examsTakenToday}
+          </div>
+          <p className="text-xs md:text-sm text-ink-light dark:text-slate-400 mt-1 font-semibold">
+            {t('Exámenes hoy', 'Exams today')}
+          </p>
+        </div>
+        <div className="card text-center hover:shadow-lg transition-shadow">
           <button
             onClick={handleRefresh}
             disabled={refreshing}
