@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import connectDB from '@/lib/db'
 import ExamSession from '@/models/ExamSession'
 import UserAnswer from '@/models/UserAnswer'
+import User from '@/models/User'
 import { getCurrentUser } from '@/lib/auth'
 import { getMadridStartOfDay } from '@/lib/gamification'
 
@@ -15,39 +16,41 @@ export async function GET(request) {
 
     const todayStart = getMadridStartOfDay()
 
-    const [completedExams, totalAnswered, correctAnswers, recentSessions, studyTimeToday] =
-      await Promise.all([
-        ExamSession.countDocuments({ userId: tokenData.userId, status: 'completed' }),
-        UserAnswer.countDocuments({ userId: tokenData.userId }),
-        UserAnswer.countDocuments({ userId: tokenData.userId, is_correct: true }),
-        ExamSession.find({ userId: tokenData.userId, status: 'completed' })
-          .sort({ completedAt: -1 })
-          .limit(10)
-          .select('score passed errorCount completedAt mode'),
-        // Calculate study time today (sum of time_taken_seconds from today's answers)
-        UserAnswer.aggregate([
-          {
-            $match: {
-              userId: new mongoose.Types.ObjectId(tokenData.userId),
-              createdAt: { $gte: todayStart },
-              time_taken_seconds: { $exists: true, $gt: 0 },
-            },
+    const [user, completedExams, passedExams, recentSessions, studyTimeToday] = await Promise.all([
+      User.findById(tokenData.userId).select('stats').lean(),
+      ExamSession.countDocuments({ userId: tokenData.userId, status: 'completed' }),
+      ExamSession.countDocuments({
+        userId: tokenData.userId,
+        status: 'completed',
+        passed: true,
+      }),
+      ExamSession.find({ userId: tokenData.userId, status: 'completed' })
+        .sort({ completedAt: -1 })
+        .limit(10)
+        .select('score passed errorCount completedAt mode'),
+      // Calculate study time today (sum of time_taken_seconds from today's answers)
+      UserAnswer.aggregate([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(tokenData.userId),
+            createdAt: { $gte: todayStart },
+            time_taken_seconds: { $exists: true, $gt: 0 },
           },
-          {
-            $group: {
-              _id: null,
-              totalSeconds: { $sum: '$time_taken_seconds' },
-              questionsToday: { $sum: 1 },
-            },
+        },
+        {
+          $group: {
+            _id: null,
+            totalSeconds: { $sum: '$time_taken_seconds' },
+            questionsToday: { $sum: 1 },
           },
-        ]),
-      ])
+        },
+      ]),
+    ])
 
-    const passedExams = await ExamSession.countDocuments({
-      userId: tokenData.userId,
-      status: 'completed',
-      passed: true,
-    })
+    const userStats = user?.stats || { totalAnswers: 0, correctAnswers: 0, topicStats: {} }
+
+    const totalAnswered = userStats.totalAnswers || 0
+    const correctAnswers = userStats.correctAnswers || 0
 
     const passRate = completedExams > 0 ? Math.round((passedExams / completedExams) * 100) : 0
     const accuracy = totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 0
@@ -56,30 +59,27 @@ export async function GET(request) {
     const studyData = studyTimeToday[0] || { totalSeconds: 0, questionsToday: 0 }
     const studyMinutesToday = Math.round(studyData.totalSeconds / 60)
 
-    // Topic breakdown
-    const topicStats = await UserAnswer.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(tokenData.userId) } },
-      {
-        $group: {
-          _id: '$topic_tag.es',
-          tagEn: { $first: '$topic_tag.en' },
-          attempted: { $sum: 1 },
-          correct: { $sum: { $cond: ['$is_correct', 1, 0] } },
-        },
-      },
-      {
-        $project: {
-          tag: { es: '$_id', en: '$tagEn' },
-          attempted: 1,
-          correct: 1,
-          accuracy: {
-            $round: [{ $multiply: [{ $divide: ['$correct', '$attempted'] }, 100] }, 0],
-          },
-          _id: 0,
-        },
-      },
-      { $sort: { accuracy: 1 } },
-    ])
+    // Topic breakdown - derive from incremental stats instead of aggregation
+    const topicStats = []
+    const topicStatsMap =
+      userStats.topicStats instanceof Map
+        ? Object.fromEntries(userStats.topicStats)
+        : userStats.topicStats || {}
+
+    for (const [tag, stat] of Object.entries(topicStatsMap)) {
+      const attempted = stat.attempted || 0
+      const correct = stat.correct || 0
+      const topicAccuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : 0
+      topicStats.push({
+        tag: { es: tag, en: tag }, // Simplify EN tag for now as it's not cached in stats
+        attempted,
+        correct,
+        accuracy: topicAccuracy,
+      })
+    }
+
+    // Sort by accuracy ascending (weakest first)
+    topicStats.sort((a, b) => a.accuracy - b.accuracy)
 
     return NextResponse.json({
       pass_rate: passRate,
