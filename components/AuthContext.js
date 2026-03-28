@@ -48,13 +48,20 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === 'auth_sync_event') {
-        if (e.newValue === 'logout') {
+        const [event, timestamp] = (e.newValue || '').split('|')
+
+        // Prevent re-processing the same sync event from this tab
+        const lastProcessedSync = localStorage.getItem('last_processed_sync')
+        if (timestamp && timestamp === lastProcessedSync) return
+        if (timestamp) localStorage.setItem('last_processed_sync', timestamp)
+
+        if (event === 'logout') {
           setUser(null)
           // Redirect to login if on protected page
           if (pathname !== '/' && !pathname.startsWith('/auth')) {
             router.push('/auth/login')
           }
-        } else if (e.newValue?.startsWith('login-')) {
+        } else if (event === 'login') {
           // Another tab logged in, refresh user
           fetchUser()
         }
@@ -122,7 +129,9 @@ export function AuthProvider({ children }) {
 
       if (res.ok) {
         setUser(data.user)
-        localStorage.setItem('auth_sync_event', `login-${Date.now()}`)
+        const timestamp = Date.now().toString()
+        localStorage.setItem('last_processed_sync', timestamp)
+        localStorage.setItem('auth_sync_event', `login|${timestamp}`)
         return { success: true }
       }
 
@@ -159,7 +168,9 @@ export function AuthProvider({ children }) {
 
       if (res.ok) {
         setUser(data.user)
-        localStorage.setItem('auth_sync_event', `login-${Date.now()}`)
+        const timestamp = Date.now().toString()
+        localStorage.setItem('last_processed_sync', timestamp)
+        localStorage.setItem('auth_sync_event', `login|${timestamp}`)
         return { success: true }
       }
 
@@ -187,7 +198,9 @@ export function AuthProvider({ children }) {
       console.error('[auth] Error during logout:', err)
     } finally {
       setUser(null)
-      localStorage.setItem('auth_sync_event', 'logout')
+      const timestamp = Date.now().toString()
+      localStorage.setItem('last_processed_sync', timestamp)
+      localStorage.setItem('auth_sync_event', `logout|${timestamp}`)
       router.push('/')
     }
   }, [router])

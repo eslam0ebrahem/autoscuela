@@ -45,11 +45,21 @@ async function checkSessionLimits(userId) {
   return { allowed: activeCount < 3, activeCount }
 }
 
-async function cleanupAbandonedSessions(userId, hoursThreshold = ABANDONED_SESSION_HOURS) {
+async function cleanupAbandonedSessions(userId, hoursThreshold = 4) {
   const cutoff = new Date()
   cutoff.setHours(cutoff.getHours() - hoursThreshold)
+
+  // Also only abandon if the session hasn't been updated recently (e.g., in the last 2 hours)
+  const lastActiveCutoff = new Date()
+  lastActiveCutoff.setHours(lastActiveCutoff.getHours() - 2)
+
   const result = await ExamSession.updateMany(
-    { userId, status: 'in_progress', createdAt: { $lt: cutoff } },
+    {
+      userId,
+      status: 'in_progress',
+      createdAt: { $lt: cutoff },
+      updatedAt: { $lt: lastActiveCutoff },
+    },
     { $set: { status: 'abandoned', abandonedAt: new Date() } }
   )
   return result.modifiedCount ?? 0
