@@ -2,6 +2,44 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import mongoose from 'mongoose'
 import { escapeRegex, isValidObjectId, clamp, parsePositiveInt, checkRateLimit } from '@/lib/utils'
 
+vi.mock('@/lib/db', () => ({
+  default: vi.fn().mockResolvedValue(true),
+}))
+
+vi.mock('@/models/RateLimit', () => {
+  let store = {}
+  return {
+    default: {
+      findOneAndUpdate: vi.fn().mockImplementation((query, update, options) => {
+        const { key } = query
+        const now = new Date()
+
+        // Very basic mock of the complex update pipeline
+        // Extract windowEnd from the update pipeline if possible
+        let windowEnd = new Date(now.getTime() + 60000)
+        try {
+          windowEnd = update[0].$set.expiresAt.$cond.else || windowEnd
+        } catch (e) {}
+
+        if (!store[key] || store[key].expiresAt <= now) {
+          // New window
+          store[key] = { key, count: 1, expiresAt: windowEnd }
+        } else {
+          // Increment
+          store[key].count += 1
+        }
+
+        return Promise.resolve({ ...store[key] })
+      }),
+      _clear: () => {
+        store = {}
+      }, // helper to clear state in tests
+    },
+  }
+})
+
+import RateLimit from '@/models/RateLimit'
+
 describe('lib/utils', () => {
   describe('escapeRegex', () => {
     it('should escape regex special characters', () => {
@@ -18,7 +56,7 @@ describe('lib/utils', () => {
     it('should escape all special regex characters', () => {
       const input = '.*+?^${}()|[]\\'
       const result = escapeRegex(input)
-      expect(result).toMatch(/^[\\.\\*\\+\\?\\^\\$\\{\\}\\(\\)\\|\\[\\]\\\\]+$/)
+      expect(result).toBe('\\.\\*\\+\\?\\^\\$\\{\\}\\(\\)\\|\\[\\]\\\\')
     })
 
     it('should preserve normal characters', () => {
@@ -109,36 +147,37 @@ describe('lib/utils', () => {
     beforeEach(() => {
       // Clear rate limit store between tests
       vi.clearAllMocks()
+      RateLimit._clear()
     })
 
-    it('should allow first request', () => {
-      const result = checkRateLimit('user-123', 10, 60000)
+    it('should allow first request', async () => {
+      const result = await checkRateLimit('user-123', 10, 60000)
       expect(result.allowed).toBe(true)
       expect(result.remaining).toBe(9)
     })
 
-    it('should block when exceeding max requests', () => {
+    it('should block when exceeding max requests', async () => {
       const key = 'user-456'
       // Make requests up to the limit
       for (let i = 0; i < 10; i++) {
-        checkRateLimit(key, 10, 60000)
+        await checkRateLimit(key, 10, 60000)
       }
       // Next request should be blocked
-      const result = checkRateLimit(key, 10, 60000)
+      const result = await checkRateLimit(key, 10, 60000)
       expect(result.allowed).toBe(false)
       expect(result.remaining).toBe(0)
       expect(result.retryAfter).toBeDefined()
     })
 
-    it('should track remaining requests', () => {
+    it('should track remaining requests', async () => {
       const key = 'user-789'
-      const r1 = checkRateLimit(key, 5, 60000)
+      const r1 = await checkRateLimit(key, 5, 60000)
       expect(r1.remaining).toBe(4)
 
-      const r2 = checkRateLimit(key, 5, 60000)
+      const r2 = await checkRateLimit(key, 5, 60000)
       expect(r2.remaining).toBe(3)
 
-      const r3 = checkRateLimit(key, 5, 60000)
+      const r3 = await checkRateLimit(key, 5, 60000)
       expect(r3.remaining).toBe(2)
     })
 
@@ -146,47 +185,47 @@ describe('lib/utils', () => {
       const key = 'user-reset-test'
       const windowMs = 100 // 100ms window for faster testing
 
-      const r1 = checkRateLimit(key, 2, windowMs)
+      const r1 = await checkRateLimit(key, 2, windowMs)
       expect(r1.allowed).toBe(true)
 
-      const r2 = checkRateLimit(key, 2, windowMs)
+      const r2 = await checkRateLimit(key, 2, windowMs)
       expect(r2.allowed).toBe(true)
 
-      const r3 = checkRateLimit(key, 2, windowMs)
+      const r3 = await checkRateLimit(key, 2, windowMs)
       expect(r3.allowed).toBe(false)
 
       // Wait for window to expire
       await new Promise((resolve) => setTimeout(resolve, 150))
 
-      const r4 = checkRateLimit(key, 2, windowMs)
+      const r4 = await checkRateLimit(key, 2, windowMs)
       expect(r4.allowed).toBe(true)
       expect(r4.remaining).toBe(1)
     })
 
-    it('should use default maxRequests of 10', () => {
+    it('should use default maxRequests of 10', async () => {
       const key = 'user-defaults'
       let lastResult
       for (let i = 0; i < 10; i++) {
-        lastResult = checkRateLimit(key)
+        lastResult = await checkRateLimit(key)
       }
       expect(lastResult.allowed).toBe(true)
 
-      const blocked = checkRateLimit(key)
+      const blocked = await checkRateLimit(key)
       expect(blocked.allowed).toBe(false)
     })
 
-    it('should use different keys independently', () => {
-      const r1 = checkRateLimit('user-1', 2, 60000)
+    it('should use different keys independently', async () => {
+      const r1 = await checkRateLimit('user-1', 2, 60000)
       expect(r1.allowed).toBe(true)
 
-      const r2 = checkRateLimit('user-1', 2, 60000)
+      const r2 = await checkRateLimit('user-1', 2, 60000)
       expect(r2.allowed).toBe(true)
 
-      const r3 = checkRateLimit('user-1', 2, 60000)
+      const r3 = await checkRateLimit('user-1', 2, 60000)
       expect(r3.allowed).toBe(false)
 
       // Different key should not be affected
-      const r4 = checkRateLimit('user-2', 2, 60000)
+      const r4 = await checkRateLimit('user-2', 2, 60000)
       expect(r4.allowed).toBe(true)
     })
   })

@@ -2,6 +2,16 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import jwt from 'jsonwebtoken'
 import { signToken, verifyToken, getTokenFromRequest, getCurrentUser } from '@/lib/auth'
 
+vi.mock('@/lib/db', () => ({
+  default: vi.fn().mockResolvedValue(true),
+}))
+
+vi.mock('@/models/TokenBlacklist', () => ({
+  default: {
+    isBlacklisted: vi.fn().mockResolvedValue(false),
+  },
+}))
+
 describe('lib/auth', () => {
   const testPayload = { userId: '123', email: 'test@example.com' }
 
@@ -28,30 +38,30 @@ describe('lib/auth', () => {
   })
 
   describe('verifyToken', () => {
-    it('should verify a valid token', () => {
+    it('should verify a valid token', async () => {
       const token = signToken(testPayload)
-      const decoded = verifyToken(token)
+      const decoded = await verifyToken(token, false)
       expect(decoded).toBeDefined()
       expect(decoded.userId).toBe('123')
       expect(decoded.email).toBe('test@example.com')
     })
 
-    it('should return null for invalid token', () => {
-      const result = verifyToken('invalid.token.here')
+    it('should return null for invalid token', async () => {
+      const result = await verifyToken('invalid.token.here', false)
       expect(result).toBeNull()
     })
 
-    it('should return null for expired token', () => {
+    it('should return null for expired token', async () => {
       // Create an expired token (signed 1 hour in the past with 0 expiry)
       const expiredToken = jwt.sign(testPayload, process.env.JWT_SECRET, { expiresIn: '-1h' })
-      const result = verifyToken(expiredToken)
+      const result = await verifyToken(expiredToken, false)
       expect(result).toBeNull()
     })
 
-    it('should return null for tampered token', () => {
+    it('should return null for tampered token', async () => {
       const token = signToken(testPayload)
       const tamperedToken = token.slice(0, -5) + 'XXXXX'
-      const result = verifyToken(tamperedToken)
+      const result = await verifyToken(tamperedToken, false)
       expect(result).toBeNull()
     })
   })

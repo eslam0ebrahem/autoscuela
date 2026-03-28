@@ -91,7 +91,7 @@ describe('API Routes: Exams', () => {
 
     it('should require questionId and selectedOption', () => {
       const validateAnswerBody = (body) => {
-        return body && body.questionId && body.selectedOption !== undefined
+        return !!(body && body.questionId && body.selectedOption !== undefined)
       }
 
       expect(

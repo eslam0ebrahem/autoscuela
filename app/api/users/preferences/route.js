@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
 import { getCurrentUser } from '@/lib/auth'
+import { parseSchema, UserPreferencesUpdateSchema } from '@/lib/schemas'
 
 export async function GET(request) {
   try {
@@ -28,20 +29,37 @@ export async function PUT(request) {
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { language, nickname, theme, soundEnabled, currentPassword, newPassword } =
-      await request.json()
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const { data: validated, error: validationError } = parseSchema(
+      UserPreferencesUpdateSchema,
+      body
+    )
+    if (validationError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationError.messages },
+        { status: validationError.status }
+      )
+    }
+
+    const { language, nickname, theme, soundEnabled, currentPassword, newPassword } = validated
 
     await connectDB()
 
     const updates = {}
 
     // Language
-    if (language && ['es', 'en'].includes(language)) {
+    if (language) {
       updates['preferences.language'] = language
     }
 
     // Theme
-    if (theme && ['light', 'dark', 'system'].includes(theme)) {
+    if (theme) {
       updates['preferences.theme'] = theme
     }
 
@@ -52,25 +70,11 @@ export async function PUT(request) {
 
     // Nickname
     if (nickname) {
-      const trimmed = nickname.trim()
-      if (trimmed.length < 2 || trimmed.length > 20) {
-        return NextResponse.json({ error: 'Nickname must be 2-20 characters' }, { status: 400 })
-      }
-      updates.nickname = trimmed
+      updates.nickname = nickname.trim()
     }
 
     // Password change
     if (newPassword) {
-      if (!currentPassword) {
-        return NextResponse.json({ error: 'Current password required' }, { status: 400 })
-      }
-      if (newPassword.length < 8) {
-        return NextResponse.json(
-          { error: 'New password must be at least 8 characters' },
-          { status: 400 }
-        )
-      }
-
       const user = await User.findById(tokenData.userId)
       const isValid = await bcrypt.compare(currentPassword, user.passwordHash)
       if (!isValid) {

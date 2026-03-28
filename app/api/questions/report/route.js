@@ -3,7 +3,7 @@ import connectDB from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import QuestionReport from '@/models/QuestionReport'
 import User from '@/models/User'
-import mongoose from 'mongoose'
+import { QuestionReportSchema, parseSchema } from '@/lib/schemas'
 
 /**
  * POST /api/questions/report
@@ -16,15 +16,22 @@ export async function POST(request) {
 
     await connectDB()
 
-    const { questionId, reason, description } = await request.json()
-
-    if (!questionId || !reason) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
 
-    if (!['wrong_answer', 'unclear_text', 'outdated', 'missing_image', 'other'].includes(reason)) {
-      return NextResponse.json({ error: 'Invalid reason' }, { status: 400 })
+    const { data: validated, error: validationError } = parseSchema(QuestionReportSchema, body)
+    if (validationError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationError.messages },
+        { status: validationError.status }
+      )
     }
+
+    const { questionId, reason, description } = validated
 
     // Check if user already reported this question
     const existing = await QuestionReport.findOne({

@@ -24,7 +24,7 @@ describe('API Routes: Auth', () => {
     })
 
     it('should validate password requirements', () => {
-      const testPassword = (pwd) => pwd && pwd.length >= 8
+      const testPassword = (pwd) => !!(pwd && pwd.length >= 8)
 
       expect(testPassword('short')).toBe(false)
       expect(testPassword('validpassword123')).toBe(true)
@@ -43,7 +43,7 @@ describe('API Routes: Auth', () => {
   describe('POST /api/auth/login', () => {
     it('should require email and password', () => {
       const validateLoginInput = (email, password) => {
-        return email && password && email.length > 0 && password.length > 0
+        return !!(email && password && email.length > 0 && password.length > 0)
       }
 
       expect(validateLoginInput('user@example.com', 'password123')).toBe(true)
@@ -52,12 +52,12 @@ describe('API Routes: Auth', () => {
       expect(validateLoginInput(null, 'password123')).toBe(false)
     })
 
-    it('should return JWT token on successful login', () => {
+    it('should return JWT token on successful login', async () => {
       const token = signToken({ userId: '123', email: 'user@example.com' })
       expect(token).toBeDefined()
       expect(typeof token).toBe('string')
 
-      const decoded = verifyToken(token)
+      const decoded = await verifyToken(token, false)
       expect(decoded).toBeDefined()
       expect(decoded.userId).toBe('123')
     })
@@ -93,18 +93,18 @@ describe('API Routes: Auth', () => {
   })
 
   describe('GET /api/auth/me', () => {
-    it('should return current user from valid token', () => {
+    it('should return current user from valid token', async () => {
       const userId = '456'
       const email = 'test@example.com'
       const token = signToken({ userId, email })
-      const decoded = verifyToken(token)
+      const decoded = await verifyToken(token, false)
 
       expect(decoded.userId).toBe(userId)
       expect(decoded.email).toBe(email)
     })
 
-    it('should return null for missing token', () => {
-      expect(verifyToken(null)).toBeNull()
+    it('should return null for missing token', async () => {
+      expect(await verifyToken(null, false)).toBeNull()
     })
 
     it('should return null for expired token', () => {
@@ -129,11 +129,11 @@ describe('API Routes: Auth', () => {
       expect(cookieConfig.httpOnly).toBe(true)
     })
 
-    it('should invalidate the token', () => {
+    it('should invalidate the token', async () => {
       const token = signToken({ userId: '789' })
       // In real implementation, token would be added to blacklist
       // For now, we verify token signing works
-      expect(verifyToken(token)).toBeDefined()
+      expect(await verifyToken(token, false)).toBeDefined()
     })
   })
 })

@@ -77,7 +77,7 @@ describe('API Routes: Bookmarks', () => {
 
     it('should validate request body', () => {
       const validateAddBookmark = (body) => {
-        return body && body.questionId && typeof body.questionId === 'string'
+        return !!(body && body.questionId && typeof body.questionId === 'string')
       }
 
       expect(validateAddBookmark({ questionId })).toBe(true)
