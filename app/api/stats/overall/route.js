@@ -17,75 +17,66 @@ export async function GET(request) {
     const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000)
 
-    const [allTimeStats, thisWeekStats, lastWeekStats, user, totalDB, seenStats] =
-      await Promise.all([
-        // All-time stats
-        UserAnswer.aggregate([
-          { $match: { userId: new mongoose.Types.ObjectId(tokenData.userId) } },
-          {
-            $group: {
-              _id: null,
-              total: { $sum: 1 },
-              correct: { $sum: { $cond: ['$is_correct', 1, 0] } },
-            },
+    const [user, thisWeekStats, lastWeekStats, totalDB, seenStats] = await Promise.all([
+      User.findById(tokenData.userId).select('gamification.currentStreak stats'),
+      // This week accuracy
+      UserAnswer.aggregate([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(tokenData.userId),
+            createdAt: { $gte: lastWeek },
           },
-        ]),
-        // This week accuracy
-        UserAnswer.aggregate([
-          {
-            $match: {
-              userId: new mongoose.Types.ObjectId(tokenData.userId),
-              createdAt: { $gte: lastWeek },
-            },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            correct: { $sum: { $cond: ['$is_correct', 1, 0] } },
           },
-          {
-            $group: {
-              _id: null,
-              total: { $sum: 1 },
-              correct: { $sum: { $cond: ['$is_correct', 1, 0] } },
-            },
+        },
+      ]),
+      // Last week accuracy (for trend)
+      UserAnswer.aggregate([
+        {
+          $match: {
+            userId: new mongoose.Types.ObjectId(tokenData.userId),
+            createdAt: { $gte: twoWeeksAgo, $lt: lastWeek },
           },
-        ]),
-        // Last week accuracy (for trend)
-        UserAnswer.aggregate([
-          {
-            $match: {
-              userId: new mongoose.Types.ObjectId(tokenData.userId),
-              createdAt: { $gte: twoWeeksAgo, $lt: lastWeek },
-            },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            correct: { $sum: { $cond: ['$is_correct', 1, 0] } },
           },
-          {
-            $group: {
-              _id: null,
-              total: { $sum: 1 },
-              correct: { $sum: { $cond: ['$is_correct', 1, 0] } },
-            },
+        },
+      ]),
+      Question.countDocuments({ isActive: true }),
+      // Unique questions seen
+      UserAnswer.aggregate([
+        { $match: { userId: new mongoose.Types.ObjectId(tokenData.userId) } },
+        {
+          $lookup: {
+            from: 'questions',
+            localField: 'questionId',
+            foreignField: '_id',
+            as: 'questionInfo',
           },
-        ]),
-        User.findById(tokenData.userId).select('gamification.currentStreak'),
-        Question.countDocuments({ isActive: true }),
-        // Unique questions seen
-        UserAnswer.aggregate([
-          { $match: { userId: new mongoose.Types.ObjectId(tokenData.userId) } },
-          {
-            $lookup: {
-              from: 'questions',
-              localField: 'questionId',
-              foreignField: '_id',
-              as: 'questionInfo',
-            },
-          },
-          { $unwind: '$questionInfo' },
-          { $match: { 'questionInfo.isActive': true } },
-          { $group: { _id: '$questionId' } },
-          { $count: 'uniqueCount' },
-        ]),
-      ])
+        },
+        { $unwind: '$questionInfo' },
+        { $match: { 'questionInfo.isActive': true } },
+        { $group: { _id: '$questionId' } },
+        { $count: 'uniqueCount' },
+      ]),
+    ])
 
-    const allTime = allTimeStats[0] || { total: 0, correct: 0 }
     const thisWeek = thisWeekStats[0] || { total: 0, correct: 0 }
     const lastWeekData = lastWeekStats[0] || { total: 0, correct: 0 }
     const seenCount = seenStats[0]?.uniqueCount || 0
+
+    const userStats = user?.stats || { totalAnswers: 0, correctAnswers: 0 }
+    const allTimeTotal = userStats.totalAnswers || 0
+    const allTimeCorrect = userStats.correctAnswers || 0
 
     const thisWeekAcc = thisWeek.total > 0 ? (thisWeek.correct / thisWeek.total) * 100 : 0
     const lastWeekAcc =
@@ -93,9 +84,9 @@ export async function GET(request) {
     const weeklyAccuracyChange = Math.round(thisWeekAcc - lastWeekAcc)
 
     const stats = {
-      answeredQuestions: allTime.total,
-      correctAnswers: allTime.correct,
-      incorrectAnswers: allTime.total - allTime.correct,
+      answeredQuestions: allTimeTotal,
+      correctAnswers: allTimeCorrect,
+      incorrectAnswers: Math.max(0, allTimeTotal - allTimeCorrect),
       currentStreak: user?.gamification?.currentStreak || 0,
       weeklyTrend: weeklyAccuracyChange !== 0,
       weeklyAccuracyChange,
