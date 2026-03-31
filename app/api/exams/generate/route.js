@@ -245,7 +245,8 @@ export async function POST(request) {
       )
     }
 
-    const { mode, topic_filter, assistance_mode, num_questions, source } = validated
+    const { mode, topic_filter, assistance_mode, num_questions, only_new_questions, source } =
+      validated
 
     // ── Question count ─────────────────────────────────────────────────
     // Official mode is always fixed; custom modes are clamped to safe limits
@@ -272,6 +273,7 @@ export async function POST(request) {
     // ── Select questions ──────────────────────────────────────────────
     const topicFilters = normalizeTopicFilters(topic_filter)
     const adaptiveOptions = buildAdaptiveOptions(mode, topicFilters)
+    adaptiveOptions.onlyNewQuestions = only_new_questions
     const language = user.preferences?.language ?? 'en'
 
     let questionIds = []

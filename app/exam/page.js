@@ -17,6 +17,7 @@ import {
   StarFilled,
   RobotOutlined,
   LoadingOutlined,
+  PlusCircleOutlined,
 } from '@ant-design/icons'
 
 // ---------------------------------------------------------------------------
@@ -385,6 +386,7 @@ function ExamSetup() {
   const [assistanceMode, setAssistanceMode] = useState('exam')
   const [selectedTopics, setSelectedTopics] = useState(aiTopics)
   const [numQuestions, setNumQuestions] = useState(30)
+  const [onlyNewQuestions, setOnlyNewQuestions] = useState(false)
   const [availableTopics, setAvailableTopics] = useState([])
   const [loading, setLoading] = useState(false)
   const [topicsLoading, setTopicsLoading] = useState(true)
@@ -468,6 +470,9 @@ function ExamSetup() {
           topic_filter: mode === 'custom' && selectedTopics.length > 0 ? selectedTopics : null,
           assistance_mode: assistanceMode,
           num_questions: numQuestions,
+          only_new_questions: ['official', 'custom', 'weak_topics'].includes(mode)
+            ? onlyNewQuestions
+            : false,
         }),
       })
 
@@ -492,7 +497,17 @@ function ExamSetup() {
     } finally {
       setLoading(false)
     }
-  }, [mode, selectedTopics, assistanceMode, loading, router, t, toast])
+  }, [
+    mode,
+    selectedTopics,
+    assistanceMode,
+    numQuestions,
+    onlyNewQuestions,
+    loading,
+    router,
+    t,
+    toast,
+  ])
 
   // ── Summary text ───────────────────────────────────────────────────────
   const summaryText = useMemo(() => {
@@ -523,8 +538,13 @@ function ExamSetup() {
         ? t('Modo examen', 'Exam mode')
         : t('Retroalimentación inmediata', 'Instant feedback')
 
-    return `${topicText} · ${numQuestions}Q · ${modeText}`
-  }, [mode, selectedTopics, assistanceMode, numQuestions, t, availableTopics])
+    const newQuestionsText =
+      onlyNewQuestions && ['official', 'custom', 'weak_topics'].includes(mode)
+        ? ` · ${t('Solo nuevas', 'Only new')}`
+        : ''
+
+    return `${topicText} · ${numQuestions}Q · ${modeText}${newQuestionsText}`
+  }, [mode, selectedTopics, assistanceMode, numQuestions, onlyNewQuestions, t, availableTopics])
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -599,6 +619,49 @@ function ExamSetup() {
         </h2>
         <AssistanceModeToggle selected={assistanceMode} onChange={setAssistanceMode} t={t} />
       </div>
+
+      {/* ── Additional Filters (Only for modes that support it) ────── */}
+      {['official', 'custom', 'weak_topics'].includes(mode) && (
+        <div className="card">
+          <h2 className="text-lg font-black text-ink dark:text-white mb-4">
+            {t('Filtros Adicionales', 'Additional Filters')}
+          </h2>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setOnlyNewQuestions((prev) => !prev)}
+              className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left flex-1 ${
+                onlyNewQuestions
+                  ? 'border-primary bg-primary/5'
+                  : 'border-slate-200 dark:border-slate-700 hover:border-primary/50'
+              }`}
+            >
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${
+                  onlyNewQuestions
+                    ? 'bg-primary text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                }`}
+              >
+                <PlusCircleOutlined />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-sm text-ink dark:text-white">
+                  {t('Solo preguntas nuevas', 'Only new questions')}
+                </h4>
+                <p className="text-xs text-ink-light dark:text-slate-400 mt-0.5">
+                  {t(
+                    'Excluye preguntas que ya has respondido',
+                    'Exclude questions you have already answered'
+                  )}
+                </p>
+              </div>
+              {onlyNewQuestions && (
+                <CheckCircleOutlined className="text-primary text-xl shrink-0" />
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Question Count (Non-official only) ─────────────────────── */}
       {mode !== 'official' && (
