@@ -43,3 +43,14 @@ scripts/
 # OS
 .DS_Store
 Thumbs.db
+*.icloud
+
+# Tooling
+.claude/
+.gemini/
+.cursor/
+.history/
+
+# Testing
+coverage/
+.nyc_output/
