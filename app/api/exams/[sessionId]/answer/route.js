@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import mongoose from 'mongoose'
 import connectDB from '@/lib/db'
 import ExamSession from '@/models/ExamSession'
 import Question from '@/models/Question'
@@ -18,30 +17,175 @@ import { calculateSRS, answerToGrade } from '@/lib/srs'
 const { window: domWindow } = new JSDOM('')
 const DOMPurify = DOMPurifyFactory(domWindow)
 
-// Max ms to wait for AI explanation before returning without it
 const AI_EXPLANATION_TIMEOUT_MS = 4000
+const RATE_LIMIT_MAX = 15
+const RATE_LIMIT_WINDOW_MS = 60_000
+const MAX_ANSWER_TIME_SEC = 1800
+
+function jsonError(message, status, extra = {}, headers = {}) {
+  return NextResponse.json({ error: message, ...extra }, { status, headers })
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(null), ms))])
+}
+
+function sanitizeHelpHtml(html) {
+  return html ? DOMPurify.sanitize(html) : null
+}
+
+function getTopicTag(question) {
+  return question?.topic_tag?.es || 'General'
+}
+
+async function getAIContext({ userId, question, lang }) {
+  const [previousMistakes, skillProfile] = await Promise.all([
+    UserAnswer.find({
+      userId,
+      questionId: question._id,
+      is_correct: false,
+    })
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .lean(),
+    getUserSkillProfile(userId).catch(() => null),
+  ])
+
+  const topicTag = getTopicTag(question)
+  const topicStats = skillProfile?.topics?.find((t) => t.tag === topicTag)
+  const userTopicAccuracy =
+    typeof topicStats?.accuracy === 'number' ? topicStats.accuracy / 100 : null
+
+  return {
+    previousMistakes,
+    isRepeatMistake: previousMistakes.length >= 1,
+    userTopicAccuracy,
+  }
+}
+
+function buildAIJobs({
+  enabled,
+  isCorrect,
+  isRepeatMistake,
+  previousMistakes,
+  userTopicAccuracy,
+  question,
+  selectedOptionIdx,
+  lang,
+}) {
+  if (!enabled || isCorrect) {
+    return { explanationPromise: null, deepDivePromise: null }
+  }
+
+  const explanationPromise = getQuestionExplanation({
+    question: question.question,
+    options: question.options,
+    correctIdx: question.correct_option_idx,
+    selectedIdx: selectedOptionIdx,
+    helpHtml: question.metadata?.help_html,
+    lang,
+    userTopicAccuracy,
+  }).catch(() => null)
+
+  const deepDivePromise = isRepeatMistake
+    ? getQuestionDeepDive({
+        question: question.question,
+        options: question.options,
+        correctIdx: question.correct_option_idx,
+        userAnswerHistory: previousMistakes.map((m) => ({
+          selected: m.selected_option_idx,
+          correct: m.is_correct,
+          timeSec: m.time_taken_seconds,
+        })),
+        helpHtml: question.metadata?.help_html,
+        lang,
+      }).catch(() => null)
+    : null
+
+  return { explanationPromise, deepDivePromise }
+}
+
+async function updateQuestionAndUserStats({ question, userId, isCorrect, sanitizedTime }) {
+  const topicTag = getTopicTag(question)
+  const incUserStats = {
+    'stats.totalAnswers': 1,
+    ...(isCorrect ? { 'stats.correctAnswers': 1 } : {}),
+    [`stats.topicStats.${topicTag}.attempted`]: 1,
+    ...(isCorrect ? { [`stats.topicStats.${topicTag}.correct`]: 1 } : {}),
+    [`stats.topicStats.${topicTag}.totalTime`]: sanitizedTime,
+  }
+
+  await Promise.allSettled([
+    Question.findByIdAndUpdate(question._id, {
+      $inc: {
+        'stats.timesAnswered': 1,
+        ...(isCorrect ? { 'stats.timesCorrect': 1 } : {}),
+      },
+    }),
+    User.findByIdAndUpdate(userId, {
+      $inc: incUserStats,
+    }),
+  ])
+}
+
+async function updateAnswerSRS({ savedAnswerId, userId, questionId, isCorrect, sanitizedTime }) {
+  const existing = await UserAnswer.findOne(
+    {
+      userId,
+      questionId,
+      _id: { $ne: savedAnswerId },
+    },
+    { srs: 1 }
+  )
+    .sort({ createdAt: -1 })
+    .lean()
+
+  const grade = answerToGrade(isCorrect, sanitizedTime)
+  const newSRS = calculateSRS(existing?.srs || {}, grade)
+
+  await UserAnswer.findByIdAndUpdate(savedAnswerId, {
+    $set: {
+      srs: {
+        ...newSRS,
+        lastGrade: grade,
+      },
+    },
+  })
+}
 
 export async function POST(request, { params }) {
   try {
-    const { sessionId } = await params
-    const tokenData = await getCurrentUser(request)
-    if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { sessionId } = params || {}
 
-    // ── Rate limiting (15 per 60 sec = one answer every 4 sec) ──────────
-    const rateCheck = await checkRateLimit(`exam:answer:${tokenData.userId}`, 15, 60000)
+    if (!isValidObjectId(sessionId)) {
+      return jsonError('Invalid session id', 400)
+    }
+
+    const tokenData = await getCurrentUser(request)
+    if (!tokenData?.userId) {
+      return jsonError('Unauthorized', 401)
+    }
+
+    const rateCheck = await checkRateLimit(
+      `exam:answer:${tokenData.userId}`,
+      RATE_LIMIT_MAX,
+      RATE_LIMIT_WINDOW_MS
+    )
+
     if (!rateCheck.allowed) {
-      return NextResponse.json(
-        { error: 'Too many answer submissions' },
-        { status: 429, headers: { 'Retry-After': String(rateCheck.retryAfter || 60) } }
+      return jsonError(
+        'Too many answer submissions',
+        429,
+        {},
+        { 'Retry-After': String(rateCheck.retryAfter || 60) }
       )
     }
 
-    // ── Parse and validate body ────────────────────────────────────────
     let body
     try {
       body = await request.json()
     } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+      return jsonError('Invalid JSON body', 400)
     }
 
     const { data: validated, error: validationError } = parseSchema(ExamAnswerSchema, body)
@@ -54,94 +198,83 @@ export async function POST(request, { params }) {
 
     const { question_id, selected_option_idx, time_taken } = validated
 
-    await connectDB()
-
-    const session = await ExamSession.findOne({
-      _id: sessionId,
-      userId: tokenData.userId,
-      status: 'in_progress',
-    })
-    if (!session) return NextResponse.json({ error: 'Active session not found' }, { status: 404 })
-
-    if (!session.questionIds.some((id) => id.toString() === question_id))
-      return NextResponse.json({ error: 'Question not part of this exam' }, { status: 400 })
-
-    if (session.mode === 'official' && session.expiresAt && new Date() > session.expiresAt)
-      return NextResponse.json({ error: 'Exam time has expired', expired: true }, { status: 400 })
-
-    const existingAnswerIdx = session.answers.findIndex(
-      (a) => a.questionId.toString() === question_id
-    )
-    if (existingAnswerIdx >= 0)
-      return NextResponse.json({ error: 'Question already answered' }, { status: 400 })
-
-    const question = await Question.findById(question_id)
-    if (!question) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
-
-    const isCorrect = question.correct_option_idx === selected_option_idx
-    const sanitizedTime = clamp(time_taken || 0, 0, 1800)
-    const lang = session.language || 'es'
-
-    // ── AI: Start explanation generation in parallel with DB writes ───────
-    // Only for instant mode wrong answers (most educational value)
-    let aiExplanationPromise = null
-    let aiDeepDivePromise = null
-
-    if (session.assistanceMode === 'instant' && !isCorrect) {
-      // ── Determine if this is a repeat mistake for Deep Dive analysis ──
-      const previousMistakes = await UserAnswer.find({
-        userId: tokenData.userId,
-        questionId: question._id,
-        is_correct: false,
-      })
-        .sort({ createdAt: -1 })
-        .limit(3)
-        .lean()
-
-      const isRepeatMistake = previousMistakes.length >= 1
-
-      // ── Fetch user topic accuracy for better explanation ──────────────
-      let userTopicAccuracy = null
-      try {
-        const skillProfile = await getUserSkillProfile(tokenData.userId)
-        const topicStats = skillProfile.topics?.find(
-          (t) => t.tag === (question.topic_tag?.es || 'General')
-        )
-        if (topicStats) userTopicAccuracy = topicStats.accuracy / 100
-      } catch {
-        // Graceful
-      }
-
-      if (isRepeatMistake) {
-        // ✨ New AI Deep Dive for repeat errors
-        aiDeepDivePromise = getQuestionDeepDive({
-          question: question.question,
-          options: question.options,
-          correctIdx: question.correct_option_idx,
-          userAnswerHistory: previousMistakes.map((m) => ({
-            selected: m.selected_option_idx,
-            correct: m.is_correct,
-            timeSec: m.time_taken_seconds,
-          })),
-          helpHtml: question.metadata?.help_html,
-          lang,
-        }).catch(() => null)
-      }
-
-      // Always do standard explanation too, but with richer context
-      aiExplanationPromise = getQuestionExplanation({
-        question: question.question,
-        options: question.options,
-        correctIdx: question.correct_option_idx,
-        selectedIdx: selected_option_idx,
-        helpHtml: question.metadata?.help_html,
-        lang,
-        userTopicAccuracy,
-      }).catch(() => null)
+    if (!isValidObjectId(question_id)) {
+      return jsonError('Invalid question id', 400)
     }
 
-    // ── Atomic transaction: record UserAnswer + update ExamSession ────────
+    await connectDB()
+
+    const [session, question] = await Promise.all([
+      ExamSession.findOne({
+        _id: sessionId,
+        userId: tokenData.userId,
+        status: 'in_progress',
+      }),
+      Question.findById(question_id),
+    ])
+
+    if (!session) {
+      return jsonError('Active session not found', 404)
+    }
+
+    if (!question) {
+      return jsonError('Question not found', 404)
+    }
+
+    const questionBelongsToSession = session.questionIds.some(
+      (id) => id.toString() === question_id
+    )
+    if (!questionBelongsToSession) {
+      return jsonError('Question not part of this exam', 400)
+    }
+
+    if (
+      session.mode === 'official' &&
+      session.expiresAt &&
+      new Date() > new Date(session.expiresAt)
+    ) {
+      return jsonError('Exam time has expired', 400, { expired: true })
+    }
+
+    const alreadyAnswered = session.answers.some(
+      (a) => a.questionId.toString() === question_id
+    )
+    if (alreadyAnswered) {
+      return jsonError('Question already answered', 400)
+    }
+
+    const isCorrect = question.correct_option_idx === selected_option_idx
+    const sanitizedTime = clamp(Number(time_taken) || 0, 0, MAX_ANSWER_TIME_SEC)
+    const lang = session.language || 'es'
+    const instantMode = session.assistanceMode === 'instant'
+
+    let explanationPromise = null
+    let deepDivePromise = null
+
+    if (instantMode && !isCorrect) {
+      const { previousMistakes, isRepeatMistake, userTopicAccuracy } = await getAIContext({
+        userId: tokenData.userId,
+        question,
+        lang,
+      })
+
+      const jobs = buildAIJobs({
+        enabled: true,
+        isCorrect,
+        isRepeatMistake,
+        previousMistakes,
+        userTopicAccuracy,
+        question,
+        selectedOptionIdx: selected_option_idx,
+        lang,
+      })
+
+      explanationPromise = jobs.explanationPromise
+      deepDivePromise = jobs.deepDivePromise
+    }
+
     let savedAnswer
+
     try {
       await withTransaction(async (txSession) => {
         const [created] = await UserAnswer.create(
@@ -158,6 +291,7 @@ export async function POST(request, { params }) {
           ],
           { session: txSession }
         )
+
         savedAnswer = created
 
         session.answers.push({
@@ -166,96 +300,62 @@ export async function POST(request, { params }) {
           isCorrect,
           timeTakenSeconds: sanitizedTime,
         })
+
         session.currentQuestionIndex = Math.max(
-          session.currentQuestionIndex,
+          session.currentQuestionIndex || 0,
           session.answers.length
         )
+
         await session.save({ session: txSession })
       })
     } catch (err) {
-      if (err.code === 11000)
-        return NextResponse.json({ error: 'Question already answered' }, { status: 400 })
+      if (err?.code === 11000) {
+        return jsonError('Question already answered', 400)
+      }
       throw err
     }
 
-    // ── Non-critical: update per-question stats and user incremental stats (fire outside transaction) ──
-    const topicTag = question.topic_tag?.es || 'General'
-    const incUserStats = {
-      'stats.totalAnswers': 1,
-      ...(isCorrect ? { 'stats.correctAnswers': 1 } : {}),
-      [`stats.topicStats.${topicTag}.attempted`]: 1,
-      ...(isCorrect ? { [`stats.topicStats.${topicTag}.correct`]: 1 } : {}),
-      [`stats.topicStats.${topicTag}.totalTime`]: sanitizedTime,
+    void updateQuestionAndUserStats({
+      question,
+      userId: tokenData.userId,
+      isCorrect,
+      sanitizedTime,
+    }).catch((err) => {
+      console.error('[answer] Non-critical stats update failed:', err)
+    })
+
+    void updateAnswerSRS({
+      savedAnswerId: savedAnswer._id,
+      userId: tokenData.userId,
+      questionId: question._id,
+      isCorrect,
+      sanitizedTime,
+    }).catch((err) => {
+      console.error('[answer] SRS update failed:', err)
+    })
+
+    const response = {
+      isCorrect,
     }
 
-    Promise.all([
-      Question.findByIdAndUpdate(question._id, {
-        $inc: { 'stats.timesAnswered': 1, ...(isCorrect ? { 'stats.timesCorrect': 1 } : {}) },
-      }).catch((err) => console.error('[answer] Question stats update failed:', err)),
-      User.findByIdAndUpdate(tokenData.userId, {
-        $inc: incUserStats,
-      }).catch((err) => console.error('[answer] User stats update failed:', err)),
-    ])
-
-    // ── Update SRS state for this question (critical for long-term memory) ──
-    try {
-      const existing = await UserAnswer.findOne(
-        {
-          userId: tokenData.userId,
-          questionId: question._id,
-          _id: { $ne: savedAnswer._id }, // Ignore current record to find history
-        },
-        { srs: 1 }
-      )
-        .sort({ createdAt: -1 })
-        .lean()
-
-      const grade = answerToGrade(isCorrect, sanitizedTime)
-      const newSRS = calculateSRS(existing?.srs || {}, grade)
-
-      await UserAnswer.findByIdAndUpdate(savedAnswer._id, {
-        $set: { srs: { ...newSRS, lastGrade: grade } },
-      })
-    } catch (srsErr) {
-      console.error('[answer] SRS update failed:', srsErr)
-      // SRS update failure is non-critical for the response, but we tried
-    }
-
-    // ── Build response ────────────────────────────────────────────────────
-    const response = { isCorrect }
-
-    if (session.assistanceMode === 'instant') {
+    if (instantMode) {
       response.correctOptionIdx = question.correct_option_idx
-      // ── Sanitize help_html server-side to prevent XSS ──────────────
-      response.helpHtml = question.metadata?.help_html
-        ? DOMPurify.sanitize(question.metadata.help_html)
-        : null
+      response.helpHtml = sanitizeHelpHtml(question.metadata?.help_html)
 
-      // ── Wait for AI (with timeout) ──────────────────────────────────
-      if (aiExplanationPromise || aiDeepDivePromise) {
-        const results = await Promise.all([
-          aiExplanationPromise
-            ? Promise.race([
-                aiExplanationPromise,
-                new Promise((r) => setTimeout(() => r(null), AI_EXPLANATION_TIMEOUT_MS)),
-              ])
-            : null,
-          aiDeepDivePromise
-            ? Promise.race([
-                aiDeepDivePromise,
-                new Promise((r) => setTimeout(() => r(null), AI_EXPLANATION_TIMEOUT_MS)),
-              ])
-            : null,
+      if (explanationPromise || deepDivePromise) {
+        const [aiExplanation, aiDeepDive] = await Promise.all([
+          explanationPromise ? withTimeout(explanationPromise, AI_EXPLANATION_TIMEOUT_MS) : null,
+          deepDivePromise ? withTimeout(deepDivePromise, AI_EXPLANATION_TIMEOUT_MS) : null,
         ])
 
-        if (results[0]) response.aiExplanation = results[0]
-        if (results[1]) response.aiDeepDive = results[1]
+        if (aiExplanation) response.aiExplanation = aiExplanation
+        if (aiDeepDive) response.aiDeepDive = aiDeepDive
       }
     }
 
     return NextResponse.json(response)
   } catch (error) {
     console.error('[answer] Error:', error)
-    return NextResponse.json({ error: 'Failed to submit answer' }, { status: 500 })
+    return jsonError('Failed to submit answer', 500)
   }
 }
