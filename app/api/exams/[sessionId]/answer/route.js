@@ -8,6 +8,7 @@ import User from '@/models/User'
 import { getCurrentUser } from '@/lib/auth'
 import { isValidObjectId, clamp, checkRateLimit } from '@/lib/utils'
 import { getQuestionExplanation, getQuestionDeepDive } from '@/lib/groq'
+import { withTransaction } from '@/lib/db-utils'
 import { ExamAnswerSchema, parseSchema } from '@/lib/schemas'
 import { getUserSkillProfile } from '@/lib/user-skill'
 import { JSDOM } from 'jsdom'
@@ -116,9 +117,9 @@ export async function POST(request, { params }) {
         aiDeepDivePromise = getQuestionDeepDive({
           question: question.question,
           options: question.options,
-          correctIdx: question.correct_option_idx - 1,
+          correctIdx: question.correct_option_idx,
           userAnswerHistory: previousMistakes.map((m) => ({
-            selected: m.selected_option_idx - 1,
+            selected: m.selected_option_idx,
             correct: m.is_correct,
             timeSec: m.time_taken_seconds,
           })),
@@ -131,8 +132,8 @@ export async function POST(request, { params }) {
       aiExplanationPromise = getQuestionExplanation({
         question: question.question,
         options: question.options,
-        correctIdx: question.correct_option_idx - 1,
-        selectedIdx: selected_option_idx - 1,
+        correctIdx: question.correct_option_idx,
+        selectedIdx: selected_option_idx,
         helpHtml: question.metadata?.help_html,
         lang,
         userTopicAccuracy,
@@ -140,12 +141,9 @@ export async function POST(request, { params }) {
     }
 
     // ── Atomic transaction: record UserAnswer + update ExamSession ────────
-    // Both writes must succeed together; a partial write would corrupt answer state.
     let savedAnswer
-    const txSession = await mongoose.startSession()
     try {
-      await txSession.withTransaction(async () => {
-        // create() with an array + options object is the Mongoose 9 transactional API
+      await withTransaction(async (txSession) => {
         const [created] = await UserAnswer.create(
           [
             {
@@ -178,8 +176,6 @@ export async function POST(request, { params }) {
       if (err.code === 11000)
         return NextResponse.json({ error: 'Question already answered' }, { status: 400 })
       throw err
-    } finally {
-      await txSession.endSession()
     }
 
     // ── Non-critical: update per-question stats and user incremental stats (fire outside transaction) ──

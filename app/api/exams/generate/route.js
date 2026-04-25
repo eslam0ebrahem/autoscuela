@@ -141,10 +141,9 @@ function estimatePassProbability(skillProfile, mode, topicFilters, userStats, us
   const streak = user?.gamification?.currentStreak ?? 0
   const streakBonus = streak >= 7 ? 5 : streak >= 3 ? 2 : 0
 
-  // Recent session trend: if last 3 sessions were passed, bump probability
-  // (pulled from user.gamification or would need a session lookup — use what's available)
-  const recentPassRate = user?.stats?.recentPassRate ?? null
-  const trendBonus = recentPassRate !== null ? Math.round((recentPassRate - 0.5) * 10) : 0
+  // Recent session trend bonus: we don't have session history available at generation time
+  // without an extra query, so this remains a future enhancement opportunity.
+  const trendBonus = 0
 
   const adjustedProb = Math.round(
     Math.min(

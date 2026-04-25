@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { getQuestionExplanation } from '@/lib/groq'
 import Question from '@/models/Question'
 import connectDB from '@/lib/db'
-import { isValidObjectId, checkRateLimit } from '@/lib/utils'
+import { checkRateLimit } from '@/lib/utils'
 import { AIExplainSchema, parseSchema } from '@/lib/schemas'
 import { getUserSkillProfile } from '@/lib/user-skill'
 
@@ -71,8 +71,8 @@ export async function POST(request) {
       const explanation = await getQuestionExplanation({
         question: question.question,
         options: question.options,
-        correctIdx: question.correct_option_idx - 1,
-        selectedIdx: selectedIdx - 1,
+        correctIdx: question.correct_option_idx,
+        selectedIdx: selectedIdx,
         helpHtml: question.metadata?.help_html,
         lang,
         userTopicAccuracy,

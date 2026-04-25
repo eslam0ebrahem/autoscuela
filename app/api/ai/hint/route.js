@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { getSmartHint } from '@/lib/groq'
 import Question from '@/models/Question'
 import connectDB from '@/lib/db'
-import { isValidObjectId, checkRateLimit } from '@/lib/utils'
+import { checkRateLimit } from '@/lib/utils'
 import { AIHintSchema, parseSchema } from '@/lib/schemas'
 import UserAnswer from '@/models/UserAnswer'
 
@@ -75,7 +75,7 @@ export async function POST(request) {
       const hint = await getSmartHint({
         question: question.question,
         options: question.options,
-        correctIdx: question.correct_option_idx - 1,
+        correctIdx: question.correct_option_idx,
         lang,
         userHistory,
       })

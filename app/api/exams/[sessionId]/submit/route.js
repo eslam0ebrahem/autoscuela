@@ -10,12 +10,16 @@ import {
   checkBadgeConditions,
   XP,
   getMadridStartOfDay,
+  getMadridNow,
   shouldStreakBreak,
   isTodayStudied,
+  shouldResetWeeklyXP,
   updateLeaderboardRank,
 } from '@/lib/gamification'
 import { getUserSkillProfile, invalidateSkillProfile } from '@/lib/user-skill'
 import { getExamCoachFeedback, getSessionQuickSummary } from '@/lib/groq'
+import { withTransaction } from '@/lib/db-utils'
+import FlashcardProgress from '@/models/FlashcardProgress'
 
 const MAX_ERRORS_TO_PASS = 3
 
@@ -93,7 +97,8 @@ function computeAIXPBonus(session, skillProfile, passed, accuracy) {
   }
 
   // Expert-level skill bonus
-  if (skillProfile?.overallLevel >= 4) {
+  const levelNum = { beginner: 1, easy: 2, medium: 3, hard: 4, expert: 5 }
+  if ((levelNum[skillProfile?.overallLevel] ?? 0) >= 4) {
     bonus += 15
     reasons.push('Expert level')
   }
@@ -177,22 +182,117 @@ export async function POST(request, { params }) {
     const examLangs = user.gamification.examLanguages || []
     if (!examLangs.includes(session.language)) examLangs.push(session.language)
 
+    // Check if weekly XP should reset
+    const weeklyXPNeedsReset = shouldResetWeeklyXP(user.gamification?.weeklyXPResetAt)
+
     const todayStart = getMadridStartOfDay()
     const dailyCount = await UserAnswer.countDocuments({
       userId: user._id,
       createdAt: { $gte: todayStart },
     })
+
+    // ── Gather full badge context (#5: most badges were unreachable) ──────
+    const totalAnswered = (user.stats?.totalAnswers || 0) + totalQuestions
+    const avgTimePerQuestion = totalTime > 0 && totalQuestions > 0
+      ? Math.round(totalTime / totalQuestions)
+      : 0
+
+    // Study hour for Night Owl / Early Bird badges
+    const madridNow = getMadridNow()
+    const studyHour = madridNow.getHours()
+
+    // Consecutive fails/passes for Comeback Kid / Perfectionist badges
+    let consecutiveFails = 0
+    let consecutivePasses = 0
+    try {
+      const recentExams = await ExamSession.find({
+        userId: user._id,
+        status: 'completed',
+        _id: { $ne: session._id },
+      })
+        .sort({ completedAt: -1 })
+        .limit(10)
+        .select('passed')
+        .lean()
+
+      // Count consecutive fails before this exam (for comeback_kid)
+      for (const ex of recentExams) {
+        if (!ex.passed) consecutiveFails++
+        else break
+      }
+      // Count consecutive passes including current (for perfectionist)
+      if (passed) {
+        consecutivePasses = 1
+        for (const ex of recentExams) {
+          if (ex.passed) consecutivePasses++
+          else break
+        }
+      }
+    } catch { /* non-critical */ }
+
+    // Topic accuracies for Topic Master badge
+    const topicAccuracies = skillProfile.topics?.map((t) => ({
+      tag: t.tag,
+      accuracy: t.accuracy,
+      attempted: t.attempted,
+    })) || []
+
+    // Unique topics answered for Encyclopedia badge
+    const uniqueTopicsAnswered = topicAccuracies.length
+    let totalTopics = 0
+    try {
+      totalTopics = await Question.distinct('topic_tag.es', { isActive: true }).then((r) => r.length)
+    } catch { /* non-critical */ }
+
+    // Corrected mistakes count for Mistake Hunter badge
+    let correctedMistakes = 0
+    try {
+      // Count questions that were once wrong but now have a correct answer as most recent
+      correctedMistakes = await UserAnswer.aggregate([
+        { $match: { userId: user._id } },
+        { $sort: { createdAt: -1 } },
+        { $group: {
+          _id: '$questionId',
+          latestCorrect: { $first: '$is_correct' },
+          hadMistake: { $max: { $cond: [{ $eq: ['$is_correct', false] }, 1, 0] } },
+        }},
+        { $match: { latestCorrect: true, hadMistake: 1 } },
+        { $count: 'total' },
+      ]).then((r) => r[0]?.total || 0)
+    } catch { /* non-critical */ }
+
+    // Mastered flashcards for Flashcard Master badge
+    let masteredFlashcards = 0
+    try {
+      masteredFlashcards = await FlashcardProgress.countDocuments({
+        userId: user._id,
+        status: 'mastered',
+      })
+    } catch { /* non-critical — model may not exist yet */ }
+
     const newBadges = checkBadgeConditions(
-      user,
+      { ...user.toObject(), gamification: { ...user.gamification.toObject?.() ?? user.gamification, totalXP: (user.gamification?.totalXP || 0) + xpEarned } },
       { ...session.toObject(), score: correctCount },
       dailyCount,
-      { examLanguages: examLangs, newStreak }
+      {
+        examLanguages: examLangs,
+        newStreak,
+        totalAnswered,
+        consecutiveFails,
+        consecutivePasses,
+        masteredFlashcards,
+        topicAccuracies,
+        uniqueTopicsAnswered,
+        totalTopics,
+        avgTimePerQuestion,
+        studyHour,
+        correctedMistakes,
+      }
     )
 
     // ── Atomic transaction: update ExamSession + User together ──────────
-    const txSession = await mongoose.startSession()
     try {
-      await txSession.withTransaction(async () => {
+      await withTransaction(async (txSession) => {
         session.score = correctCount
         session.errorCount = errors
         session.passed = passed
@@ -202,29 +302,41 @@ export async function POST(request, { params }) {
         session.topicBreakdown = topicBreakdown
         await session.save({ session: txSession })
 
+        const userUpdate = {
+          $set: {
+            'gamification.currentStreak': newStreak,
+            'gamification.maxStreak': Math.max(user.gamification.maxStreak || 0, newStreak),
+            'gamification.lastStudyDate': new Date(),
+            'gamification.examLanguages': examLangs,
+            'skillProfile.overallLevel': skillProfile.overallLevel,
+            'skillProfile.topicLevels': skillProfile.topicLevels,
+            'skillProfile.lastCalculated': new Date(),
+          },
+          $inc: {
+            'gamification.totalXP': xpEarned,
+            'gamification.weeklyXP': xpEarned,
+          },
+          $addToSet: { 'gamification.earnedBadges': { $each: newBadges } },
+        }
+
+        // Fix #6: Reset weekly XP when the week has rolled over
+        if (weeklyXPNeedsReset) {
+          userUpdate.$set['gamification.weeklyXP'] = xpEarned // Reset to just this session's XP
+          userUpdate.$set['gamification.weeklyXPResetAt'] = new Date()
+          delete userUpdate.$inc['gamification.weeklyXP'] // Don't increment — we set it above
+        }
+
         await User.findByIdAndUpdate(
           tokenData.userId,
-          {
-            $set: {
-              'gamification.currentStreak': newStreak,
-              'gamification.maxStreak': Math.max(user.gamification.maxStreak || 0, newStreak),
-              'gamification.lastStudyDate': new Date(),
-              'gamification.examLanguages': examLangs,
-              'skillProfile.overallLevel': skillProfile.overallLevel,
-              'skillProfile.topicLevels': skillProfile.topicLevels,
-              'skillProfile.lastCalculated': new Date(),
-            },
-            $inc: {
-              'gamification.totalXP': xpEarned,
-              'gamification.weeklyXP': xpEarned,
-            },
-            $addToSet: { 'gamification.earnedBadges': { $each: newBadges } },
-          },
+          userUpdate,
           { session: txSession, returnDocument: 'after' }
         )
       })
-    } finally {
-      await txSession.endSession()
+    } catch (err) {
+      if (err.code === 11000)
+        return NextResponse.json({ error: 'Question already answered' }, { status: 400 })
+      console.error('[submit] Transaction failed:', err)
+      throw err
     }
 
     // ── Fire-and-forget: leaderboard rank update (non-critical) ──────────

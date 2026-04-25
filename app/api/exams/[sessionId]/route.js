@@ -102,7 +102,7 @@ export async function PATCH(request, { params }) {
         aiTip = await getSmartHint({
           question: question.question,
           options: question.options,
-          correctIdx: question.correct_option_idx - 1,
+          correctIdx: question.correct_option_idx,
           lang,
           userHistory,
         }).catch(() => null)
