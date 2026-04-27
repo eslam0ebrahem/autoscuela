@@ -182,7 +182,7 @@ async function resolveMistakeQuestionIds(userId, limit) {
       },
     },
     { $sort: { latestMistakeAt: -1 } },
-    { $limit: Math.max(limit * 3, limit) },
+    { $limit: Math.max(limit * 3, 30) },
   ])
 
   return rows.map((r) => r._id)
@@ -333,7 +333,7 @@ export async function POST(request) {
 
     await connectDB()
 
-    const user = await User.findById(tokenData.userId).lean()
+    const user = await User.findById(tokenData.userId)
     if (!user) {
       return jsonError('User not found', 404)
     }

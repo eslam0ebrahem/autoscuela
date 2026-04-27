@@ -3,6 +3,8 @@ import connectDB from '@/lib/db'
 import ExamSession from '@/models/ExamSession'
 import Question from '@/models/Question'
 import { getCurrentUser } from '@/lib/auth'
+import { checkCSRF } from '@/lib/csrf'
+import { isValidObjectId } from '@/lib/utils'
 import { getSmartHint } from '@/lib/groq'
 import UserAnswer from '@/models/UserAnswer'
 
@@ -50,6 +52,9 @@ export async function GET(request, { params }) {
  */
 export async function PATCH(request, { params }) {
   try {
+    const csrfError = checkCSRF('PATCH', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
+
     const { sessionId } = await params
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -57,6 +62,13 @@ export async function PATCH(request, { params }) {
     await connectDB()
 
     const { questionId, flagged } = await request.json()
+
+    if (!questionId || !isValidObjectId(questionId)) {
+      return NextResponse.json({ error: 'Invalid questionId' }, { status: 400 })
+    }
+    if (typeof flagged !== 'boolean') {
+      return NextResponse.json({ error: 'flagged must be a boolean' }, { status: 400 })
+    }
 
     const session = await ExamSession.findOne({
       _id: sessionId,

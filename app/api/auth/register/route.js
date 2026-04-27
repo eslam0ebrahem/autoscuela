@@ -95,7 +95,7 @@ export async function POST(request) {
     )
 
     // ── Send verification email ────────────────────────────────────────
-    const verificationUrl = `${process.env.APP_URL || 'http://localhost:3000'}/auth/verify?token=${verificationToken}&userId=${user._id}`
+    const verificationUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/verify?token=${verificationToken}&userId=${user._id}`
 
     try {
       await sendVerificationEmail(email, verificationUrl, language)

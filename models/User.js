@@ -55,6 +55,10 @@ const userSchema = new mongoose.Schema(
       lastUpdated: { type: Date },
     },
 
+    // Login tracking
+    lastLoginAt: { type: Date },
+    lastLogoutAt: { type: Date },
+
     // Manual override by admin
     premiumOverride: { type: Boolean, default: false },
 

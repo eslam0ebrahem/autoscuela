@@ -64,14 +64,14 @@ export async function POST(request) {
     if (!user) {
       // Generic error to prevent user enumeration
       await logAudit({
-        userId: user?._id ?? null,
+        userId: null,
         action: 'LOGIN_FAILED',
         resourceType: 'User',
-        resourceId: user?._id ?? null,
+        resourceId: null,
         metadata: {
           email: email,
           ipAddress: ip,
-          reason: user ? 'invalid_password' : 'user_not_found',
+          reason: 'user_not_found',
         },
       })
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
@@ -82,14 +82,14 @@ export async function POST(request) {
 
     if (!isValid) {
       await logAudit({
-        userId: user?._id ?? null,
+        userId: user._id,
         action: 'LOGIN_FAILED',
         resourceType: 'User',
-        resourceId: user?._id ?? null,
+        resourceId: user._id,
         metadata: {
           email: email,
           ipAddress: ip,
-          reason: user ? 'invalid_password' : 'user_not_found',
+          reason: 'invalid_password',
         },
       })
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
