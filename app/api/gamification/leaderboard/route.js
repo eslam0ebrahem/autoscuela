@@ -51,12 +51,21 @@ export async function GET(request) {
       isCurrentUser: user._id.toString() === tokenData.userId,
     }))
 
-    // ── Use pre-calculated rank instead of counting
     const currentUser = await User.findById(tokenData.userId)
       .select('nickname gamification.weeklyXP gamification.currentStreak gamification.rank')
       .lean()
 
-    const userRank = currentUser?.gamification?.rank || 0
+    let userRank = 0
+    const currentUserIndex = topUsers.findIndex(
+      (u) => u._id.toString() === tokenData.userId
+    )
+    
+    if (currentUserIndex !== -1) {
+      userRank = currentUserIndex + 1
+    } else if (currentUser?.gamification?.weeklyXP > 0) {
+      // Calculate exact rank for users outside top 50 to avoid stale cached ranks
+      userRank = (await User.countDocuments({ 'gamification.weeklyXP': { $gt: currentUser.gamification.weeklyXP } })) + 1
+    }
 
     return NextResponse.json({
       leaderboard,

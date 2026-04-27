@@ -35,7 +35,8 @@ export async function POST(request) {
       )
     }
 
-    const { email, password, rememberMe = true } = validated
+    const { email: rawEmail, password, rememberMe = true } = validated
+    const email = rawEmail.toLowerCase().trim()
 
     // ── Rate limiting ──────────────────────────────────────────────────
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
