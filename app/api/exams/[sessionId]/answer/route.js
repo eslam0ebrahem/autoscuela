@@ -155,7 +155,7 @@ async function updateAnswerSRS({ savedAnswerId, userId, questionId, isCorrect, s
 
 export async function POST(request, { params }) {
   try {
-    const { sessionId } = params || {}
+    const { sessionId } = await params
 
     if (!isValidObjectId(sessionId)) {
       return jsonError('Invalid session id', 400)

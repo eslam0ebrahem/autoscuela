@@ -32,7 +32,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 logs/
-scripts/
+
+# Data and Scratch
+scraped_questions.json
+scratch/
+*.json.bak
+*.csv
 
 # Editor
 .vscode/

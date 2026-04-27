@@ -149,7 +149,7 @@ export async function PATCH(request, { params }) {
     })
   } catch (error) {
     logger.error(
-      { error: error.message, stack: error.stack, userId: await params.id },
+      { error: error.message, stack: error.stack, userId: id },
       'Admin update user error'
     )
     return NextResponse.json(
