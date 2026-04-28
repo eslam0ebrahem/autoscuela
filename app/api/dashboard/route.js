@@ -70,6 +70,48 @@ export async function GET(request) {
       createdAt: { $gte: startOfToday },
     })
 
+    // ── Pending SRS Reviews ──────────────────────────────────────────────────
+    const UserAnswer = require('@/models/UserAnswer').default || require('mongoose').model('UserAnswer')
+    const now = new Date()
+    const pendingReviewsResult = await UserAnswer.aggregate([
+      { $match: { userId: user._id, 'srs.nextReviewAt': { $exists: true } } },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: '$questionId',
+          lastNextReview: { $first: '$srs.nextReviewAt' },
+        },
+      },
+      { $match: { lastNextReview: { $lte: now } } },
+      { $count: 'count' }
+    ])
+    const pendingReviewsCount = pendingReviewsResult[0]?.count || 0
+
+    // ── Study Plan & Daily Progress ──────────────────────────────────────────
+    const StudyPlan = require('@/models/StudyPlan').default || require('mongoose').model('StudyPlan')
+    const activePlan = await StudyPlan.findOne({ userId: tokenData.userId, status: 'active' }).lean()
+    
+    let dailyProgress = null
+    if (activePlan) {
+      const UserAnswer = require('@/models/UserAnswer').default || require('mongoose').model('UserAnswer')
+      const customQuestionsAnsweredToday = await UserAnswer.countDocuments({
+        userId: tokenData.userId,
+        createdAt: { $gte: startOfToday },
+        examSessionId: null
+      })
+      
+      dailyProgress = {
+        exams: {
+          current: examsTakenToday,
+          target: activePlan.dailyGoals?.exams || 1,
+        },
+        customQuestions: {
+          current: customQuestionsAnsweredToday,
+          target: activePlan.dailyGoals?.customQuestions || 20,
+        }
+      }
+    }
+
     // ── Response payload ─────────────────────────────────────────────────────
     return NextResponse.json({
       insights: user.aiInsights ?? null,
@@ -80,6 +122,9 @@ export async function GET(request) {
       readinessScore: user.aiInsights?.readinessScore ?? 0,
       weekStart: currentWeekStart.toISOString(),
       examsTakenToday,
+      activePlan,
+      dailyProgress,
+      pendingReviewsCount,
     })
   } catch (error) {
     console.error('[dashboard] Unhandled error:', error)

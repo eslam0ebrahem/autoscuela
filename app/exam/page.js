@@ -34,15 +34,7 @@ const EXAM_MODES = {
     color: 'from-primary to-indigo-600',
     recommended: true,
   },
-  spaced_repetition: {
-    id: 'spaced_repetition',
-    icon: ThunderboltOutlined,
-    titleKey: 'Repaso Inteligente (SRS)',
-    titleEn: 'Spaced Repetition (SRS)',
-    descKey: 'Repasa lo que vas a olvidar',
-    descEn: 'Review what you are about to forget',
-    color: 'from-blue-500 to-indigo-600',
-  },
+
   custom: {
     id: 'custom',
     icon: ToolOutlined,
@@ -78,6 +70,15 @@ const EXAM_MODES = {
     descKey: 'Repasa tus favoritos',
     descEn: 'Review your favorites',
     color: 'from-amber-400 to-yellow-600',
+  },
+  spaced_repetition: {
+    id: 'spaced_repetition',
+    icon: ThunderboltOutlined,
+    titleKey: 'Repetición Espaciada',
+    titleEn: 'Spaced Repetition',
+    descKey: 'Repasa lo que estás a punto de olvidar',
+    descEn: 'Review what you are about to forget',
+    color: 'from-blue-500 to-cyan-600',
   },
 }
 
@@ -398,12 +399,16 @@ function ExamSetup() {
 
     const fetchTopics = async () => {
       try {
-        const res = await fetch('/api/flashcards/decks')
+        const res = await fetch('/api/stats/topics')
         if (!res.ok) throw new Error('Failed to fetch topics')
 
         const data = await res.json()
         if (isMounted) {
-          const decks = data.decks || []
+          // Normalize to match expected format { tag: '...', count: ... }
+          const decks = (data.topics || []).map((t) => ({
+            tag: typeof t.tag === 'object' ? t.tag.es : t.tag,
+            count: t.attempted || 0,
+          }))
           setAvailableTopics(decks)
           setTopicsLoading(false)
 

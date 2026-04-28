@@ -6,6 +6,7 @@ import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 import { useToast } from '@/components/Toast'
 import { useFetch } from '@/lib/useFetch'
+import confetti from 'canvas-confetti'
 import Spinner from '@/components/ui/Spinner'
 import {
   LineChartOutlined,
@@ -23,6 +24,8 @@ import {
   TrophyFilled,
   ReloadOutlined,
   CheckCircleOutlined,
+  CalendarOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons'
 
 // ---------------------------------------------------------------------------
@@ -157,9 +160,13 @@ function DashboardContent() {
   const [leaderboard, setLeaderboard] = useState([])
   const [readinessScore, setReadinessScore] = useState(null)
   const [examsTakenToday, setExamsTakenToday] = useState(0)
+  const [activePlan, setActivePlan] = useState(null)
+  const [dailyProgress, setDailyProgress] = useState(null)
   const [loading, setLoading] = useState(true)
   const [startingExam, setStartingExam] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [hasCelebrated, setHasCelebrated] = useState(false)
+  const [pendingReviews, setPendingReviews] = useState(0)
 
   const isPremium = user?.isPremium
 
@@ -191,6 +198,9 @@ function DashboardContent() {
             setLeaderboard(dashRes.leaderboard ?? [])
             setReadinessScore(dashRes.readinessScore != null ? Number(dashRes.readinessScore) : 0)
             setExamsTakenToday(dashRes.examsTakenToday ?? 0)
+            setActivePlan(dashRes.activePlan ?? null)
+            setDailyProgress(dashRes.dailyProgress ?? null)
+            setPendingReviews(dashRes.pendingReviewsCount ?? 0)
           }
         } else {
           // dashResult.status === 'rejected'
@@ -226,6 +236,30 @@ function DashboardContent() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // ── Confetti Celebration ───────────────────────────────────────────────
+  useEffect(() => {
+    if (dailyProgress && !hasCelebrated) {
+      const examsTarget = dailyProgress.exams?.target || 0
+      const examsCurrent = dailyProgress.exams?.current || 0
+      const questionsTarget = dailyProgress.customQuestions?.target || 0
+      const questionsCurrent = dailyProgress.customQuestions?.current || 0
+
+      // Only celebrate if there are actually targets to meet and they are met
+      if ((examsTarget > 0 || questionsTarget > 0) &&
+          examsCurrent >= examsTarget &&
+          questionsCurrent >= questionsTarget) {
+        
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
+        })
+        setHasCelebrated(true)
+      }
+    }
+  }, [dailyProgress, hasCelebrated])
 
   // ── Start Exam Handler ─────────────────────────────────────────────────
   const handleStartExam = useCallback(async () => {
@@ -332,6 +366,88 @@ function DashboardContent() {
         </div>
       </div>
 
+      {/* ── Daily Plan Progress ────────────────────────────────────── */}
+      {activePlan && dailyProgress && (
+        <div className="card shadow-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 animate-fade-in relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none scale-150 rotate-12">
+            <CalendarOutlined style={{ fontSize: '100px' }} />
+          </div>
+          <div className="relative z-10 flex flex-col md:flex-row gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                  <CalendarOutlined className="text-2xl" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-ink dark:text-white">
+                    {t('Tu Plan de Hoy', 'Your Daily Plan')}
+                  </h2>
+                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                    {activePlan.dailyGoals?.exams} {t('exámenes', 'exams')}, {activePlan.dailyGoals?.customQuestions} {t('preguntas', 'questions')}
+                  </p>
+                </div>
+                <div className="ml-auto flex flex-col items-end gap-2">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t('Autocompletable', 'Autocompletes')}</span>
+                  <Link href="/study-plan" className="text-primary text-sm font-bold bg-primary/10 hover:bg-primary/20 px-4 py-2 rounded-lg transition-colors">
+                    {t('Ver plan completo', 'View full plan')}
+                  </Link>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Exams Progress */}
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50">
+                  <div className="flex justify-between items-end mb-3">
+                    <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                      <FileTextOutlined className="text-primary" />
+                      {t('Exámenes Oficiales', 'Official Exams')}
+                    </span>
+                    <span className="font-black text-2xl text-ink dark:text-white leading-none">
+                      {dailyProgress.exams.current} <span className="text-base text-slate-400">/ {dailyProgress.exams.target}</span>
+                    </span>
+                  </div>
+                  <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner relative">
+                    <div 
+                      className="h-full bg-gradient-to-r from-primary to-indigo-600 rounded-full transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(79,70,229,0.4)]" 
+                      style={{ width: `${Math.min(100, (dailyProgress.exams.current / dailyProgress.exams.target) * 100)}%` }} 
+                    />
+                  </div>
+                  {dailyProgress.exams.current >= dailyProgress.exams.target && (
+                    <div className="mt-2 text-xs font-bold text-emerald-500 flex items-center gap-1">
+                      <CheckCircleOutlined /> {t('¡Completado!', 'Completed!')}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Custom Questions Progress */}
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50">
+                  <div className="flex justify-between items-end mb-3">
+                    <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                      <BulbOutlined className="text-purple-500" />
+                      {t('Preguntas', 'Questions')}
+                    </span>
+                    <span className="font-black text-2xl text-ink dark:text-white leading-none">
+                      {dailyProgress.customQuestions.current} <span className="text-base text-slate-400">/ {dailyProgress.customQuestions.target}</span>
+                    </span>
+                  </div>
+                  <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner relative">
+                    <div 
+                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(168,85,247,0.4)]" 
+                      style={{ width: `${Math.min(100, (dailyProgress.customQuestions.current / dailyProgress.customQuestions.target) * 100)}%` }} 
+                    />
+                  </div>
+                  {dailyProgress.customQuestions.current >= dailyProgress.customQuestions.target && (
+                    <div className="mt-2 text-xs font-bold text-emerald-500 flex items-center gap-1">
+                      <CheckCircleOutlined /> {t('¡Completado!', 'Completed!')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Quick Actions ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <QuickActionCard
@@ -362,6 +478,13 @@ function DashboardContent() {
           desc={t('Practicar por tema', 'Practice by topic')}
           color="from-amber-400 to-orange-600"
           onClick={() => router.push('/exam?mode=custom')}
+        />
+        <QuickActionCard
+          icon={<ThunderboltOutlined />}
+          title={t('Repaso Inteligente', 'Smart Review')}
+          desc={pendingReviews > 0 ? `${pendingReviews} ${t('pendientes', 'pending')}` : t('Todo al día', 'All caught up')}
+          color="from-blue-500 to-cyan-600"
+          onClick={() => router.push('/exam?mode=spaced_repetition')}
         />
       </div>
 

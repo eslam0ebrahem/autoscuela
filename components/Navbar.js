@@ -54,7 +54,6 @@ export default function Navbar() {
   const navLinks = [
     { href: '/dashboard', label: t('Inicio', 'Home'), icon: <HomeOutlined /> },
     { href: '/exam', label: t('Examen', 'Exam'), icon: <FileTextOutlined /> },
-    { href: '/flashcards', label: t('Tarjetas', 'Cards'), icon: <IdcardOutlined /> },
     { href: '/study-plan', label: t('Plan', 'Plan'), icon: <CalendarOutlined /> },
     { href: '/mistakes', label: t('Errores', 'Mistakes'), icon: <CloseCircleOutlined /> },
     { href: '/stats', label: t('Stats', 'Stats'), icon: <BarChartOutlined /> },

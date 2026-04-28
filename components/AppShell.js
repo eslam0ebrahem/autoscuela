@@ -85,8 +85,8 @@ function PaywallScreen() {
         </h2>
         <p className="text-ink-light dark:text-slate-400 mb-6 leading-relaxed text-sm">
           {t(
-            'Desbloquea todos los exámenes, tarjetas de memoria y análisis IA con una suscripción mensual.',
-            'Unlock all exams, flashcards, and AI analytics with a monthly subscription.'
+            'Desbloquea todos los exámenes y análisis IA con una suscripción mensual.',
+            'Unlock all exams and AI analytics with a monthly subscription.'
           )}
         </p>
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-5 mb-6 border border-blue-100 dark:border-blue-800/50">
@@ -97,7 +97,7 @@ function PaywallScreen() {
           <ul className="text-sm text-left space-y-3 mt-5">
             {[
               t('Exámenes ilimitados', 'Unlimited exams'),
-              t('Tarjetas de memoria', 'Flashcard module'),
+              t('Práctica por temas', 'Topic practices'),
               t('Análisis IA', 'AI insights'),
             ].map((item, i) => (
               <li key={i} className="text-ink dark:text-slate-300 flex items-start gap-3">

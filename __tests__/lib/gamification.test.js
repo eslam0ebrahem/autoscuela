@@ -6,7 +6,6 @@ describe('lib/gamification', () => {
     it('should define XP reward values', () => {
       expect(XP.EXAM_PASS).toBe(10)
       expect(XP.EXAM_FAIL).toBe(5)
-      expect(XP.FLASHCARD_CORRECT).toBe(1)
       expect(XP.DAILY_CHALLENGE).toBe(15)
       expect(XP.PERFECT_EXAM).toBe(25)
     })

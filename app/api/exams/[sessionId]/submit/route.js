@@ -19,7 +19,6 @@ import {
 import { getUserSkillProfile, invalidateSkillProfile } from '@/lib/user-skill'
 import { getExamCoachFeedback, getSessionQuickSummary } from '@/lib/groq'
 import { withTransaction } from '@/lib/db-utils'
-import FlashcardProgress from '@/models/FlashcardProgress'
 
 const MAX_ERRORS_TO_PASS = 3
 
@@ -261,14 +260,7 @@ export async function POST(request, { params }) {
       ]).then((r) => r[0]?.total || 0)
     } catch { /* non-critical */ }
 
-    // Mastered flashcards for Flashcard Master badge
-    let masteredFlashcards = 0
-    try {
-      masteredFlashcards = await FlashcardProgress.countDocuments({
-        userId: user._id,
-        status: 'mastered',
-      })
-    } catch { /* non-critical — model may not exist yet */ }
+    // Mastered flashcards logic removed
 
     const newBadges = checkBadgeConditions(
       { ...user.toObject(), gamification: { ...user.gamification.toObject?.() ?? user.gamification, totalXP: (user.gamification?.totalXP || 0) + xpEarned } },
@@ -280,7 +272,6 @@ export async function POST(request, { params }) {
         totalAnswered,
         consecutiveFails,
         consecutivePasses,
-        masteredFlashcards,
         topicAccuracies,
         uniqueTopicsAnswered,
         totalTopics,

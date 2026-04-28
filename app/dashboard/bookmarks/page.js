@@ -24,7 +24,7 @@ import {
 // ---------------------------------------------------------------------------
 const API_ENDPOINTS = {
   BOOKMARKS: '/api/bookmarks',
-  TOPICS: '/api/flashcards/decks',
+  TOPICS: '/api/stats/topics',
 }
 
 // ---------------------------------------------------------------------------
@@ -234,7 +234,7 @@ function BookmarksContent() {
         if (!res.ok) return
 
         const data = await res.json()
-        setTopics(data.decks || [])
+        setTopics(data.topics || [])
       } catch (err) {
         console.error('[bookmarks] Topics fetch error:', err)
       }
@@ -397,11 +397,15 @@ function BookmarksContent() {
             className="w-full md:w-auto px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-ink dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
           >
             <option value="">{t('Todos los temas', 'All topics')}</option>
-            {topics.map((topic, index) => (
-              <option key={index} value={topic.tag || topic.name}>
-                {topic.name || topic.tag}
-              </option>
-            ))}
+            {topics.map((topic, index) => {
+              const tagValue = typeof topic.tag === 'object' ? topic.tag.es : topic.tag
+              const tagName = topic.name || tagValue
+              return (
+                <option key={`topic-${tagValue || index}`} value={tagValue}>
+                  {tagName}
+                </option>
+              )
+            })}
           </select>
         </div>
       )}

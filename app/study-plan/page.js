@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 import { useToast } from '@/components/Toast'
@@ -19,6 +20,7 @@ import {
 function StudyPlanContent() {
   const { user, t } = useAuth()
   const toast = useToast()
+  const router = useRouter()
   
   const [targetDate, setTargetDate] = useState('')
   const [dailyMinutes, setDailyMinutes] = useState(30)
@@ -290,6 +292,36 @@ function StudyPlanContent() {
                   </div>
                 </div>
               )}
+
+              {/* Accept Plan Button */}
+              <div className="mt-8 flex justify-center">
+                <button
+                  onClick={async () => {
+                    try {
+                      setLoading(true)
+                      const res = await fetch('/api/study-plan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          targetDate: planData.targetDate || targetDate,
+                          dailyMinutes: planData.dailyMinutes || dailyMinutes,
+                          planData: planData.plan
+                        })
+                      })
+                      if (!res.ok) throw new Error('Failed to save plan')
+                      toast?.success?.(t('¡Plan guardado exitosamente!', 'Plan saved successfully!'))
+                      router.push('/dashboard')
+                    } catch (err) {
+                      toast?.error?.(t('Error al guardar el plan', 'Failed to save plan'))
+                      setLoading(false)
+                    }
+                  }}
+                  className="btn btn-primary px-10 py-3 text-lg shadow-xl shadow-primary/20 hover:-translate-y-1 transition-transform animate-fade-in"
+                >
+                  <CalendarOutlined className="mr-2" />
+                  {t('Aceptar y Guardar Plan', 'Accept and Save Plan')}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="card h-full min-h-[400px] flex flex-col items-center justify-center text-center border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30">
