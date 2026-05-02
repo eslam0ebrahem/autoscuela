@@ -12,7 +12,6 @@ import {
   RobotOutlined,
   RocketOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
   BulbOutlined,
   WarningOutlined,
 } from '@ant-design/icons'

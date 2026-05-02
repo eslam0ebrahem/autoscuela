@@ -99,7 +99,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       sessionId: session._id,
-      totalQuestions: questions.length,
+      totalQuestions: questionIds.length,
     })
   } catch (error) {
     console.error('Start daily challenge error:', error)

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
 import ExamSession from '@/models/ExamSession'
+import UserAnswer from '@/models/UserAnswer'
+import StudyPlan from '@/models/StudyPlan'
 import { getCurrentUser } from '@/lib/auth'
 import { getMadridStartOfWeek } from '@/lib/gamification'
 import { startOfDay } from 'date-fns'
@@ -71,7 +73,6 @@ export async function GET(request) {
     })
 
     // ── Pending SRS Reviews ──────────────────────────────────────────────────
-    const UserAnswer = require('@/models/UserAnswer').default || require('mongoose').model('UserAnswer')
     const now = new Date()
     const pendingReviewsResult = await UserAnswer.aggregate([
       { $match: { userId: user._id, 'srs.nextReviewAt': { $exists: true } } },
@@ -88,12 +89,10 @@ export async function GET(request) {
     const pendingReviewsCount = pendingReviewsResult[0]?.count || 0
 
     // ── Study Plan & Daily Progress ──────────────────────────────────────────
-    const StudyPlan = require('@/models/StudyPlan').default || require('mongoose').model('StudyPlan')
     const activePlan = await StudyPlan.findOne({ userId: tokenData.userId, status: 'active' }).lean()
     
     let dailyProgress = null
     if (activePlan) {
-      const UserAnswer = require('@/models/UserAnswer').default || require('mongoose').model('UserAnswer')
       const customQuestionsAnsweredToday = await UserAnswer.countDocuments({
         userId: tokenData.userId,
         createdAt: { $gte: startOfToday },

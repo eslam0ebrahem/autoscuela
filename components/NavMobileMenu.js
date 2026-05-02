@@ -34,7 +34,13 @@ export default function NavMobileMenu({
   return (
     <>
       {/* Backdrop */}
-      <div className="md:hidden fixed inset-0 bg-black/50 z-40 animate-fadeIn" onClick={onClose} />
+      <div 
+        className="md:hidden fixed inset-0 bg-black/50 z-40 animate-fadeIn" 
+        onClick={onClose}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        role="presentation"
+        aria-hidden="true"
+      />
 
       {/* Menu Panel */}
       <div

@@ -317,6 +317,25 @@ export async function POST(request, { params }) {
           delete userUpdate.$inc['gamification.weeklyXP'] // Don't increment — we set it above
         }
 
+        // Daily Challenge tracking
+        if (session.mode === 'daily_challenge') {
+          userUpdate.$set['gamification.dailyChallengeCompletedAt'] = new Date()
+          let dcStreak = user.gamification.dailyChallengeStreak || 0
+          const lastCompleted = user.gamification.dailyChallengeCompletedAt
+          if (lastCompleted) {
+            const yesterday = new Date(todayStart)
+            yesterday.setDate(yesterday.getDate() - 1)
+            if (new Date(lastCompleted) >= yesterday && new Date(lastCompleted) < todayStart) {
+              dcStreak += 1
+            } else if (new Date(lastCompleted) < yesterday) {
+              dcStreak = 1
+            }
+          } else {
+            dcStreak = 1
+          }
+          userUpdate.$set['gamification.dailyChallengeStreak'] = dcStreak
+        }
+
         await User.findByIdAndUpdate(
           tokenData.userId,
           userUpdate,

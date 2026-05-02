@@ -35,7 +35,12 @@ export default [
         FileReader: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
         confirm: 'readonly',
+        localStorage: 'readonly',
+        AbortController: 'readonly',
+        requestAnimationFrame: 'readonly',
         // Node/Next.js
         process: 'readonly',
         global: 'readonly',

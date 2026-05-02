@@ -106,6 +106,11 @@ function PaywallScreen() {
             ))}
           </ul>
         </div>
+        {errorMsg && (
+          <div className="text-red-500 text-sm mb-4">
+            {errorMsg}
+          </div>
+        )}
         <button
           onClick={handleSubscribe}
           disabled={loadingCheckout}

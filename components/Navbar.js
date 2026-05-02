@@ -9,7 +9,6 @@ import { useFocusTrap } from '@/lib/useFocusTrap'
 import {
   HomeOutlined,
   FileTextOutlined,
-  IdcardOutlined,
   CloseCircleOutlined,
   BarChartOutlined,
   StarOutlined,
