@@ -99,7 +99,6 @@ export async function GET(request) {
       const customQuestionsAnsweredToday = await UserAnswer.countDocuments({
         userId: tokenData.userId,
         createdAt: { $gte: startOfToday },
-        examSessionId: null
       })
       
       dailyProgress = {
