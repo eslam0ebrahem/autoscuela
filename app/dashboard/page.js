@@ -162,6 +162,8 @@ function DashboardContent() {
   const [examsTakenToday, setExamsTakenToday] = useState(0)
   const [activePlan, setActivePlan] = useState(null)
   const [dailyProgress, setDailyProgress] = useState(null)
+  const [planStats, setPlanStats] = useState(null)
+  const [planTracking, setPlanTracking] = useState(null)
   const [loading, setLoading] = useState(true)
   const [startingExam, setStartingExam] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -200,6 +202,8 @@ function DashboardContent() {
             setExamsTakenToday(dashRes.examsTakenToday ?? 0)
             setActivePlan(dashRes.activePlan ?? null)
             setDailyProgress(dashRes.dailyProgress ?? null)
+            setPlanStats(dashRes.planStats ?? null)
+            setPlanTracking(dashRes.planTracking ?? null)
             setPendingReviews(dashRes.pendingReviewsCount ?? 0)
           }
         } else {
@@ -239,25 +243,14 @@ function DashboardContent() {
 
   // ── Confetti Celebration ───────────────────────────────────────────────
   useEffect(() => {
-    if (dailyProgress && !hasCelebrated) {
-      const examsTarget = dailyProgress.exams?.target || 0
-      const examsCurrent = dailyProgress.exams?.current || 0
-      const questionsTarget = dailyProgress.customQuestions?.target || 0
-      const questionsCurrent = dailyProgress.customQuestions?.current || 0
-
-      // Only celebrate if there are actually targets to meet and they are met
-      if ((examsTarget > 0 || questionsTarget > 0) &&
-          examsCurrent >= examsTarget &&
-          questionsCurrent >= questionsTarget) {
-        
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
-        })
-        setHasCelebrated(true)
-      }
+    if (dailyProgress?.goalsMet && !hasCelebrated) {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
+      })
+      setHasCelebrated(true)
     }
   }, [dailyProgress, hasCelebrated])
 
@@ -367,83 +360,164 @@ function DashboardContent() {
       </div>
 
       {/* ── Daily Plan Progress ────────────────────────────────────── */}
-      {activePlan && dailyProgress && (
+      {activePlan && dailyProgress ? (
         <div className="card shadow-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 animate-fade-in relative overflow-hidden">
           <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none scale-150 rotate-12">
             <CalendarOutlined style={{ fontSize: '100px' }} />
           </div>
-          <div className="relative z-10 flex flex-col md:flex-row gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-                  <CalendarOutlined className="text-2xl" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-black text-ink dark:text-white">
-                    {t('Tu Plan de Hoy', 'Your Daily Plan')}
-                  </h2>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-                    {activePlan.dailyGoals?.exams} {t('exámenes', 'exams')}, {activePlan.dailyGoals?.customQuestions} {t('preguntas', 'questions')}
-                  </p>
-                </div>
-                <div className="ml-auto flex flex-col items-end gap-2">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t('Autocompletable', 'Autocompletes')}</span>
-                  <Link href="/study-plan" className="text-primary text-sm font-bold bg-primary/10 hover:bg-primary/20 px-4 py-2 rounded-lg transition-colors">
-                    {t('Ver plan completo', 'View full plan')}
-                  </Link>
-                </div>
+          <div className="relative z-10">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                <CalendarOutlined className="text-2xl" />
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Exams Progress */}
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50">
-                  <div className="flex justify-between items-end mb-3">
-                    <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                      <FileTextOutlined className="text-primary" />
-                      {t('Exámenes Oficiales', 'Official Exams')}
-                    </span>
-                    <span className="font-black text-2xl text-ink dark:text-white leading-none">
-                      {dailyProgress.exams.current} <span className="text-base text-slate-400">/ {dailyProgress.exams.target}</span>
-                    </span>
-                  </div>
-                  <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner relative">
-                    <div 
-                      className="h-full bg-gradient-to-r from-primary to-indigo-600 rounded-full transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(79,70,229,0.4)]" 
-                      style={{ width: `${Math.min(100, (dailyProgress.exams.current / dailyProgress.exams.target) * 100)}%` }} 
-                    />
-                  </div>
-                  {dailyProgress.exams.current >= dailyProgress.exams.target && (
-                    <div className="mt-2 text-xs font-bold text-emerald-500 flex items-center gap-1">
-                      <CheckCircleOutlined /> {t('¡Completado!', 'Completed!')}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Custom Questions Progress */}
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50">
-                  <div className="flex justify-between items-end mb-3">
-                    <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                      <BulbOutlined className="text-purple-500" />
-                      {t('Preguntas', 'Questions')}
-                    </span>
-                    <span className="font-black text-2xl text-ink dark:text-white leading-none">
-                      {dailyProgress.customQuestions.current} <span className="text-base text-slate-400">/ {dailyProgress.customQuestions.target}</span>
-                    </span>
-                  </div>
-                  <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner relative">
-                    <div 
-                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-1000 ease-out shadow-[0_0_12px_rgba(168,85,247,0.4)]" 
-                      style={{ width: `${Math.min(100, (dailyProgress.customQuestions.current / dailyProgress.customQuestions.target) * 100)}%` }} 
-                    />
-                  </div>
-                  {dailyProgress.customQuestions.current >= dailyProgress.customQuestions.target && (
-                    <div className="mt-2 text-xs font-bold text-emerald-500 flex items-center gap-1">
-                      <CheckCircleOutlined /> {t('¡Completado!', 'Completed!')}
-                    </div>
-                  )}
-                </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-black text-ink dark:text-white">
+                  {t('Tu Plan de Hoy', 'Your Daily Plan')}
+                </h2>
+                <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                  {dailyProgress.goalsMet
+                    ? `🎉 ${t('¡Objetivos cumplidos!', 'Goals completed!')}`
+                    : `${dailyProgress.overallPercent || 0}% ${t('completado', 'complete')}`}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1.5 shrink-0">
+                {planTracking?.planStreak > 0 && (
+                  <span className="flex items-center gap-1 text-xs font-black text-orange-500 bg-orange-50 dark:bg-orange-900/20 px-2.5 py-1 rounded-full">
+                    <FireOutlined /> {planTracking.planStreak} {t('días', 'days')}
+                  </span>
+                )}
+                <Link href="/study-plan" className="text-primary text-xs font-bold bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-lg transition-colors">
+                  {t('Ver plan', 'View plan')}
+                </Link>
               </div>
             </div>
+
+            {/* Overall Progress Bar */}
+            <div className="mb-5">
+              <div className="h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                    dailyProgress.goalsMet
+                      ? 'bg-gradient-to-r from-emerald-400 to-green-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]'
+                      : 'bg-gradient-to-r from-primary to-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.3)]'
+                  }`}
+                  style={{ width: `${dailyProgress.overallPercent || 0}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Three Metric Cards */}
+            <div className="grid grid-cols-3 gap-3">
+              {/* Exams */}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50 text-center">
+                <FileTextOutlined className="text-lg text-primary mb-1" />
+                <div className="font-black text-xl text-ink dark:text-white leading-none mt-1">
+                  {dailyProgress.exams.current}<span className="text-sm text-slate-400 font-bold">/{dailyProgress.exams.target}</span>
+                </div>
+                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wide">
+                  {t('Exámenes', 'Exams')}
+                </p>
+                <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                  <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${dailyProgress.exams.percent}%` }} />
+                </div>
+                {dailyProgress.exams.current >= dailyProgress.exams.target && (
+                  <CheckCircleOutlined className="text-emerald-500 text-xs mt-1.5" />
+                )}
+              </div>
+
+              {/* Questions */}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50 text-center">
+                <BulbOutlined className="text-lg text-purple-500 mb-1" />
+                <div className="font-black text-xl text-ink dark:text-white leading-none mt-1">
+                  {dailyProgress.questions.current}<span className="text-sm text-slate-400 font-bold">/{dailyProgress.questions.target}</span>
+                </div>
+                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wide">
+                  {t('Preguntas', 'Questions')}
+                </p>
+                <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                  <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-700" style={{ width: `${dailyProgress.questions.percent}%` }} />
+                </div>
+                {dailyProgress.questions.current >= dailyProgress.questions.target && (
+                  <CheckCircleOutlined className="text-emerald-500 text-xs mt-1.5" />
+                )}
+              </div>
+
+              {/* Minutes */}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50 text-center">
+                <ThunderboltOutlined className="text-lg text-amber-500 mb-1" />
+                <div className="font-black text-xl text-ink dark:text-white leading-none mt-1">
+                  {dailyProgress.minutes.current}<span className="text-sm text-slate-400 font-bold">/{dailyProgress.minutes.target}</span>
+                </div>
+                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wide">
+                  {t('Minutos', 'Minutes')}
+                </p>
+                <div className="h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                  <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-700" style={{ width: `${dailyProgress.minutes.percent}%` }} />
+                </div>
+                {dailyProgress.minutes.current >= dailyProgress.minutes.target && (
+                  <CheckCircleOutlined className="text-emerald-500 text-xs mt-1.5" />
+                )}
+              </div>
+            </div>
+
+            {/* Plan Timeline + History Dots */}
+            {planStats && (
+              <div className="mt-5 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    {planStats.daysRemaining} {t('días restantes', 'days remaining')}
+                  </span>
+                  <span className="text-xs font-bold text-slate-400">
+                    {planStats.timelinePercent}%
+                  </span>
+                </div>
+                <div className="h-1.5 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-indigo-400 to-violet-500 rounded-full transition-all duration-500" style={{ width: `${planStats.timelinePercent}%` }} />
+                </div>
+
+                {/* 7-day history dots */}
+                {planTracking?.dailyHistory?.length > 0 && (
+                  <div className="flex items-center gap-1.5 mt-3 justify-end">
+                    <span className="text-[10px] text-slate-400 mr-1">{t('Últimos 7d', 'Last 7d')}</span>
+                    {planTracking.dailyHistory.map((day, i) => (
+                      <div
+                        key={i}
+                        title={`${day.date}: ${day.goalsMet ? '✅' : '❌'}`}
+                        className={`w-3 h-3 rounded-full transition-all ${
+                          day.goalsMet
+                            ? 'bg-emerald-500 shadow-sm shadow-emerald-500/40'
+                            : 'bg-slate-300 dark:bg-slate-600'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : !activePlan && !loading && (
+        /* CTA to create a plan when none exists */
+        <div className="card border-2 border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-900/10 hover:border-indigo-400 dark:hover:border-indigo-600 transition-colors group">
+          <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl shadow-lg group-hover:scale-110 transition-transform">
+              <CalendarOutlined />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-black text-ink dark:text-white">
+                {t('Crea tu Plan de Estudio', 'Create Your Study Plan')}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                {t('Nuestra IA diseñará una ruta personalizada para tu examen.', 'Our AI will design a personalized path for your exam.')}
+              </p>
+            </div>
+            <Link
+              href="/study-plan"
+              className="btn-primary px-6 py-2.5 font-bold rounded-xl shadow-lg shadow-primary/20 hover:-translate-y-0.5 transition-all flex items-center gap-2"
+            >
+              <StarOutlined /> {t('Empezar', 'Get Started')}
+            </Link>
           </div>
         </div>
       )}

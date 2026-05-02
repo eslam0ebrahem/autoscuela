@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import mongoose from 'mongoose'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
 import ExamSession from '@/models/ExamSession'
@@ -6,7 +7,6 @@ import UserAnswer from '@/models/UserAnswer'
 import StudyPlan from '@/models/StudyPlan'
 import { getCurrentUser } from '@/lib/auth'
 import { getMadridStartOfWeek, getMadridStartOfDay } from '@/lib/gamification'
-import { startOfDay } from 'date-fns'
 import { getUserSkillProfile } from '@/lib/user-skill'
 import { computeReadinessScore } from '@/lib/services/ai/coachService'
 
@@ -15,6 +15,147 @@ import { computeReadinessScore } from '@/lib/services/ai/coachService'
 // ---------------------------------------------------------------------------
 const LEADERBOARD_LIMIT = 10
 const DEFAULT_XP_THRESHOLD = 0
+
+// ---------------------------------------------------------------------------
+// Helper – get today's date string in YYYY-MM-DD (Madrid timezone)
+// ---------------------------------------------------------------------------
+function getTodayDateString() {
+  const madridNow = new Date(
+    new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' })
+  )
+  return madridNow.toISOString().split('T')[0]
+}
+
+// ---------------------------------------------------------------------------
+// Helper – compute daily plan progress
+// ---------------------------------------------------------------------------
+async function computeDailyProgress(userId, startOfToday, activePlan) {
+  // 1. Completed exams today (official mode only for plan tracking)
+  const examsTakenToday = await ExamSession.countDocuments({
+    userId,
+    status: 'completed',
+    completedAt: { $gte: startOfToday },
+  })
+
+  // 2. Total questions answered today (all modes — the user is studying)
+  const questionsAnsweredToday = await UserAnswer.countDocuments({
+    userId,
+    createdAt: { $gte: startOfToday },
+  })
+
+  // 3. Minutes studied today — sum time_taken_seconds for today's answers
+  const minutesResult = await UserAnswer.aggregate([
+    {
+      $match: {
+        userId: typeof userId === 'string' ? new mongoose.Types.ObjectId(userId) : userId,
+        createdAt: { $gte: startOfToday },
+      },
+    },
+    { $group: { _id: null, totalSeconds: { $sum: '$time_taken_seconds' } } },
+  ])
+  const minutesStudied = Math.round((minutesResult[0]?.totalSeconds || 0) / 60)
+
+  const examsTarget = activePlan.dailyGoals?.exams || 1
+  const questionsTarget = activePlan.dailyGoals?.customQuestions || 20
+  const minutesTarget = activePlan.dailyGoals?.minutesTarget || activePlan.dailyMinutes || 30
+
+  const examsPercent = examsTarget > 0 ? Math.min(100, Math.round((examsTakenToday / examsTarget) * 100)) : 100
+  const questionsPercent = questionsTarget > 0 ? Math.min(100, Math.round((questionsAnsweredToday / questionsTarget) * 100)) : 100
+  const minutesPercent = minutesTarget > 0 ? Math.min(100, Math.round((minutesStudied / minutesTarget) * 100)) : 100
+
+  const goalsMet = examsTakenToday >= examsTarget &&
+    questionsAnsweredToday >= questionsTarget &&
+    minutesStudied >= minutesTarget
+
+  return {
+    exams: { current: examsTakenToday, target: examsTarget, percent: examsPercent },
+    questions: { current: questionsAnsweredToday, target: questionsTarget, percent: questionsPercent },
+    minutes: { current: minutesStudied, target: minutesTarget, percent: minutesPercent },
+    goalsMet,
+    overallPercent: Math.round((examsPercent + questionsPercent + minutesPercent) / 3),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helper – update daily history on the plan & compute plan streak
+// ---------------------------------------------------------------------------
+async function updatePlanDailyHistory(planId, dailyProgress) {
+  const todayStr = getTodayDateString()
+  const plan = await StudyPlan.findById(planId)
+  if (!plan) return null
+
+  // Upsert today's entry in dailyHistory
+  const existingIdx = plan.dailyHistory.findIndex((h) => h.date === todayStr)
+  const todayLog = {
+    date: todayStr,
+    examsCompleted: dailyProgress.exams.current,
+    questionsAnswered: dailyProgress.questions.current,
+    minutesStudied: dailyProgress.minutes.current,
+    goalsMet: dailyProgress.goalsMet,
+  }
+
+  if (existingIdx >= 0) {
+    plan.dailyHistory[existingIdx] = todayLog
+  } else {
+    plan.dailyHistory.push(todayLog)
+  }
+
+  // Recompute plan streak (consecutive days with goalsMet, ending today or yesterday)
+  const sortedHistory = [...plan.dailyHistory].sort((a, b) => b.date.localeCompare(a.date))
+  let streak = 0
+  const dateObj = new Date(
+    new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' })
+  )
+
+  for (let i = 0; i < 365; i++) {
+    const checkDate = new Date(dateObj)
+    checkDate.setDate(checkDate.getDate() - i)
+    const checkStr = checkDate.toISOString().split('T')[0]
+    const entry = sortedHistory.find((h) => h.date === checkStr)
+
+    if (entry?.goalsMet) {
+      streak++
+    } else if (i === 0 && !entry) {
+      // Today hasn't been fully logged yet — skip and check from yesterday
+      continue
+    } else {
+      break
+    }
+  }
+
+  plan.planStreak = streak
+  if (streak > (plan.bestPlanStreak || 0)) {
+    plan.bestPlanStreak = streak
+  }
+  if (dailyProgress.goalsMet) {
+    plan.lastGoalMetDate = todayStr
+  }
+
+  await plan.save()
+
+  return {
+    planStreak: plan.planStreak,
+    bestPlanStreak: plan.bestPlanStreak || 0,
+    daysCompleted: plan.dailyHistory.filter((h) => h.goalsMet).length,
+    dailyHistory: plan.dailyHistory.slice(-7), // last 7 days for the frontend
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helper – compute plan-level stats
+// ---------------------------------------------------------------------------
+function computePlanStats(activePlan) {
+  const now = new Date()
+  const target = new Date(activePlan.targetDate)
+  const created = new Date(activePlan.createdAt)
+
+  const totalDays = Math.max(1, Math.ceil((target - created) / (1000 * 60 * 60 * 24)))
+  const daysElapsed = Math.max(0, Math.ceil((now - created) / (1000 * 60 * 60 * 24)))
+  const daysRemaining = Math.max(0, Math.ceil((target - now) / (1000 * 60 * 60 * 24)))
+  const timelinePercent = Math.min(100, Math.round((daysElapsed / totalDays) * 100))
+
+  return { totalDays, daysElapsed, daysRemaining, timelinePercent }
+}
 
 // ---------------------------------------------------------------------------
 // Route handler – Dashboard summary
@@ -95,22 +236,16 @@ export async function GET(request) {
     const activePlan = await StudyPlan.findOne({ userId: tokenData.userId, status: 'active' }).lean()
     
     let dailyProgress = null
+    let planStats = null
+    let planTracking = null
+
     if (activePlan) {
-      const customQuestionsAnsweredToday = await UserAnswer.countDocuments({
-        userId: tokenData.userId,
-        createdAt: { $gte: startOfToday },
-      })
-      
-      dailyProgress = {
-        exams: {
-          current: examsTakenToday,
-          target: activePlan.dailyGoals?.exams || 1,
-        },
-        customQuestions: {
-          current: customQuestionsAnsweredToday,
-          target: activePlan.dailyGoals?.customQuestions || 20,
-        }
-      }
+      dailyProgress = await computeDailyProgress(tokenData.userId, startOfToday, activePlan)
+      planStats = computePlanStats(activePlan)
+
+      // Update daily history asynchronously (fire-and-forget for speed)
+      // We still await because we need the streak data
+      planTracking = await updatePlanDailyHistory(activePlan._id, dailyProgress)
     }
 
     // ── Live Readiness Score ────────────────────────────────────────────────
@@ -135,8 +270,17 @@ export async function GET(request) {
       readinessScore: user.aiInsights?.readinessScore ?? liveReadinessScore,
       weekStart: currentWeekStart.toISOString(),
       examsTakenToday,
-      activePlan,
+      activePlan: activePlan ? {
+        _id: activePlan._id,
+        targetDate: activePlan.targetDate,
+        dailyMinutes: activePlan.dailyMinutes,
+        dailyGoals: activePlan.dailyGoals,
+        status: activePlan.status,
+        createdAt: activePlan.createdAt,
+      } : null,
       dailyProgress,
+      planStats,
+      planTracking,
       pendingReviewsCount,
     })
   } catch (error) {

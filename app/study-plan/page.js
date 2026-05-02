@@ -24,15 +24,33 @@ function StudyPlanContent() {
   const [targetDate, setTargetDate] = useState('')
   const [dailyMinutes, setDailyMinutes] = useState(30)
   const [loading, setLoading] = useState(false)
+  const [loadingExisting, setLoadingExisting] = useState(true)
   const [planData, setPlanData] = useState(null)
+  const [existingPlan, setExistingPlan] = useState(null)
   
   const lang = user?.preferences?.language || 'es'
 
-  // Pre-fill target date to 30 days from now as default
+  // Load existing active plan on mount
   useEffect(() => {
     const defaultDate = new Date()
     defaultDate.setDate(defaultDate.getDate() + 30)
     setTargetDate(defaultDate.toISOString().split('T')[0])
+
+    fetch('/api/study-plan')
+      .then(r => r.json())
+      .then(data => {
+        if (data.plan) {
+          setExistingPlan(data.plan)
+          if (data.plan.targetDate) {
+            setTargetDate(new Date(data.plan.targetDate).toISOString().split('T')[0])
+          }
+          if (data.plan.dailyMinutes) {
+            setDailyMinutes(data.plan.dailyMinutes)
+          }
+        }
+      })
+      .catch(err => console.error('[StudyPlan] fetch existing:', err))
+      .finally(() => setLoadingExisting(false))
   }, [])
 
   const handleGeneratePlan = async (e) => {
@@ -92,6 +110,46 @@ function StudyPlanContent() {
           </p>
         </div>
       </div>
+
+      {/* Active Plan Status Banner */}
+      {existingPlan && !loadingExisting && (
+        <div className="card bg-white dark:bg-slate-800 shadow-lg border border-emerald-200 dark:border-emerald-800 animate-fade-in">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white text-xl shadow-lg shrink-0">
+              <CheckCircleOutlined />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-black text-ink dark:text-white">
+                {t('Plan Activo', 'Active Plan')}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                {existingPlan.dailyGoals?.exams || 1} {t('exámenes', 'exams')} · {existingPlan.dailyGoals?.customQuestions || 20} {t('preguntas', 'questions')} · {existingPlan.dailyGoals?.minutesTarget || existingPlan.dailyMinutes || 30} {t('min/día', 'min/day')}
+              </p>
+              <div className="flex items-center gap-3 mt-2 text-xs font-bold">
+                {existingPlan.planStreak > 0 && (
+                  <span className="text-orange-500 flex items-center gap-1">🔥 {existingPlan.planStreak} {t('días racha', 'day streak')}</span>
+                )}
+                <span className="text-slate-400">
+                  {Math.max(0, Math.ceil((new Date(existingPlan.targetDate) - new Date()) / (1000 * 60 * 60 * 24)))} {t('días restantes', 'days left')}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                if (!confirm(t('¿Estás seguro de abandonar el plan actual?', 'Are you sure you want to abandon the current plan?'))) return
+                try {
+                  await fetch('/api/study-plan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'abandoned' }) })
+                  setExistingPlan(null)
+                  toast?.success?.(t('Plan abandonado', 'Plan abandoned'))
+                } catch (e) { toast?.error?.(t('Error', 'Error')) }
+              }}
+              className="text-xs font-bold text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 px-3 py-2 rounded-lg transition-colors shrink-0"
+            >
+              {t('Abandonar plan', 'Abandon plan')}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Configuration Form */}
