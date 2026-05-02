@@ -284,14 +284,21 @@ export async function POST(request, { params }) {
     // ── Atomic transaction: update ExamSession + User together ──────────
     try {
       await withTransaction(async (txSession) => {
-        session.score = correctCount
-        session.errorCount = errors
-        session.passed = passed
-        session.status = 'completed'
-        session.completedAt = new Date()
-        session.totalTimeTakenSeconds = totalTime
-        session.topicBreakdown = topicBreakdown
-        await session.save({ session: txSession })
+        await ExamSession.findByIdAndUpdate(
+          sessionId,
+          {
+            $set: {
+              score: correctCount,
+              errorCount: errors,
+              passed: passed,
+              status: 'completed',
+              completedAt: new Date(),
+              totalTimeTakenSeconds: totalTime,
+              topicBreakdown: topicBreakdown,
+            }
+          },
+          { session: txSession }
+        )
 
         const userUpdate = {
           $set: {

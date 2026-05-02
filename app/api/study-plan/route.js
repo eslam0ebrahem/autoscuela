@@ -43,7 +43,7 @@ export async function POST(request) {
         dailyHistory: [],
         lastGoalMetDate: null,
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     )
 
     return NextResponse.json({ success: true, plan })
@@ -113,7 +113,7 @@ export async function PATCH(request) {
     const plan = await StudyPlan.findOneAndUpdate(
       { userId: tokenData.userId, status: 'active' },
       { $set: updates },
-      { new: true }
+      { returnDocument: 'after' }
     )
 
     if (!plan) {

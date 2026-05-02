@@ -294,19 +294,26 @@ export async function POST(request, { params }) {
 
         savedAnswer = created
 
-        session.answers.push({
-          questionId: question._id,
-          selectedOptionIdx: selected_option_idx,
-          isCorrect,
-          timeTakenSeconds: sanitizedTime,
-        })
-
-        session.currentQuestionIndex = Math.max(
-          session.currentQuestionIndex || 0,
-          session.answers.length
+        await ExamSession.findByIdAndUpdate(
+          sessionId,
+          {
+            $push: {
+              answers: {
+                questionId: question._id,
+                selectedOptionIdx: selected_option_idx,
+                isCorrect,
+                timeTakenSeconds: sanitizedTime,
+              }
+            },
+            $set: {
+              currentQuestionIndex: Math.max(
+                session.currentQuestionIndex || 0,
+                session.answers.length + 1
+              )
+            }
+          },
+          { session: txSession }
         )
-
-        await session.save({ session: txSession })
       })
     } catch (err) {
       if (err?.code === 11000) {
