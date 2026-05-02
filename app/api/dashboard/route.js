@@ -5,7 +5,7 @@ import ExamSession from '@/models/ExamSession'
 import UserAnswer from '@/models/UserAnswer'
 import StudyPlan from '@/models/StudyPlan'
 import { getCurrentUser } from '@/lib/auth'
-import { getMadridStartOfWeek } from '@/lib/gamification'
+import { getMadridStartOfWeek, getMadridStartOfDay } from '@/lib/gamification'
 import { startOfDay } from 'date-fns'
 import { getUserSkillProfile } from '@/lib/user-skill'
 import { computeReadinessScore } from '@/lib/services/ai/coachService'
@@ -68,10 +68,11 @@ export async function GET(request) {
     }
 
     // ── Exams Taken Today ─────────────────────────────────────────────────────
-    const startOfToday = startOfDay(new Date())
+    const startOfToday = getMadridStartOfDay()
     const examsTakenToday = await ExamSession.countDocuments({
       userId: tokenData.userId,
-      createdAt: { $gte: startOfToday },
+      status: 'completed',
+      completedAt: { $gte: startOfToday },
     })
 
     // ── Pending SRS Reviews ──────────────────────────────────────────────────
