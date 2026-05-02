@@ -18,7 +18,6 @@ import {
   ReloadOutlined,
   BulbOutlined,
   WarningOutlined,
-  ClockCircleOutlined,
   InteractionOutlined,
   BookOutlined,
 } from '@ant-design/icons'
@@ -71,7 +70,7 @@ const getAccuracyColors = (accuracy) => {
 /**
  * Topic progress bar component
  */
-function TopicBar({ tag, originalTag, accuracy, attempted, total = 100, lang, onPractice }) {
+function TopicBar({ tag, originalTag, accuracy, attempted, lang, onPractice }) {
   const colors = getAccuracyColors(accuracy)
   const percentage = Math.round(accuracy)
 

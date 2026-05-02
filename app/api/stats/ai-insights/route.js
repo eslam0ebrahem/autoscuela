@@ -5,6 +5,7 @@ import UserAnswer from '@/models/UserAnswer'
 import ExamSession from '@/models/ExamSession'
 import { getCurrentUser } from '@/lib/auth'
 import { getAIInsights } from '@/lib/groq'
+import { getUserSkillProfile } from '@/lib/user-skill'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -109,9 +110,10 @@ export async function GET(request) {
     }
 
     // ── Aggregate & call Groq ────────────────────────────────────────────────
-    const [aggregatedData, studyTrends] = await Promise.all([
+    const [aggregatedData, studyTrends, skillProfile] = await Promise.all([
       UserAnswer.aggregateForAI(user._id),
       UserAnswer.getStudyTrends(user._id, 14).catch(() => null),
+      getUserSkillProfile(user._id).catch(() => null),
     ])
 
     if (!aggregatedData || Object.keys(aggregatedData).length === 0) {
@@ -121,7 +123,7 @@ export async function GET(request) {
       )
     }
 
-    const insights = await getAIInsights(lang, aggregatedData, studyTrends)
+    const insights = await getAIInsights(lang, aggregatedData, studyTrends, skillProfile)
 
     // ── Persist to cache ─────────────────────────────────────────────────────
     const normalized = normalizeInsights(insights)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthContext'
 import AppShell from '@/components/AppShell'
@@ -407,7 +408,7 @@ function ReviewInterface() {
               </p>
             </div>
           ) : (
-            filteredQuestions.map((q, idx) => {
+            filteredQuestions.map((q) => {
               const questionText = getLocalizedText(q.question)
               const helpHtml = q.metadata?.help_html
               const isBookmarked = bookmarkedQuestions.has(q._id)
@@ -472,19 +473,29 @@ function ReviewInterface() {
                     </div>
                   </div>
 
-                  {/* Question Image */}
-                  {q.metadata?.image_url && (
-                    <div
-                      className="mx-4 mb-3 rounded-xl overflow-hidden border border-base-200 cursor-zoom-in"
-                      onClick={() => setExpandedImage(q.metadata.image_url)}
-                    >
-                      <img
-                        src={q.metadata.image_url}
-                        alt={t('Imagen de la pregunta', 'Question image')}
-                        className="w-full max-h-48 object-contain bg-base-50"
-                      />
-                    </div>
-                  )}
+                   {/* Question Image */}
+                   {q.metadata?.image_url && (
+                     <div
+                       className="mx-4 mb-3 rounded-xl overflow-hidden border border-base-200 cursor-zoom-in"
+                       onClick={() => setExpandedImage(q.metadata.image_url)}
+                       onKeyDown={(e) => {
+                         if (e.key === 'Enter' || e.key === ' ') {
+                           setExpandedImage(q.metadata.image_url)
+                         }
+                       }}
+                       role="button"
+                       tabIndex={0}
+                     >
+                       <div className="relative w-full h-48">
+                         <Image
+                           src={q.metadata.image_url}
+                           alt={t('Imagen de la pregunta', 'Question image')}
+                           fill
+                           className="object-contain bg-base-50"
+                         />
+                       </div>
+                     </div>
+                   )}
 
                   {/* Options */}
                   <div className="px-4 pb-3 space-y-2">
@@ -574,14 +585,24 @@ function ReviewInterface() {
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
             onClick={() => setExpandedImage(null)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' || e.key === 'Enter') {
+                setExpandedImage(null)
+              }
+            }}
             role="dialog"
             aria-label={t('Imagen ampliada', 'Expanded image')}
+            tabIndex={0}
           >
-            <img
-              src={expandedImage}
-              alt={t('Imagen ampliada', 'Expanded image')}
-              className="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain"
-            />
+            <div className="relative w-full h-full max-w-5xl max-h-[90vh]">
+              <Image
+                src={expandedImage}
+                alt={t('Imagen ampliada', 'Expanded image')}
+                fill
+                className="object-contain rounded-2xl shadow-2xl"
+                priority
+              />
+            </div>
             <button
               className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white
                 flex items-center justify-center text-lg hover:bg-white/20 transition-colors"

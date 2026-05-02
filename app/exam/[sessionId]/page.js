@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, memo } from 'react'
+import Image from 'next/image'
 import { useRouter, useParams } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
@@ -164,7 +165,7 @@ function sanitizeHtml(html) {
 const audioCache = {}
 const preloadAudio = (src) => {
   if (typeof window !== 'undefined' && !audioCache[src]) {
-    const audio = new Audio(src)
+    const audio = new window.Audio(src)
     audio.preload = 'auto'
     audioCache[src] = audio
   }
@@ -948,13 +949,23 @@ function ExamInterface() {
             <div
               className="sticky top-24 card p-0 overflow-hidden group cursor-zoom-in"
               onClick={() => setExpandedImage(currentQuestion.metadata.image_url)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setExpandedImage(currentQuestion.metadata.image_url)
+                }
+              }}
+              role="button"
+              tabIndex={0}
             >
               {/* 5.7: Ensure all question images have alt text */}
-              <img
-                src={currentQuestion.metadata.image_url}
-                alt={`Imagen de la pregunta: ${currentQuestion.question?.es?.substring(0, 80) || 'pregunta de examen'}`}
-                className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-110"
-              />
+              <div className="relative w-full aspect-square overflow-hidden">
+                <Image
+                  src={currentQuestion.metadata.image_url}
+                  alt={`Imagen de la pregunta: ${currentQuestion.question?.es?.substring(0, 80) || 'pregunta de examen'}`}
+                  fill
+                  className="object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+              </div>
               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <span className="text-white text-3xl">
                   <ZoomInOutlined />
@@ -1018,16 +1029,26 @@ function ExamInterface() {
         <div
           className="fixed inset-0 z-[100] glass flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setExpandedImage(null)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' || e.key === 'Enter') {
+              setExpandedImage(null)
+            }
+          }}
           role="dialog"
           aria-modal="true"
           aria-label="Expanded question image"
+          tabIndex={0}
         >
           {/* 5.7: Ensure all question images have alt text */}
-          <img
-            src={expandedImage}
-            className="max-w-full max-h-full rounded-3xl shadow-2xl animate-scale-in"
-            alt={`Enlarged image: ${currentQuestion?.question?.es?.substring(0, 80) || 'exam question'}`}
-          />
+          <div className="relative w-full h-full max-w-5xl max-h-[90vh]">
+            <Image
+              src={expandedImage}
+              className="rounded-3xl shadow-2xl animate-scale-in object-contain"
+              alt={`Enlarged image: ${currentQuestion?.question?.es?.substring(0, 80) || 'exam question'}`}
+              fill
+              priority
+            />
+          </div>
         </div>
       )}
 

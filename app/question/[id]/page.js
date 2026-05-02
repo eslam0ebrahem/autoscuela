@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
@@ -8,9 +9,7 @@ import DOMPurify from 'dompurify'
 import {
   LeftOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined,
   BulbOutlined,
-  ReloadOutlined,
   RocketOutlined,
   StarOutlined,
   StarFilled,
@@ -95,7 +94,7 @@ export default function SingleQuestionReviewPage() {
           <h2 className="text-2xl font-black mb-4">
             {t('Pregunta no encontrada', 'Question not found')}
           </h2>
-          <button onClick={() => router.back()} className="btn btn-primary">
+          <button onClick={() => router.back()} className="btn btn-primary" tabIndex={0}>
             {t('Volver', 'Go Back')}
           </button>
         </div>
@@ -113,7 +112,6 @@ export default function SingleQuestionReviewPage() {
       <div className="container-wrapper max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          {/* 5.4: Add aria-label to icon-only buttons */}
           <button
             onClick={() => router.back()}
             className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-lg"
@@ -165,12 +163,14 @@ export default function SingleQuestionReviewPage() {
 
           {question.metadata?.image_url && (
             <div className="rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 max-w-md mx-auto">
-              {/* 5.7: Ensure all question images have alt text */}
-              <img
-                src={question.metadata.image_url}
-                alt={`${t('Imagen de la pregunta:', 'Question image:')} ${questionText.substring(0, 100)}`}
-                className="w-full h-auto"
-              />
+              <div className="relative w-full aspect-video">
+                <Image
+                  src={question.metadata.image_url}
+                  alt={`${t('Imagen de la pregunta:', 'Question image:')} ${questionText.substring(0, 100)}`}
+                  fill
+                  className="object-contain"
+                />
+              </div>
             </div>
           )}
 

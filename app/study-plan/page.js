@@ -310,7 +310,8 @@ function StudyPlanContent() {
                       if (!res.ok) throw new Error('Failed to save plan')
                       toast?.success?.(t('¡Plan guardado exitosamente!', 'Plan saved successfully!'))
                       router.push('/dashboard')
-                    } catch (err) {
+                    } catch (e) {
+                      console.error('Study plan calculation error:', e)
                       toast?.error?.(t('Error al guardar el plan', 'Failed to save plan'))
                       setLoading(false)
                     }

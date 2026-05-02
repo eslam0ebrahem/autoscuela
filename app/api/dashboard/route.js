@@ -7,6 +7,8 @@ import StudyPlan from '@/models/StudyPlan'
 import { getCurrentUser } from '@/lib/auth'
 import { getMadridStartOfWeek } from '@/lib/gamification'
 import { startOfDay } from 'date-fns'
+import { getUserSkillProfile } from '@/lib/user-skill'
+import { computeReadinessScore } from '@/lib/services/ai/coachService'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -111,6 +113,18 @@ export async function GET(request) {
       }
     }
 
+    // ── Live Readiness Score ────────────────────────────────────────────────
+    const [skillProfile, studyTrends] = await Promise.all([
+      getUserSkillProfile(tokenData.userId).catch(() => ({})),
+      UserAnswer.getStudyTrends(tokenData.userId, 14).catch(() => null),
+    ])
+
+    const liveReadinessScore = computeReadinessScore({
+      aggregatedData: { overallAccuracy: skillProfile.overallAccuracy },
+      studyTrends,
+      skillProfile,
+    })
+
     // ── Response payload ─────────────────────────────────────────────────────
     return NextResponse.json({
       insights: user.aiInsights ?? null,
@@ -118,7 +132,7 @@ export async function GET(request) {
       badges: user.gamification?.earnedBadges ?? [],
       leaderboard,
       currentUserRank,
-      readinessScore: user.aiInsights?.readinessScore ?? 0,
+      readinessScore: user.aiInsights?.readinessScore ?? liveReadinessScore,
       weekStart: currentWeekStart.toISOString(),
       examsTakenToday,
       activePlan,

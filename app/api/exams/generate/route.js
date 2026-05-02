@@ -11,6 +11,7 @@ import { clamp, checkRateLimit } from '@/lib/utils'
 import { selectAdaptiveQuestions } from '@/lib/adaptive-selection'
 import { getExamRecommendation } from '@/lib/groq'
 import { ExamGenerateSchema, parseSchema } from '@/lib/schemas'
+import { getUserSkillProfile } from '@/lib/user-skill'
 
 const OFFICIAL_EXAM_QUESTIONS = 30
 const OFFICIAL_EXAM_DURATION_MIN = 30
@@ -126,21 +127,35 @@ function estimatePassProbability(skillProfile, mode, topicFilters, userStats, us
 
   let weakTopicPenalty = 0
   if (skillProfile.topics?.length > 0) {
-    const weakTopics = skillProfile.topics.filter((t) => t.accuracy < 60)
+    const weakTopics = skillProfile.topics.filter((t) => t.accuracy < 70)
     weakTopicPenalty = Math.min(10, weakTopics.length * 2)
   }
 
   let targetTopicPenalty = 0
   if (topicFilters?.length > 0 && skillProfile.topics?.length > 0) {
     const weakTargetTopics = skillProfile.topics.filter(
-      (t) => topicFilters.includes(t.tag) && t.accuracy < 60
+      (t) => topicFilters.includes(t.tag) && t.accuracy < 70
     )
     targetTopicPenalty = Math.min(10, weakTargetTopics.length * 3)
   }
 
-  const experienceBonus = userStats?.totalAnswers > 100 ? 5 : 0
+  // More granular experience bonus
+  let experienceBonus = 0
+  const totalAns = userStats?.totalAnswers || 0
+  if (totalAns >= 1000) experienceBonus = 15
+  else if (totalAns >= 500) experienceBonus = 10
+  else if (totalAns >= 200) experienceBonus = 7
+  else if (totalAns >= 100) experienceBonus = 5
+  else if (totalAns >= 50) experienceBonus = 2
+
+  // More granular streak bonus
   const streak = user?.gamification?.currentStreak ?? 0
-  const streakBonus = streak >= 7 ? 5 : streak >= 3 ? 2 : 0
+  let streakBonus = 0
+  if (streak >= 30) streakBonus = 15
+  else if (streak >= 14) streakBonus = 10
+  else if (streak >= 7) streakBonus = 5
+  else if (streak >= 3) streakBonus = 2
+  
   const trendBonus = 0
 
   const probability = Math.round(
@@ -415,8 +430,12 @@ export async function POST(request) {
     }
 
     const expiresAt = calculateExpiration(mode, questionIds.length)
+    
+    // Use dynamic skill profile to ensure up-to-date levels and topics (for penalties)
+    const skillProfile = await getUserSkillProfile(user._id)
+    
     const passPrediction = estimatePassProbability(
-      user.skillProfile,
+      skillProfile,
       mode,
       topicFilters,
       user.stats,
