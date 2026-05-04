@@ -24,6 +24,7 @@ const userAnswerSchema = new mongoose.Schema(
 )
 
 userAnswerSchema.index({ userId: 1, createdAt: -1 })
+userAnswerSchema.index({ userId: 1, createdAt: -1, time_taken_seconds: 1 }) // Dashboard daily aggregate
 userAnswerSchema.index({ userId: 1, 'topic_tag.es': 1 })
 userAnswerSchema.index({ examSessionId: 1, questionId: 1 }, { unique: true, sparse: true })
 userAnswerSchema.index({ userId: 1, 'srs.nextReviewAt': 1 })

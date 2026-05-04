@@ -1,7 +1,22 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getCurrentUser } from '@/lib/auth'
 import connectDB from '@/lib/db'
 import StudyPlan from '@/models/StudyPlan'
+import { parseSchema } from '@/lib/schemas'
+
+// Zod schema for PATCH body validation
+const StudyPlanPatchSchema = z.object({
+  dailyGoals: z.object({
+    exams: z.number().int().min(1).max(10).optional(),
+    customQuestions: z.number().int().min(5).max(200).optional(),
+    minutesTarget: z.number().int().min(5).max(480).optional(),
+  }).optional(),
+  status: z.enum(['active', 'completed', 'abandoned']).optional(),
+}).refine(
+  (data) => data.dailyGoals || data.status,
+  { message: 'At least one of dailyGoals or status must be provided' }
+)
 
 // ---------------------------------------------------------------------------
 // POST — Save / update the study plan
@@ -88,8 +103,22 @@ export async function PATCH(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { dailyGoals, status } = body
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const { data: validated, error: validationError } = parseSchema(StudyPlanPatchSchema, body)
+    if (validationError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationError.messages },
+        { status: validationError.status }
+      )
+    }
+
+    const { dailyGoals, status } = validated
 
     await connectDB()
 
@@ -104,10 +133,6 @@ export async function PATCH(request) {
     }
     if (status) {
       updates.status = status
-    }
-
-    if (Object.keys(updates).length === 0) {
-      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
     }
 
     const plan = await StudyPlan.findOneAndUpdate(

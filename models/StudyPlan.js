@@ -33,4 +33,6 @@ const studyPlanSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
+studyPlanSchema.index({ userId: 1, status: 1 })
+
 export default mongoose.models.StudyPlan || mongoose.model('StudyPlan', studyPlanSchema)
