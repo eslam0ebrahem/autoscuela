@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/AuthContext'
 import {
   RocketOutlined,
-  PlayCircleOutlined,
   CheckCircleOutlined,
   ThunderboltOutlined,
   TrophyOutlined,
@@ -178,9 +177,6 @@ export default function LandingPage() {
     router.push('/auth/register')
   }
 
-  const handleDemo = () => {
-    router.push('/demo')
-  }
 
   const t = (es, en) => (lang === 'en' ? en : es)
 
@@ -230,13 +226,6 @@ export default function LandingPage() {
             >
               <RocketOutlined />
               {t('🚀 Empieza Gratis', '🚀 Start Free')}
-            </button>
-            <button
-              onClick={handleDemo}
-              className="px-8 py-4 bg-white dark:bg-slate-800 text-ink dark:text-white font-bold rounded-xl hover:shadow-lg transition-all border border-slate-200 dark:border-slate-700 flex items-center gap-2"
-            >
-              <PlayCircleOutlined />
-              {t('Ver Demo', 'View Demo')}
             </button>
           </div>
 

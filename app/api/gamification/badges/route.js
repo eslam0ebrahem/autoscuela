@@ -1,17 +1,13 @@
 import { NextResponse } from 'next/server'
-import connectDB from '@/lib/db'
 import User from '@/models/User'
-import { getCurrentUser } from '@/lib/auth'
+import { compose, withAuth, withDB } from '@/lib/middleware'
 import { BADGES } from '@/lib/gamification'
 
-export async function GET(request) {
-  try {
-    const tokenData = await getCurrentUser(request)
-    if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    await connectDB()
-
-    const user = await User.findById(tokenData.userId).select(
+export const GET = compose(
+  withAuth(),
+  withDB(),
+  async (_request, ctx) => {
+    const user = await User.findById(ctx.user.userId).select(
       'gamification.earnedBadges preferences'
     )
 
@@ -28,7 +24,5 @@ export async function GET(request) {
     }))
 
     return NextResponse.json({ badges: badgesWithStatus, earned: earnedBadges.length })
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch badges' }, { status: 500 })
   }
-}
+)

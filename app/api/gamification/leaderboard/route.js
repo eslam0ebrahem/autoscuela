@@ -1,16 +1,12 @@
 import { NextResponse } from 'next/server'
-import connectDB from '@/lib/db'
 import User from '@/models/User'
-import { getCurrentUser } from '@/lib/auth'
-import { shouldResetWeeklyXP, getMadridStartOfWeek } from '@/lib/gamification'
+import { compose, withAuth, withDB } from '@/lib/middleware'
+import { getMadridStartOfWeek } from '@/lib/gamification'
 
-export async function GET(request) {
-  try {
-    const tokenData = await getCurrentUser(request)
-    if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    await connectDB()
-
+export const GET = compose(
+  withAuth(),
+  withDB(),
+  async (_request, ctx) => {
     // Lazily reset weekly XP for all users whose week has rolled over.
     // This updateMany is idempotent under concurrent requests: the filter matches
     // only users where weeklyXPResetAt < currentWeekStart (or missing). The $set
@@ -29,12 +25,12 @@ export async function GET(request) {
         $set: {
           'gamification.weeklyXP': 0,
           'gamification.weeklyXPResetAt': currentWeekStart,
-          'gamification.rank': 0, // Reset rank after weekly reset
+          'gamification.rank': 0,
         },
       }
     )
 
-    // ── OPTIMIZED: Get top users using pre-calculated rank field (instant query)
+    // ── Get top users using pre-calculated rank field (instant query)
     const topUsers = await User.find({ 'gamification.weeklyXP': { $gt: 0 } })
       .sort({ 'gamification.weeklyXP': -1 })
       .limit(50)
@@ -48,23 +44,26 @@ export async function GET(request) {
       nickname: user.nickname,
       weeklyXP: user.gamification.weeklyXP,
       streak: user.gamification.currentStreak,
-      isCurrentUser: user._id.toString() === tokenData.userId,
+      isCurrentUser: user._id.toString() === ctx.user.userId,
     }))
 
-    const currentUser = await User.findById(tokenData.userId)
+    const currentUser = await User.findById(ctx.user.userId)
       .select('nickname gamification.weeklyXP gamification.currentStreak gamification.rank')
       .lean()
 
     let userRank = 0
     const currentUserIndex = topUsers.findIndex(
-      (u) => u._id.toString() === tokenData.userId
+      (u) => u._id.toString() === ctx.user.userId
     )
-    
+
     if (currentUserIndex !== -1) {
       userRank = currentUserIndex + 1
     } else if (currentUser?.gamification?.weeklyXP > 0) {
       // Calculate exact rank for users outside top 50 to avoid stale cached ranks
-      userRank = (await User.countDocuments({ 'gamification.weeklyXP': { $gt: currentUser.gamification.weeklyXP } })) + 1
+      userRank =
+        (await User.countDocuments({
+          'gamification.weeklyXP': { $gt: currentUser.gamification.weeklyXP },
+        })) + 1
     }
 
     return NextResponse.json({
@@ -75,7 +74,5 @@ export async function GET(request) {
         nickname: currentUser?.nickname,
       },
     })
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 })
   }
-}
+)

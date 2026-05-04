@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import connectDB from '@/lib/db'
-import { getCurrentUser } from '@/lib/auth'
+import { compose, withAuth, withDB } from '@/lib/middleware'
 import UserAnswer from '@/models/UserAnswer'
 import Question from '@/models/Question'
 import mongoose from 'mongoose'
@@ -10,13 +9,10 @@ import mongoose from 'mongoose'
  * Returns user's incorrectly answered questions with filters
  * Query: ?topic=X&difficulty=Y&corrected=false&page=1&limit=20
  */
-export async function GET(request) {
-  try {
-    const tokenData = await getCurrentUser(request)
-    if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-    await connectDB()
-
+export const GET = compose(
+  withAuth(),
+  withDB(),
+  async (request, ctx) => {
     const url = new URL(request.url)
     const topic = url.searchParams.get('topic')
     const difficulty = url.searchParams.get('difficulty')
@@ -25,7 +21,7 @@ export async function GET(request) {
     const limit = Math.min(50, parseInt(url.searchParams.get('limit')) || 20)
     const skip = (page - 1) * limit
 
-    const objectId = new mongoose.Types.ObjectId(tokenData.userId)
+    const objectId = new mongoose.Types.ObjectId(ctx.user.userId)
 
     // ── OPTIMIZED: Combine 3 queries into single aggregation pipeline ──
     // Using $facet to get:
@@ -176,8 +172,5 @@ export async function GET(request) {
             : 0,
       },
     })
-  } catch (error) {
-    console.error('Mistakes API error:', error)
-    return NextResponse.json({ error: 'Failed to fetch mistakes' }, { status: 500 })
   }
-}
+)
