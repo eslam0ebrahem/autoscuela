@@ -66,8 +66,8 @@ export async function POST(request) {
       // Generic error to prevent user enumeration
       await logAudit({
         userId: null,
-        action: 'LOGIN_FAILED',
-        resourceType: 'User',
+        action: 'user_login_failed',
+        resourceType: 'user',
         resourceId: null,
         metadata: {
           email: email,
@@ -84,8 +84,8 @@ export async function POST(request) {
     if (!isValid) {
       await logAudit({
         userId: user._id,
-        action: 'LOGIN_FAILED',
-        resourceType: 'User',
+        action: 'user_login_failed',
+        resourceType: 'user',
         resourceId: user._id,
         metadata: {
           email: email,

@@ -5,7 +5,7 @@ const auditLogSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false,
       index: true,
     },
     action: {
@@ -17,6 +17,7 @@ const auditLogSchema = new mongoose.Schema(
         'user_role_change',
         'user_premium_grant',
         'user_premium_revoke',
+        'user_login_failed',
         'question_create',
         'question_update',
         'question_delete',
@@ -31,7 +32,7 @@ const auditLogSchema = new mongoose.Schema(
     resourceType: { type: String, enum: ['user', 'question', 'subscription'], required: true },
     resourceId: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
+      required: false,
       index: true,
     },
     changes: {
