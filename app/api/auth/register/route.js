@@ -3,7 +3,8 @@ import bcrypt from 'bcryptjs'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
 import VerificationToken from '@/models/VerificationToken'
-import { signToken, setAuthCookie } from '@/lib/auth'
+import RefreshToken from '@/models/RefreshToken'
+import { signToken, signRefreshToken, setAuthCookie, setRefreshCookie } from '@/lib/auth'
 import { sendVerificationEmail } from '@/lib/email'
 import { checkCSRF } from '@/lib/csrf'
 import { checkRateLimit } from '@/lib/utils'
@@ -111,6 +112,18 @@ export async function POST(request) {
       role: user.role,
     })
 
+    const refreshTokenValue = signRefreshToken({
+      userId: user._id.toString(),
+      role: user.role,
+    })
+
+    await RefreshToken.createToken(
+      refreshTokenValue,
+      user._id,
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      { ipAddress: ip }
+    )
+
     // ── Prepare response ───────────────────────────────────────────────
     const response = NextResponse.json(
       {
@@ -132,6 +145,7 @@ export async function POST(request) {
     )
 
     setAuthCookie(response, token, true) // Remember user by default
+    setRefreshCookie(response, refreshTokenValue, true)
 
     return response
   } catch (error) {

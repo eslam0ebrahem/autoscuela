@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
-import { signToken, setAuthCookie } from '@/lib/auth'
+import RefreshToken from '@/models/RefreshToken'
+import { signToken, signRefreshToken, setAuthCookie, setRefreshCookie } from '@/lib/auth'
 import { checkCSRF } from '@/lib/csrf'
 import { checkRateLimit } from '@/lib/utils'
 import { LoginSchema, parseSchema } from '@/lib/schemas'
@@ -114,6 +115,18 @@ export async function POST(request) {
       role: user.role,
     })
 
+    const refreshTokenValue = signRefreshToken({
+      userId: user._id.toString(),
+      role: user.role,
+    })
+
+    await RefreshToken.createToken(
+      refreshTokenValue,
+      user._id,
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      { ipAddress: ip }
+    )
+
     // ── Prepare response ───────────────────────────────────────────────
     const response = NextResponse.json({
       message: 'Logged in successfully',
@@ -132,6 +145,7 @@ export async function POST(request) {
     })
 
     setAuthCookie(response, token, rememberMe)
+    setRefreshCookie(response, refreshTokenValue, rememberMe)
 
     return response
   } catch (error) {
