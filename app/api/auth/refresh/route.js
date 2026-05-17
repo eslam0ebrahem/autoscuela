@@ -80,7 +80,7 @@ export async function POST(request) {
       await RefreshToken.rotateToken(
         refreshToken,
         newRefreshToken,
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+        new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 365 days
       )
     } catch (rotateError) {
       console.error('[auth/refresh] Token rotation failed:', rotateError)
