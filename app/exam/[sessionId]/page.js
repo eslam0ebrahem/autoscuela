@@ -75,9 +75,9 @@ function KeyboardShortcutsModal({ onClose, t }) {
  */
 function SessionIntroOverlay({ session, onStart, t, lang }) {
   const prediction = session?.aiPassPrediction
-  const [warmup, setWarmup] = React.useState(null)
+  const [warmup, setWarmup] = useState(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetch(`/api/ai/warmup?lang=${lang}`)
       .then(res => res.json())
       .then(data => {
