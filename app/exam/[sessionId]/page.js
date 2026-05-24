@@ -6,6 +6,8 @@ import { useRouter, useParams } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 import DOMPurify from 'dompurify'
+import { useExamSession } from './useExamSession'
+import { useExamAI } from './useExamAI'
 import {
   CloseOutlined,
   ClockCircleOutlined,
@@ -402,253 +404,57 @@ function ExamInterface() {
   const router = useRouter()
   const sessionId = params?.sessionId
 
-  const [session, setSession] = useState(null)
-  const [questions, setQuestions] = useState([])
-  const [currentIdx, setCurrentIdx] = useState(0)
-  const currentQuestion = questions[currentIdx]
-
-  const [selectedOption, setSelectedOption] = useState(null)
-  const [answered, setAnswered] = useState(false)
-  const [feedbackData, setFeedbackData] = useState(null)
-  const [showExplanation, setShowExplanation] = useState(false)
-  const [expandedImage, setExpandedImage] = useState(null)
-
-  const [timeLeft, setTimeLeft] = useState(null)
-  const [timerWarning, setTimerWarning] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState(null)
-  const [startTime, setStartTime] = useState(null)
-  const [confetti, setConfetti] = useState(false)
-  const [bookmarkedQuestions, setBookmarkedQuestions] = useState(new Set())
-  const [showShortcuts, setShowShortcuts] = useState(false)
-  const [isSessionStarted, setIsSessionStarted] = useState(false)
-
-  // ── AI States ──
-  const [aiHint, setAiHint] = useState(null)
-  const [loadingHint, setLoadingHint] = useState(false)
-  const [showHint, setShowHint] = useState(false)
-  const [aiExplanation, setAiExplanation] = useState(null)
-  const [loadingExplanation, setLoadingExplanation] = useState(false)
-  const [hintUsed, setHintUsed] = useState(false)
-
   const lang = user?.preferences?.language || 'es'
   const soundEnabled = user?.preferences?.soundEnabled !== false
-  const timerRef = useRef(null)
-  const answerFetchRef = useRef(null)
 
-  // ── AI Handlers ──
-  const handleRequestHint = useCallback(async () => {
-    if (!currentQuestion || loadingHint || hintUsed) return
-    setLoadingHint(true)
-    setShowHint(true)
-    setHintUsed(true)
-    try {
-      const res = await fetch('/api/ai/hint', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId: currentQuestion._id, lang }),
-      })
-      const data = await res.json()
-      setAiHint(data.hint)
-    } catch (err) {
-      console.error('[exam] hint error:', err)
-    } finally {
-      setLoadingHint(false)
-    }
-  }, [currentQuestion, lang, loadingHint, hintUsed])
+  const {
+    session,
+    questions,
+    currentIdx,
+    currentQuestion,
+    selectedOption,
+    answered,
+    feedbackData,
+    showExplanation,
+    setShowExplanation,
+    timeLeft,
+    timerWarning,
+    setTimerWarning,
+    loading,
+    submitting,
+    result,
+    confetti,
+    bookmarkedQuestions,
+    isSessionStarted,
+    setIsSessionStarted,
+    setStartTime,
+    fetchSessionData,
+    handleSubmitExam,
+    handleSelectOption,
+    handleNext,
+    toggleBookmark,
+  } = useExamSession(sessionId, soundEnabled, () => resetAIStates())
 
-  const handleRequestExplanation = useCallback(async () => {
-    if (!currentQuestion || !feedbackData || loadingExplanation) return
-    setLoadingExplanation(true)
-    try {
-      const res = await fetch('/api/ai/explain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionId: currentQuestion._id,
-          selectedIdx: selectedOption,
-          lang,
-        }),
-      })
-      const data = await res.json()
-      setAiExplanation(data.explanation)
-    } catch (err) {
-      console.error('[exam] explanation error:', err)
-    } finally {
-      setLoadingExplanation(false)
-    }
-  }, [currentQuestion, feedbackData, selectedOption, lang, loadingExplanation])
+  const {
+    aiHint,
+    loadingHint,
+    showHint,
+    setShowHint,
+    aiExplanation,
+    loadingExplanation,
+    hintUsed,
+    handleRequestHint,
+    handleRequestExplanation,
+    resetAIStates,
+  } = useExamAI(currentQuestion, feedbackData, selectedOption, lang)
 
-  // FIX 4: added `router` to dependency array
-  useEffect(() => {
-    if (!sessionId) return
-    Promise.all([
-      fetch('/api/bookmarks?idsOnly=true')
-        .then((r) => (r.ok ? r.json() : {}))
-        .catch(() => ({})),
-      fetch(`/api/exams/${sessionId}`).then((r) => r.json()),
-    ])
-      .then(([bookmarksData, examData]) => {
-        if (bookmarksData?.bookmarks) setBookmarkedQuestions(new Set(bookmarksData.bookmarks))
-
-        if (examData?.session) {
-          setSession(examData.session)
-          setQuestions(examData.questions || [])
-          if (examData.session.status === 'completed') {
-            setResult({
-              score: examData.session.score,
-              errors: examData.session.errorCount,
-              passed: examData.session.passed,
-              total: examData.questions?.length || 0,
-            })
-            setIsSessionStarted(true)
-          } else {
-            setCurrentIdx(examData.session.currentQuestionIndex || 0)
-            if (examData.session.currentQuestionIndex > 0) {
-              setIsSessionStarted(true)
-              setStartTime(Date.now())
-            }
-          }
-        } else {
-          console.error('Session not found or error:', examData?.error)
-          router.push('/exam')
-        }
-      })
-      .catch((err) => {
-        console.error('Error fetching session data:', err)
-        router.push('/exam')
-      })
-      .finally(() => setLoading(false))
-  }, [sessionId, router]) // FIX 4
-
-  const handleSubmitExam = useCallback(async () => {
-    setSubmitting(true)
-    try {
-      const res = await fetch(`/api/exams/${sessionId}/submit`, { method: 'POST' })
-      const data = await res.json()
-      if (data.result) {
-        setResult(data.result)
-        if (soundEnabled)
-          playSound(data.result.passed ? '/sounds/sucess-exam.mp3' : '/sounds/fail-exam.mp3')
-        if (data.result.passed) setConfetti(true)
-      }
-    } finally {
-      setSubmitting(false)
-    }
-  }, [sessionId, soundEnabled])
+  const [expandedImage, setExpandedImage] = useState(null)
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
   useEffect(() => {
-    if (!session?.expiresAt || result || !isSessionStarted) return
-    const endTime = new Date(session.expiresAt).getTime()
-    const checkTime = () => {
-      const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000))
-      setTimeLeft(remaining)
-      if (remaining <= 0) {
-        clearInterval(timerRef.current)
-        handleSubmitExam()
-      } else if (remaining === 300) setTimerWarning('5min')
-      else if (remaining === 60) setTimerWarning('1min')
-    }
-    checkTime()
-    timerRef.current = setInterval(checkTime, 1000)
-    return () => clearInterval(timerRef.current)
-  }, [session, result, isSessionStarted, handleSubmitExam])
+    fetchSessionData(router)
+  }, [fetchSessionData, router])
 
-  const handleSelectOption = useCallback(
-    (optIdx) => {
-      if (answered || submitting) return
-
-      answerFetchRef.current?.abort()
-      const controller = new AbortController()
-      answerFetchRef.current = controller
-
-      setSelectedOption(optIdx)
-      setAnswered(true)
-      const timeTaken = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0
-
-      if (session?.assistanceMode === 'instant' && soundEnabled) {
-        const localCorrect = currentQuestion?.correct_option_idx
-        if (localCorrect != null)
-          playSound(
-            optIdx === localCorrect ? '/sounds/correct-answer.mp3' : '/sounds/wrong-answer.mp3'
-          )
-      }
-
-      fetch(`/api/exams/${sessionId}/answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question_id: currentQuestion?._id,
-          selected_option_idx: optIdx,
-          time_taken: timeTaken,
-        }),
-        signal: controller.signal,
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          // ✅ THE KEY FIX: discard if this is no longer the active fetch
-          // AbortController alone doesn't catch responses that already arrived on the wire
-          if (answerFetchRef.current !== controller) return
-
-          setFeedbackData(data)
-          if (
-            soundEnabled &&
-            session?.assistanceMode === 'instant' &&
-            currentQuestion?.correct_option_idx == null
-          ) {
-            playSound(data.isCorrect ? '/sounds/correct-answer.mp3' : '/sounds/wrong-answer.mp3')
-          }
-        })
-        .catch((err) => {
-          if (err.name !== 'AbortError') console.error('Answer fetch error:', err)
-        })
-    },
-    [answered, submitting, startTime, session, soundEnabled, currentQuestion, sessionId]
-  )
-
-  const handleNext = useCallback(() => {
-    answerFetchRef.current?.abort()
-    answerFetchRef.current = null // ← null means "no active fetch", so any late arrival is discarded
-
-    if (currentIdx < questions.length - 1) {
-      setCurrentIdx((i) => i + 1)
-      setSelectedOption(null)
-      setAnswered(false)
-      setFeedbackData(null)
-      setShowExplanation(false)
-      setAiHint(null)
-      setShowHint(false)
-      setHintUsed(false)
-      setAiExplanation(null)
-      setStartTime(Date.now())
-    } else {
-      handleSubmitExam()
-    }
-  }, [currentIdx, questions.length, handleSubmitExam])
-
-  // FIX 3: wrapped in useCallback
-  const toggleBookmark = useCallback(async (questionId) => {
-    try {
-      const res = await fetch('/api/bookmarks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setBookmarkedQuestions((prev) => {
-          const s = new Set(prev)
-          data.isBookmarked ? s.add(questionId) : s.delete(questionId)
-          return s
-        })
-      }
-    } catch (err) {
-      console.error('Error toggling bookmark:', err)
-    }
-  }, []) // FIX 3
-
-  // FIX 3: added handleSelectOption, handleNext, toggleBookmark to deps
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return
@@ -692,7 +498,8 @@ function ExamInterface() {
     handleSelectOption,
     handleNext,
     toggleBookmark,
-  ]) // FIX 3
+    setShowExplanation,
+  ])
 
   if (loading)
     return <div className="flex h-96 items-center justify-center animate-pulse text-4xl">🚗</div>

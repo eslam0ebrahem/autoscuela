@@ -139,7 +139,7 @@ function estimatePassProbability(skillProfile, mode, topicFilters, userStats, us
     targetTopicPenalty = Math.min(10, weakTargetTopics.length * 3)
   }
 
-  // More granular experience bonus
+  // More granular experience bonus based on rolling total answered
   let experienceBonus = 0
   const totalAns = userStats?.totalAnswers || 0
   if (totalAns >= 1000) experienceBonus = 15
@@ -156,7 +156,15 @@ function estimatePassProbability(skillProfile, mode, topicFilters, userStats, us
   else if (streak >= 7) streakBonus = 5
   else if (streak >= 3) streakBonus = 2
   
-  const trendBonus = 0
+  // Trend bonus based on recent performance
+  let trendBonus = 0
+  if (skillProfile.topics?.length > 0) {
+    const improving = skillProfile.topics.filter(t => t.trend === 'improving').length
+    const declining = skillProfile.topics.filter(t => t.trend === 'declining').length
+    
+    // Max 10 points bonus or penalty
+    trendBonus = Math.min(10, Math.max(-10, (improving - declining) * 2))
+  }
 
   const probability = Math.round(
     Math.min(
