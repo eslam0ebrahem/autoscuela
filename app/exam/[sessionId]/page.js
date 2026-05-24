@@ -73,9 +73,20 @@ function KeyboardShortcutsModal({ onClose, t }) {
 /**
  * SESSION INTRO OVERLAY
  */
-function SessionIntroOverlay({ session, onStart, t }) {
+function SessionIntroOverlay({ session, onStart, t, lang }) {
   const prediction = session?.aiPassPrediction
-  const tip = session?.aiSessionTip
+  const [warmup, setWarmup] = React.useState(null)
+
+  React.useEffect(() => {
+    fetch(`/api/ai/warmup?lang=${lang}`)
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error) setWarmup(data)
+      })
+      .catch(console.error)
+  }, [lang])
+
+  const tip = warmup ? `${warmup.emoji} ${warmup.fact}` : session?.aiSessionTip
 
   return (
     <div className="fixed inset-0 z-[100] glass flex items-center justify-center p-4 animate-fade-in">
@@ -604,6 +615,7 @@ function ExamInterface() {
             setStartTime(Date.now())
           }}
           t={t}
+          lang={lang}
         />
       )}
 
