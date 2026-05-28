@@ -55,6 +55,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
+    // ── Deduplicate: Return already generated feedback from submit task ──
+    if (session.aiCoachFeedback && !session.aiCoachFeedback._fallback) {
+      return NextResponse.json({ feedback: session.aiCoachFeedback })
+    }
+
     // Build exam summary for AI
     const examSummary = await getExamSummary(session)
 

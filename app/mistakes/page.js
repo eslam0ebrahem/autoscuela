@@ -209,6 +209,9 @@ function MistakeReviewContent() {
   const [refreshing, setRefreshing] = useState(false)
   const [filter, setFilter] = useState(FILTER_OPTIONS.ALL)
   const [selectedTopic, setSelectedTopic] = useState(null)
+  
+  const [aiPatterns, setAiPatterns] = useState(null)
+  const [loadingPatterns, setLoadingPatterns] = useState(false)
 
   // ── Fetch mistakes ─────────────────────────────────────────────────────
   const fetchMistakes = useCallback(
@@ -238,6 +241,22 @@ function MistakeReviewContent() {
     [filter, selectedTopic, t, toast]
   )
 
+  // ── Fetch AI Patterns ──────────────────────────────────────────────────
+  const fetchAIPatterns = useCallback(async () => {
+    try {
+      setLoadingPatterns(true)
+      const res = await fetch('/api/ai/patterns?lang=' + lang)
+      const data = await res.json()
+      if (data && data.patterns) {
+        setAiPatterns(data)
+      }
+    } catch (err) {
+      console.error('[mistakes] AI patterns fetch error:', err)
+    } finally {
+      setLoadingPatterns(false)
+    }
+  }, [lang])
+
   // ── Fetch topics ───────────────────────────────────────────────────────
   useEffect(() => {
     const fetchTopics = async () => {
@@ -259,6 +278,11 @@ function MistakeReviewContent() {
   useEffect(() => {
     fetchMistakes()
   }, [fetchMistakes])
+
+  // ── Fetch AI Patterns on mount ─────────────────────────────────────────
+  useEffect(() => {
+    fetchAIPatterns()
+  }, [fetchAIPatterns])
 
   // ── Clear mistake ──────────────────────────────────────────────────────
   const handleClearMistake = useCallback(
@@ -399,6 +423,61 @@ function MistakeReviewContent() {
                 </p>
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {/* ── AI Mistake Analysis ───────────────────────────────────── */}
+      {aiPatterns?.patterns?.length > 0 && (
+        <div className="card bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-100 dark:border-indigo-800/50">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg">
+              <RobotOutlined className="text-xl" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-indigo-900 dark:text-indigo-100">
+                {t('Análisis de Patrones con IA', 'AI Pattern Analysis')}
+              </h2>
+              <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                {aiPatterns.study_tip}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {aiPatterns.patterns.slice(0, 2).map((pattern, idx) => (
+              <div key={idx} className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-bold rounded-lg truncate max-w-[70%]">
+                    {pattern.topic}
+                  </span>
+                  <span className={`px-2.5 py-1 text-[10px] font-black rounded-lg uppercase tracking-wider ${
+                    pattern.severity === 'critical' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' :
+                    pattern.severity === 'moderate' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' :
+                    'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                  }`}>
+                    {pattern.severity}
+                  </span>
+                </div>
+                <h4 className="font-bold text-ink dark:text-white text-sm mb-1">{pattern.concept}</h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">{pattern.root_cause}</p>
+                
+                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 border-l-4 border-primary">
+                  <p className="text-xs font-bold text-primary mb-1">{t('Estrategia', 'Strategy')}:</p>
+                  <p className="text-xs text-ink dark:text-slate-300">{pattern.fix_strategy}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {aiPatterns.priority_fix && (
+            <div className="mt-4 p-3 bg-white/60 dark:bg-slate-800/60 rounded-xl flex items-start gap-3">
+              <BulbOutlined className="text-amber-500 mt-0.5 text-lg shrink-0" />
+              <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-200">
+                <span className="font-black text-indigo-700 dark:text-indigo-400 mr-2">{t('Prioridad', 'Priority')}:</span>
+                {aiPatterns.priority_fix}
+              </p>
+            </div>
           )}
         </div>
       )}

@@ -396,14 +396,52 @@ export async function POST(request) {
       )
     }
 
-    const questionIds = await resolveQuestionIds({
-      userId: tokenData.userId,
-      mode,
-      requestedCount,
-      topicFilters,
-      onlyNewQuestions: only_new_questions,
-      bookmarkIds,
-    })
+    // Fetch dynamic skill profile
+    const skillProfile = await getUserSkillProfile(user._id)
+
+    let questionIds = []
+    
+    if ((mode === 'official' || mode === 'custom') && topicFilters.length === 0) {
+      const weakTopics = (skillProfile?.topics || [])
+        .filter(t => t.accuracy < 70)
+        .map(t => t.tag)
+
+      if (weakTopics.length > 0) {
+        const weakCount = Math.floor(requestedCount * 0.35) // 35% from weak spots
+        const regularCount = requestedCount - weakCount
+
+        const weakIds = await resolveQuestionIds({
+          userId: tokenData.userId,
+          mode: 'weak_topics',
+          requestedCount: weakCount,
+          topicFilters: weakTopics,
+          onlyNewQuestions: only_new_questions,
+          bookmarkIds,
+        })
+
+        const regularIds = await resolveQuestionIds({
+          userId: tokenData.userId,
+          mode,
+          requestedCount: regularCount,
+          topicFilters,
+          onlyNewQuestions: only_new_questions,
+          bookmarkIds: [],
+        })
+
+        questionIds = sampleIds([...new Set([...weakIds, ...regularIds])], requestedCount)
+      }
+    }
+
+    if (questionIds.length === 0) {
+      questionIds = await resolveQuestionIds({
+        userId: tokenData.userId,
+        mode,
+        requestedCount,
+        topicFilters,
+        onlyNewQuestions: only_new_questions,
+        bookmarkIds,
+      })
+    }
 
     const language = user.preferences?.language ?? 'en'
 
@@ -438,9 +476,6 @@ export async function POST(request) {
     }
 
     const expiresAt = calculateExpiration(mode, questionIds.length)
-    
-    // Use dynamic skill profile to ensure up-to-date levels and topics (for penalties)
-    const skillProfile = await getUserSkillProfile(user._id)
     
     const passPrediction = estimatePassProbability(
       skillProfile,
