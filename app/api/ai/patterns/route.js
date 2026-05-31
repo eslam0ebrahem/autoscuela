@@ -51,7 +51,7 @@ export async function GET(request) {
           as: 'question',
         },
       },
-      { $unwind: { path: '$question', preserveNullAndEmpty: false } },
+      { $unwind: { path: '$question', preserveNullAndEmptyArrays: false } },
       {
         $group: {
           _id: '$topic_tag.es',
