@@ -164,7 +164,12 @@ function StatCard({ stat, lang }) {
 export default function LandingPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const [lang, setLang] = useState('es')
+  const [lang, setLang] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('landing_lang') || 'es'
+    }
+    return 'es'
+  })
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
@@ -309,7 +314,11 @@ export default function LandingPage() {
 
       {/* ── Language Toggle (Floating) ──────────────────────────────── */}
       <button
-        onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
+        onClick={() => {
+        const next = lang === 'es' ? 'en' : 'es'
+        setLang(next)
+        localStorage.setItem('landing_lang', next)
+      }}
         className="fixed bottom-6 right-6 w-14 h-14 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center text-xl z-50"
         title={lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
       >

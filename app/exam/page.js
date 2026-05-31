@@ -404,10 +404,11 @@ function ExamSetup() {
 
         const data = await res.json()
         if (isMounted) {
-          // Normalize to match expected format { tag: '...', count: ... }
-          const decks = (data.topics || []).map((t) => ({
-            tag: typeof t.tag === 'object' ? t.tag.es : t.tag,
-            count: t.attempted || 0,
+          // Normalize to match expected format { tag: '...', tagEn: '...', count: ... }
+          const decks = (data.topics || []).map((topic) => ({
+            tag: typeof topic.tag === 'object' ? topic.tag.es : topic.tag,
+            tagEn: typeof topic.tag === 'object' ? topic.tag.en : (topic.tagEn || topic.tag),
+            count: topic.attempted || 0,
           }))
           setAvailableTopics(decks)
           setTopicsLoading(false)

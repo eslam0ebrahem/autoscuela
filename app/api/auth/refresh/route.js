@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import jwt from 'jsonwebtoken'
 import connectDB from '@/lib/db'
 import User from '@/models/User'
 import RefreshToken from '@/models/RefreshToken'
@@ -9,7 +8,7 @@ import {
   signRefreshToken,
   setAuthCookie,
   setRefreshCookie,
-  verifyToken,
+  verifyRefreshToken,
 } from '@/lib/auth'
 import { checkCSRF } from '@/lib/csrf'
 
@@ -36,10 +35,8 @@ export async function POST(request) {
     }
 
     // ── Verify refresh token ───────────────────────────────────────────────
-    let tokenData
-    try {
-      tokenData = jwt.verify(refreshToken, process.env.JWT_SECRET)
-    } catch (error) {
+    const tokenData = verifyRefreshToken(refreshToken)
+    if (!tokenData) {
       return NextResponse.json({ error: 'Invalid refresh token' }, { status: 401 })
     }
 
@@ -80,7 +77,7 @@ export async function POST(request) {
       await RefreshToken.rotateToken(
         refreshToken,
         newRefreshToken,
-        new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 365 days
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
       )
     } catch (rotateError) {
       console.error('[auth/refresh] Token rotation failed:', rotateError)

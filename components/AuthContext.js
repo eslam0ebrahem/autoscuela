@@ -101,8 +101,8 @@ export function AuthProvider({ children }) {
           // Continue - will refresh again on next interval
         }
       },
-      6 * 60 * 60 * 1000
-    ) // 6 hours
+      12 * 60 * 1000
+    ) // 12 minutes — refresh before 15-minute access token expires
 
     return () => clearInterval(refreshInterval)
   }, [user])

@@ -167,7 +167,12 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true)
   const [startingExam, setStartingExam] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const [hasCelebrated, setHasCelebrated] = useState(false)
+  const [hasCelebrated, setHasCelebrated] = useState(() => {
+    // Persist celebration per day so confetti only fires once
+    if (typeof window === 'undefined') return false
+    const todayKey = `celebrated_${new Date().toISOString().slice(0, 10)}`
+    return localStorage.getItem(todayKey) === '1'
+  })
   const [pendingReviews, setPendingReviews] = useState(0)
 
   const isPremium = user?.isPremium
@@ -251,6 +256,9 @@ function DashboardContent() {
         colors: ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
       })
       setHasCelebrated(true)
+      // Persist so refresh / re-navigation doesn't re-trigger
+      const todayKey = `celebrated_${new Date().toISOString().slice(0, 10)}`
+      localStorage.setItem(todayKey, '1')
     }
   }, [dailyProgress, hasCelebrated])
 
@@ -307,7 +315,9 @@ function DashboardContent() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
             <h1 className="text-2xl md:text-3xl font-black">
-              {t('Día', 'Day')} {streak || 1} — {t('¿Listo para aprobar?', 'Ready to pass?')}
+              {streak > 0
+                ? <>{t('Día', 'Day')} {streak} — {t('¿Listo para aprobar?', 'Ready to pass?')}</>
+                : t('¡Bienvenido a Vialia!', 'Welcome to Vialia!')}
             </h1>
             {insights?.coachMessage && (
               <p className="text-indigo-100 font-medium mt-2 text-sm md:text-base max-w-2xl">
@@ -605,7 +615,7 @@ function DashboardContent() {
                   <p className="text-sm font-bold text-ink dark:text-white truncate">
                     {entry.nickname || entry.name || 'Anonymous'}{' '}
                     {entry.isCurrentUser && (
-                      <span className="text-primary text-[10px] ml-1">(tú)</span>
+                      <span className="text-primary text-[10px] ml-1">{t('(tú)', '(you)')}</span>
                     )}
                   </p>
                 </div>

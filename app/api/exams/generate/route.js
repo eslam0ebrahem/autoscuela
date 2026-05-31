@@ -50,11 +50,16 @@ function normalizeTopicFilters(topicFilter) {
 }
 
 function calculateExpiration(mode, questionCount) {
-  if (mode !== 'official') return null
-  const baseDuration = DURATIONS[mode] ?? OFFICIAL_EXAM_DURATION_MIN
-  const extraTime = Math.max(0, Math.floor((questionCount - OFFICIAL_EXAM_QUESTIONS) / 10))
   const expiresAt = new Date()
-  expiresAt.setMinutes(expiresAt.getMinutes() + baseDuration + extraTime)
+  if (mode === 'official') {
+    // Official exams have a strict time limit
+    const baseDuration = DURATIONS[mode] ?? OFFICIAL_EXAM_DURATION_MIN
+    const extraTime = Math.max(0, Math.floor((questionCount - OFFICIAL_EXAM_QUESTIONS) / 10))
+    expiresAt.setMinutes(expiresAt.getMinutes() + baseDuration + extraTime)
+  } else {
+    // All other modes: 24-hour safety-net expiry to prevent zombie sessions
+    expiresAt.setHours(expiresAt.getHours() + 24)
+  }
   return expiresAt
 }
 

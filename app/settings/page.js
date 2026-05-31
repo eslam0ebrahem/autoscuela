@@ -4,6 +4,7 @@ import { useState } from 'react'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 import { useTheme } from '@/components/ThemeProvider'
+import { useToast } from '@/components/Toast'
 import {
   UserOutlined,
   SettingOutlined,
@@ -13,11 +14,20 @@ import {
   MoonOutlined,
   DesktopOutlined,
   CrownOutlined,
+  ArrowRightOutlined,
 } from '@ant-design/icons'
 
 function SettingsContent() {
   const { user, t, refreshUser } = useAuth()
   const { theme, setTheme } = useTheme()
+  // Safely get toast — won't throw if provider is missing
+  let toast
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    toast = useToast()
+  } catch {
+    toast = null
+  }
 
   const [savingProfile, setSavingProfile] = useState(false)
   const [nickname, setNickname] = useState(user?.nickname || '')
@@ -30,14 +40,22 @@ function SettingsContent() {
     try {
       const res = await fetch('/api/users/preferences', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
         body: JSON.stringify({ nickname: nickname.trim() }),
       })
       if (res.ok) {
         refreshUser()
+        toast?.success?.(t('Guardado', 'Saved'), t('Nickname actualizado', 'Nickname updated'))
+      } else {
+        const data = await res.json().catch(() => ({}))
+        toast?.error?.(t('Error', 'Error'), data.error || t('No se pudo guardar', 'Could not save'))
       }
     } catch (err) {
       console.error(err)
+      toast?.error?.(t('Error', 'Error'), t('Error de conexión', 'Connection error'))
     } finally {
       setSavingProfile(false)
     }
@@ -47,7 +65,10 @@ function SettingsContent() {
     setTheme(newTheme)
     fetch('/api/users/preferences', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      },
       body: JSON.stringify({ theme: newTheme }),
     }).catch(console.error)
   }
@@ -103,12 +124,12 @@ function SettingsContent() {
           </div>
           {!user?.isPremium && (
             <div className="p-6">
-              <button
-                onClick={() => {}}
-                className="px-8 py-3 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all shadow-xl active:scale-95"
+              <a
+                href="mailto:hola@vialia.app?subject=Vialia%20Premium"
+                className="inline-flex items-center gap-2 px-8 py-3 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition-all shadow-xl active:scale-95"
               >
-                {t('Saber más', 'Learn More')}
-              </button>
+                {t('Saber más', 'Learn More')} <ArrowRightOutlined />
+              </a>
             </div>
           )}
         </div>

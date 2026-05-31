@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { AuthProvider, useAuth } from '@/components/AuthContext'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 
 function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { login, t } = useAuth()
 
   const [email, setEmail] = useState('')
@@ -24,8 +25,10 @@ function LoginForm() {
     setError('')
     try {
       const result = await login(email, password, rememberMe)
-      if (result.success) router.replace('/dashboard')
-      else setError(result.error || 'Error al entrar')
+      if (result.success) {
+        const from = searchParams.get('from')
+        router.replace(from && from.startsWith('/') ? from : '/dashboard')
+      } else setError(result.error || 'Error al entrar')
     } catch (err) {
       setError('Error de conexión')
     } finally {
@@ -153,5 +156,9 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
-  return <LoginForm />
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-canvas" />}>
+      <LoginForm />
+    </Suspense>
+  )
 }

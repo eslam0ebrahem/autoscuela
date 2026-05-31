@@ -70,12 +70,10 @@ export const metadata = {
     apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
   },
 
-  // Verification
-  verification: {
-    google: 'your-google-site-verification-code',
-    // yandex: 'your-yandex-verification',
-    // other: 'your-other-verification',
-  },
+  // Verification — add real tokens when available
+  // verification: {
+  //   google: 'your-google-site-verification-code',
+  // },
 
   // App links (for mobile deep linking)
   appleWebApp: {
