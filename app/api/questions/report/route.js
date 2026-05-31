@@ -6,6 +6,7 @@ import Question from '@/models/Question'
 import User from '@/models/User'
 import { QuestionReportSchema, parseSchema } from '@/lib/schemas'
 import { checkRateLimit } from '@/lib/utils'
+import { checkCSRF } from '@/lib/csrf'
 
 /**
  * POST /api/questions/report
@@ -15,6 +16,9 @@ export async function POST(request) {
   try {
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const csrfError = checkCSRF('POST', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     const rateCheck = await checkRateLimit(`questions:report:${tokenData.userId}`, 5, 86400000) // 5 per day
     if (!rateCheck.allowed) {

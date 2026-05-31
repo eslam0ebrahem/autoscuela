@@ -7,6 +7,7 @@ import connectDB from '@/lib/db'
 import { checkRateLimit } from '@/lib/utils'
 import { AIHintSchema, parseSchema } from '@/lib/schemas'
 import UserAnswer from '@/models/UserAnswer'
+import { checkCSRF } from '@/lib/csrf'
 
 export const runtime = 'nodejs'
 export const maxDuration = 15
@@ -17,6 +18,9 @@ export async function POST(request) {
     if (!tokenData) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const csrfError = checkCSRF('POST', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     await connectDB()
     const user = await User.findById(tokenData.userId).lean()

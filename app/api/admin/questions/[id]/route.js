@@ -3,6 +3,7 @@ import connectDB from '@/lib/db'
 import Question from '@/models/Question'
 import { getCurrentUser } from '@/lib/auth'
 import { isValidObjectId } from '@/lib/utils'
+import { checkCSRF } from '@/lib/csrf'
 
 // ---------------------------------------------------------------------------
 // Helper: Require Admin
@@ -57,7 +58,15 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Invalid question ID' }, { status: 400 })
     }
 
-    const data = await request.json()
+    const csrfError = checkCSRF('PUT', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
+
+    let data
+    try {
+      data = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
 
     // Prevent overwriting protected fields
     delete data._id
@@ -96,6 +105,9 @@ export async function DELETE(request, { params }) {
     if (!tokenData) {
       return NextResponse.json({ error: 'Admin only' }, { status: 403 })
     }
+
+    const csrfError = checkCSRF('DELETE', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     if (!isValidObjectId(id)) {
       return NextResponse.json({ error: 'Invalid question ID' }, { status: 400 })

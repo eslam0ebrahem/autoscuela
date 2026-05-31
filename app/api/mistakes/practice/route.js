@@ -6,6 +6,7 @@ import ExamSession from '@/models/ExamSession'
 import UserAnswer from '@/models/UserAnswer'
 import mongoose from 'mongoose'
 import { selectAdaptiveQuestions } from '@/lib/adaptive-selection'
+import { checkCSRF } from '@/lib/csrf'
 
 /**
  * POST /api/mistakes/practice
@@ -16,6 +17,9 @@ export async function POST(request) {
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const csrfError = checkCSRF('POST', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
+
     await connectDB()
 
     const user = await User.findById(tokenData.userId)
@@ -23,12 +27,19 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Premium subscription required' }, { status: 403 })
     }
 
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
     const {
       topic_filter = null,
       difficulty_filter = null,
       corrected_filter = false, // false = practice uncorrected mistakes only
       count = 30,
-    } = await request.json()
+    } = body
 
     const objectId = new mongoose.Types.ObjectId(tokenData.userId)
 

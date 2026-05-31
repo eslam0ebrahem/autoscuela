@@ -8,6 +8,7 @@ import logger from '@/lib/logger'
 import { logAudit, extractChanges } from '@/lib/audit'
 import { ERROR_CODES, ERROR_MESSAGES } from '@/lib/error-codes'
 import { z } from 'zod'
+import { checkCSRF } from '@/lib/csrf'
 
 const PathParamsSchema = z.object({
   id: z.string().regex(/^[0-9a-f]{24}$/, 'Invalid MongoDB ObjectID'),
@@ -66,6 +67,9 @@ export async function PATCH(request, { params }) {
     if (!tokenData || tokenData.role !== 'admin') {
       return NextResponse.json({ error: 'Admin only' }, { status: 403 })
     }
+
+    const csrfError = checkCSRF('PATCH', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     // ── Rate limiting ──────────────────────────────────────────────────
     const rateCheck = await checkRateLimit(`admin:users:${tokenData.userId}:patch`, 10, 60000)

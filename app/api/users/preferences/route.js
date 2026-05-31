@@ -4,6 +4,7 @@ import connectDB from '@/lib/db'
 import User from '@/models/User'
 import { getCurrentUser } from '@/lib/auth'
 import { parseSchema, UserPreferencesUpdateSchema } from '@/lib/schemas'
+import { checkCSRF } from '@/lib/csrf'
 
 export async function GET(request) {
   try {
@@ -28,6 +29,9 @@ export async function PUT(request) {
   try {
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const csrfError = checkCSRF('PUT', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     let body
     try {

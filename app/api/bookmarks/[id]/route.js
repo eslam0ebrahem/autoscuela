@@ -3,6 +3,7 @@ import connectDB from '@/lib/db'
 import User from '@/models/User'
 import { getCurrentUser } from '@/lib/auth'
 import { isValidObjectId } from '@/lib/utils'
+import { checkCSRF } from '@/lib/csrf'
 
 /**
  * DELETE /api/bookmarks/[id]
@@ -17,6 +18,9 @@ export async function DELETE(request, { params }) {
 
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const csrfError = checkCSRF('DELETE', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     await connectDB()
 

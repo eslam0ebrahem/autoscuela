@@ -7,6 +7,7 @@ import { isValidObjectId, checkRateLimit } from '@/lib/utils'
 import { AICoachSchema, parseSchema } from '@/lib/schemas'
 import { getRecentSessions, getExamSummary } from '@/lib/services/analytics'
 import { getUserSkillProfile } from '@/lib/user-skill'
+import { checkCSRF } from '@/lib/csrf'
 
 export const runtime = 'nodejs'
 export const maxDuration = 25
@@ -17,6 +18,9 @@ export async function POST(request) {
     if (!tokenData) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const csrfError = checkCSRF('POST', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     // ── Rate limiting (2 coach calls per minute) ───────────────────────
     const rateCheck = await checkRateLimit(`ai:coach:${tokenData.userId}`, 2, 60000)

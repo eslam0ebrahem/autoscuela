@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 import connectDB from '@/lib/db'
 import StudyPlan from '@/models/StudyPlan'
 import { parseSchema } from '@/lib/schemas'
+import { checkCSRF } from '@/lib/csrf'
 
 const StudyPlanPostSchema = z.object({
   targetDate: z.string().min(1),
@@ -33,6 +34,9 @@ export async function POST(request) {
     if (!tokenData) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const csrfError = checkCSRF('POST', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     let body
     try {
@@ -119,6 +123,9 @@ export async function PATCH(request) {
     if (!tokenData) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const csrfError = checkCSRF('PATCH', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     let body
     try {

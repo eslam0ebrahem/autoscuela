@@ -11,6 +11,7 @@ import { escapeRegex, parsePositiveInt } from '@/lib/utils'
 import logger from '@/lib/logger'
 import { logAudit } from '@/lib/audit'
 import { ERROR_CODES, ERROR_MESSAGES } from '@/lib/error-codes'
+import { checkCSRF } from '@/lib/csrf'
 
 // ---------------------------------------------------------------------------
 // Helper: Require Admin
@@ -92,7 +93,17 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Admin only' }, { status: 403 })
     }
 
-    const { questions } = await request.json()
+    const csrfError = checkCSRF('POST', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
+
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const { questions } = body
 
     // Validation
     if (!Array.isArray(questions) || questions.length === 0) {

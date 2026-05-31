@@ -13,6 +13,7 @@ import { getUserSkillProfile } from '@/lib/user-skill'
 import { JSDOM } from 'jsdom'
 import DOMPurifyFactory from 'dompurify'
 import { calculateSRS, answerToGrade } from '@/lib/srs'
+import { checkCSRF } from '@/lib/csrf'
 
 const { window: domWindow } = new JSDOM('')
 const DOMPurify = DOMPurifyFactory(domWindow)
@@ -165,6 +166,9 @@ export async function POST(request, { params }) {
     if (!tokenData?.userId) {
       return jsonError('Unauthorized', 401)
     }
+
+    const csrfError = checkCSRF('POST', request)
+    if (csrfError) return jsonError(csrfError.error, csrfError.status, { details: csrfError.details })
 
     const rateCheck = await checkRateLimit(
       `exam:answer:${tokenData.userId}`,

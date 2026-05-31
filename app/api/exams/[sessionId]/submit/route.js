@@ -19,6 +19,7 @@ import {
 import { getUserSkillProfile, invalidateSkillProfile } from '@/lib/user-skill'
 import { getExamCoachFeedback, getSessionQuickSummary } from '@/lib/groq'
 import { withTransaction } from '@/lib/db-utils'
+import { checkCSRF } from '@/lib/csrf'
 
 const MAX_ERRORS_TO_PASS = 3
 
@@ -132,6 +133,9 @@ export async function POST(request, { params }) {
     const { sessionId } = await params
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const csrfError = checkCSRF('POST', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     await connectDB()
 

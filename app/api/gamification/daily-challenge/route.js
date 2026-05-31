@@ -6,6 +6,7 @@ import ExamSession from '@/models/ExamSession'
 import { getCurrentUser } from '@/lib/auth'
 import { getMadridStartOfDay, XP } from '@/lib/gamification'
 import { selectAdaptiveQuestions } from '@/lib/adaptive-selection'
+import { checkCSRF } from '@/lib/csrf'
 
 const DAILY_CHALLENGE_QUESTIONS = 10
 
@@ -47,6 +48,9 @@ export async function POST(request) {
   try {
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const csrfError = checkCSRF('POST', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     await connectDB()
 

@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 import UserAnswer from '@/models/UserAnswer'
 import mongoose from 'mongoose'
 import { isValidObjectId } from '@/lib/utils'
+import { checkCSRF } from '@/lib/csrf'
 
 /**
  * DELETE /api/mistakes/[id]
@@ -19,6 +20,9 @@ export async function DELETE(request, { params }) {
 
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const csrfError = checkCSRF('DELETE', request)
+    if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     await connectDB()
 
