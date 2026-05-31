@@ -413,7 +413,6 @@ export async function POST(request) {
 
       if (weakTopics.length > 0) {
         const weakCount = Math.floor(requestedCount * 0.35) // 35% from weak spots
-        const regularCount = requestedCount - weakCount
 
         const weakIds = await resolveQuestionIds({
           userId: tokenData.userId,
@@ -423,6 +422,8 @@ export async function POST(request) {
           onlyNewQuestions: only_new_questions,
           bookmarkIds,
         })
+
+        const regularCount = requestedCount - weakIds.length
 
         const regularIds = await resolveQuestionIds({
           userId: tokenData.userId,
