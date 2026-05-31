@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getQuestionExplanation } from '@/lib/groq'
 import Question from '@/models/Question'
+import User from '@/models/User'
 import connectDB from '@/lib/db'
 import { checkRateLimit } from '@/lib/utils'
 import { AIExplainSchema, parseSchema } from '@/lib/schemas'
@@ -15,6 +16,13 @@ export async function POST(request) {
     const tokenData = await getCurrentUser(request)
     if (!tokenData) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    await connectDB()
+    const user = await User.findById(tokenData.userId).lean()
+    
+    if (!user?.isPremium && process.env.BYPASS_PREMIUM !== 'true') {
+      return NextResponse.json({ error: 'Premium required for AI explanations' }, { status: 403 })
     }
 
     // ── Rate limiting (5 explanations per minute) ──────────────────────

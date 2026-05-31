@@ -366,7 +366,7 @@ export async function POST(request) {
       return jsonError('User not found', 404)
     }
 
-    if (!user.isPremium && process.env.NODE_ENV !== 'development') {
+    if (!user.isPremium && process.env.BYPASS_PREMIUM !== 'true') {
       return NextResponse.json(
         {
           error: 'Premium subscription required',
@@ -447,8 +447,7 @@ export async function POST(request) {
         bookmarkIds,
       })
     }
-
-    const language = user.preferences?.language ?? 'en'
+    const language = user.preferences?.language ?? 'es'
 
     if (questionIds.length === 0) {
       if (mode === 'spaced_repetition') {

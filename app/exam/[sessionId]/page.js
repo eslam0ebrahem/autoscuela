@@ -457,7 +457,16 @@ function ExamInterface() {
     handleRequestHint,
     handleRequestExplanation,
     resetAIStates,
-  } = useExamAI(currentQuestion, feedbackData, selectedOption, lang)
+  } = useExamAI({
+    currentQuestion,
+    feedbackData,
+    selectedOption,
+    lang,
+    isPremium: user?.isPremium,
+    toast,
+    t,
+    router,
+  })
 
   const [expandedImage, setExpandedImage] = useState(null)
   const [showShortcuts, setShowShortcuts] = useState(false)

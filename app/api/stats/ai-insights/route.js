@@ -67,6 +67,10 @@ export async function GET(request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
+    if (!user.isPremium && process.env.BYPASS_PREMIUM !== 'true') {
+      return NextResponse.json({ error: 'Premium required for AI insights' }, { status: 403 })
+    }
+
     const lang = user.preferences?.language ?? 'en'
 
     // ── Minimum questions gate ───────────────────────────────────────────────

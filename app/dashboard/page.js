@@ -184,62 +184,43 @@ function DashboardContent() {
         setRefreshing(force)
         const forceParam = force ? '?force=true' : ''
 
-        const [dashResult, trendsResult] = await Promise.allSettled([
-          fetch(`/api/dashboard${forceParam}`, { signal: abortController.current.signal }).then(
-            (r) => r.json()
-          ),
-          fetch('/api/stats/trends?days=7', { signal: abortController.current.signal }).then((r) =>
-            r.json()
-          ),
-        ])
-
-        if (dashResult.status === 'fulfilled') {
-          const dashRes = dashResult.value
-          if (dashRes.error) {
-            console.error('[dashboard] Dashboard API error:', dashRes.error)
-            toast?.error?.(t('Error al cargar el panel', 'Failed to load dashboard'), dashRes.error)
-          } else {
-            setInsights(dashRes.insights ?? null)
-            setStreak(dashRes.streak ?? 0)
-            setBadges(dashRes.badges ?? [])
-            setLeaderboard(dashRes.leaderboard ?? [])
-            setReadinessScore(dashRes.readinessScore != null ? Number(dashRes.readinessScore) : 0)
-            setExamsTakenToday(dashRes.examsTakenToday ?? 0)
-            setActivePlan(dashRes.activePlan ?? null)
-            setDailyProgress(dashRes.dailyProgress ?? null)
-            setPlanStats(dashRes.planStats ?? null)
-            setPlanTracking(dashRes.planTracking ?? null)
-            setPendingReviews(dashRes.pendingReviewsCount ?? 0)
-          }
-        } else {
-          // dashResult.status === 'rejected'
-          if (dashResult.reason?.name !== 'AbortError') {
-            console.error('[dashboard] Dashboard fetch failed:', dashResult.reason)
-            toast?.error?.(
-              t('Error al cargar el panel', 'Failed to load dashboard'),
-              dashResult.reason?.message
-            )
-          }
+        // Recreate abort controller to avoid using an aborted signal
+        if (abortController.current?.signal.aborted) {
+          abortController.current = new AbortController()
         }
 
-        if (trendsResult.status === 'fulfilled') {
-          setTrends(trendsResult.value?.trends ?? [])
+        const dashRes = await fetch(`/api/dashboard${forceParam}`, {
+          signal: abortController.current.signal,
+        }).then((r) => r.json())
+
+        if (dashRes.error) {
+          console.error('[dashboard] Dashboard API error:', dashRes.error)
+          toast?.error?.(t('Error al cargar el panel', 'Failed to load dashboard'), dashRes.error)
         } else {
-          if (trendsResult.reason?.name !== 'AbortError') {
-            console.error('[dashboard] Trends fetch failed:', trendsResult.reason)
-          }
+          setInsights(dashRes.insights || null)
+          setStreak(dashRes.streak || 0)
+          setBadges(dashRes.badges || [])
+          setLeaderboard(dashRes.leaderboard || [])
+          setReadinessScore(dashRes.readinessScore || null)
+          setExamsTakenToday(dashRes.examsTakenToday || 0)
+          setActivePlan(dashRes.activePlan || null)
+          setDailyProgress(dashRes.dailyProgress || null)
+          setPlanStats(dashRes.planStats || null)
+          setPlanTracking(dashRes.planTracking || null)
+          setPendingReviews(dashRes.pendingReviewsCount || 0)
+          setTrends(dashRes.studyTrends || []) // Use studyTrends directly from dashboard response
         }
-      } catch (e) {
-        // Ignore abort errors (component unmounted)
-        if (e.name === 'AbortError') return
-        console.error('[dashboard] Fetch error:', e)
-        toast?.error?.(t('Error al cargar el panel', 'Failed to load dashboard'), e.message)
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('[dashboard] Fetch error:', err)
+          toast?.error?.(t('Error de conexión', 'Connection error'))
+        }
       } finally {
         setLoading(false)
         setRefreshing(false)
       }
     },
-    [t, toast, abortController]
+    [abortController, t, toast]
   )
 
   useEffect(() => {

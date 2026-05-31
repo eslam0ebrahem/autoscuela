@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 
-export function useExamAI(currentQuestion, feedbackData, selectedOption, lang) {
+export function useExamAI({ currentQuestion, feedbackData, selectedOption, lang, isPremium, toast, t, router }) {
   const [aiHint, setAiHint] = useState(null)
   const [loadingHint, setLoadingHint] = useState(false)
   const [showHint, setShowHint] = useState(false)
@@ -12,6 +12,15 @@ export function useExamAI(currentQuestion, feedbackData, selectedOption, lang) {
 
   const handleRequestHint = useCallback(async () => {
     if (!currentQuestion || loadingHint || hintUsed) return
+    if (!isPremium) {
+      toast?.error?.(
+        t('Función Premium', 'Premium Feature'),
+        t('Mejora tu plan para usar las pistas IA', 'Upgrade your plan to use AI hints')
+      )
+      router?.push('/settings')
+      return
+    }
+
     setLoadingHint(true)
     setShowHint(true)
     setHintUsed(true)
@@ -28,10 +37,19 @@ export function useExamAI(currentQuestion, feedbackData, selectedOption, lang) {
     } finally {
       setLoadingHint(false)
     }
-  }, [currentQuestion, lang, loadingHint, hintUsed])
+  }, [currentQuestion, lang, loadingHint, hintUsed, isPremium, toast, t, router])
 
   const handleRequestExplanation = useCallback(async () => {
     if (!currentQuestion || !feedbackData || loadingExplanation) return
+    if (!isPremium) {
+      toast?.error?.(
+        t('Función Premium', 'Premium Feature'),
+        t('Mejora tu plan para explicaciones IA', 'Upgrade your plan for AI explanations')
+      )
+      router?.push('/settings')
+      return
+    }
+
     setLoadingExplanation(true)
     try {
       const res = await fetch('/api/ai/explain', {
@@ -50,7 +68,7 @@ export function useExamAI(currentQuestion, feedbackData, selectedOption, lang) {
     } finally {
       setLoadingExplanation(false)
     }
-  }, [currentQuestion, feedbackData, selectedOption, lang, loadingExplanation])
+  }, [currentQuestion, feedbackData, selectedOption, lang, loadingExplanation, isPremium, toast, t, router])
 
   const resetAIStates = useCallback(() => {
     setAiHint(null)

@@ -282,6 +282,7 @@ export async function GET(request) {
       planStats,
       planTracking,
       pendingReviewsCount,
+      studyTrends,
     })
   } catch (error) {
     console.error('[dashboard] Unhandled error:', error)
