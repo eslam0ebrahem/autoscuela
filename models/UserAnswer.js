@@ -28,6 +28,7 @@ userAnswerSchema.index({ userId: 1, createdAt: -1, time_taken_seconds: 1 }) // D
 userAnswerSchema.index({ userId: 1, 'topic_tag.es': 1 })
 userAnswerSchema.index({ examSessionId: 1, questionId: 1 }, { unique: true, sparse: true })
 userAnswerSchema.index({ userId: 1, 'srs.nextReviewAt': 1 })
+userAnswerSchema.index({ userId: 1, is_correct: 1, questionId: 1 }) // Used for mistakes lookup
 
 // Static: aggregate user performance for AI
 userAnswerSchema.statics.aggregateForAI = async function (userId, days = 30) {

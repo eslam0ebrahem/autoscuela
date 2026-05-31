@@ -23,60 +23,55 @@ export const GET = compose(
 
     const objectId = new mongoose.Types.ObjectId(ctx.user.userId)
 
-    // ── OPTIMIZED: Combine 3 queries into single aggregation pipeline ──
-    // Using $facet to get:
-    // 1. Wrong answers grouped by questionId with correction status
-    // 2. Question details for those questions
-    // 3. Stats (total, uncorrected)
-    const aggregationResult = await UserAnswer.aggregate([
-      // Stage 1: Get all answers for this user
+    // 1. Find all wrong answers for the user
+    const wrongAnswers = await UserAnswer.aggregate([
       {
-        $match: { userId: objectId },
+        $match: { userId: objectId, is_correct: false },
       },
-      // Stage 2: Facet to compute multiple outputs in one pass
+      { $sort: { createdAt: 1 } },
       {
-        $facet: {
-          // Wrong answers with correction detection
-          wrongAnswers: [
-            { $match: { is_correct: false } },
-            { $sort: { createdAt: 1 } },
-            {
-              $group: {
-                _id: '$questionId',
-                topic: { $first: '$topic_tag.es' },
-                topicEn: { $first: '$topic_tag.en' },
-                timesWrong: { $sum: 1 },
-                lastWrong: { $max: '$createdAt' },
-                lastWrongAnswerIdx: { $last: '$selected_option_idx' },
-              },
-            },
-            {
-              $project: {
-                questionId: '$_id',
-                topic: 1,
-                topicEn: 1,
-                timesWrong: 1,
-                lastWrong: 1,
-                lastWrongAnswerIdx: 1,
-                _id: 0,
-              },
-            },
-          ],
-          // Corrected answers lookup (only for wrong questions)
-          correctionStatus: [
-            { $match: { is_correct: true } },
-            {
-              $group: {
-                _id: '$questionId',
-                lastCorrect: { $max: '$createdAt' },
-              },
-            },
-          ],
+        $group: {
+          _id: '$questionId',
+          topic: { $first: '$topic_tag.es' },
+          topicEn: { $first: '$topic_tag.en' },
+          timesWrong: { $sum: 1 },
+          lastWrong: { $max: '$createdAt' },
+          lastWrongAnswerIdx: { $last: '$selected_option_idx' },
+        },
+      },
+      {
+        $project: {
+          questionId: '$_id',
+          topic: 1,
+          topicEn: 1,
+          timesWrong: 1,
+          lastWrong: 1,
+          lastWrongAnswerIdx: 1,
+          _id: 0,
         },
       },
     ])
 
-    const { wrongAnswers = [], correctionStatus = [] } = aggregationResult[0] || {}
+    // 2. Fetch correction status only for those specific wrong questions
+    let correctionStatus = []
+    if (wrongAnswers.length > 0) {
+      const questionIds = wrongAnswers.map((w) => w.questionId)
+      correctionStatus = await UserAnswer.aggregate([
+        {
+          $match: {
+            userId: objectId,
+            is_correct: true,
+            questionId: { $in: questionIds },
+          },
+        },
+        {
+          $group: {
+            _id: '$questionId',
+            lastCorrect: { $max: '$createdAt' },
+          },
+        },
+      ])
+    }
 
     if (wrongAnswers.length === 0) {
       return NextResponse.json({

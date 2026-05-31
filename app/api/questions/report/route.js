@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server'
 import connectDB from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import QuestionReport from '@/models/QuestionReport'
+import Question from '@/models/Question'
 import User from '@/models/User'
 import { QuestionReportSchema, parseSchema } from '@/lib/schemas'
+import { checkRateLimit } from '@/lib/utils'
 
 /**
  * POST /api/questions/report
@@ -13,6 +15,11 @@ export async function POST(request) {
   try {
     const tokenData = await getCurrentUser(request)
     if (!tokenData) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const rateCheck = await checkRateLimit(`questions:report:${tokenData.userId}`, 5, 86400000) // 5 per day
+    if (!rateCheck.allowed) {
+      return NextResponse.json({ error: 'Rate limit exceeded. Maximum 5 reports per day.' }, { status: 429 })
+    }
 
     await connectDB()
 
@@ -32,6 +39,12 @@ export async function POST(request) {
     }
 
     const { questionId, reason, description } = validated
+
+    // Verify question actually exists
+    const questionExists = await Question.exists({ _id: questionId })
+    if (!questionExists) {
+      return NextResponse.json({ error: 'Question not found' }, { status: 404 })
+    }
 
     // Check if user already reported this question
     const existing = await QuestionReport.findOne({

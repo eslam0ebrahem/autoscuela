@@ -5,6 +5,12 @@ import connectDB from '@/lib/db'
 import StudyPlan from '@/models/StudyPlan'
 import { parseSchema } from '@/lib/schemas'
 
+const StudyPlanPostSchema = z.object({
+  targetDate: z.string().min(1),
+  dailyMinutes: z.number().int().min(5).max(480).or(z.string().regex(/^\d+$/).transform(Number)),
+  planData: z.record(z.any()),
+})
+
 // Zod schema for PATCH body validation
 const StudyPlanPatchSchema = z.object({
   dailyGoals: z.object({
@@ -28,11 +34,22 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { targetDate, dailyMinutes, planData } = await request.json()
-
-    if (!targetDate || !planData) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    let body
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
+
+    const { data: validated, error: validationError } = parseSchema(StudyPlanPostSchema, body)
+    if (validationError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationError.messages },
+        { status: validationError.status }
+      )
+    }
+
+    const { targetDate, dailyMinutes, planData } = validated
 
     await connectDB()
 
