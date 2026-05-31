@@ -64,9 +64,9 @@ export async function GET(request) {
       return NextResponse.json({
         bookmarks: user.bookmarkedQuestions?.map((q) => q.toString()) || [],
         total: totalCount,
-        limit,
-        offset,
-        hasMore: offset + limit < totalCount,
+        limit: totalCount,
+        offset: 0,
+        hasMore: false,
       })
     }
 
@@ -81,7 +81,7 @@ export async function GET(request) {
     if (questions.length < paginatedIds.length) {
       const foundIds = new Set(questions.map((q) => q._id.toString()))
       const staleIds = paginatedIds.filter((id) => !foundIds.has(id.toString()))
-      User.findByIdAndUpdate(tokenData.userId, { $pull: { bookmarks: { $in: staleIds } } }).catch(
+      User.findByIdAndUpdate(tokenData.userId, { $pull: { bookmarkedQuestions: { $in: staleIds } } }).catch(
         (err) => console.error('[bookmarks] stale cleanup failed:', err.message)
       )
     }

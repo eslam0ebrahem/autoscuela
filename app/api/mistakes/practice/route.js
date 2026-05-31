@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 import User from '@/models/User'
 import ExamSession from '@/models/ExamSession'
 import UserAnswer from '@/models/UserAnswer'
+import Question from '@/models/Question'
 import mongoose from 'mongoose'
 import { selectAdaptiveQuestions } from '@/lib/adaptive-selection'
 import { checkCSRF } from '@/lib/csrf'
@@ -92,8 +93,22 @@ export async function POST(request) {
     let filtered = wrongAnswers.filter((m) => {
       const lastCorrect = correctedMap.get(m._id.toString())
       const isCorrected = lastCorrect && lastCorrect > m.lastWrong
-      return !isCorrected
+      // If corrected_filter is strictly true, we might include both or only corrected depending on intended UX.
+      // Usually toggle "Include corrected" means include both.
+      return corrected_filter ? true : !isCorrected
     })
+
+    // Fetch difficulties from Question model for filtering
+    const questionDocs = await Question.find({ _id: { $in: questionIds } }).select('_id difficulty').lean()
+    const difficultyMap = new Map()
+    for (const q of questionDocs) {
+      difficultyMap.set(q._id.toString(), q.difficulty)
+    }
+
+    // Apply difficulty filter
+    if (difficulty_filter) {
+      filtered = filtered.filter((m) => difficultyMap.get(m._id.toString()) === difficulty_filter)
+    }
 
     // Apply topic filter
     if (topic_filter) {

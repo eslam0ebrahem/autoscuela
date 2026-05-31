@@ -20,10 +20,12 @@ const DEFAULT_XP_THRESHOLD = 0
 // Helper – get today's date string in YYYY-MM-DD (Madrid timezone)
 // ---------------------------------------------------------------------------
 function getTodayDateString() {
-  const madridNow = new Date(
-    new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' })
-  )
-  return madridNow.toISOString().split('T')[0]
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date())
 }
 
 // ---------------------------------------------------------------------------
@@ -103,20 +105,22 @@ async function updatePlanDailyHistory(planId, dailyProgress) {
   // Recompute plan streak (consecutive days with goalsMet, ending today or yesterday)
   const sortedHistory = [...plan.dailyHistory].sort((a, b) => b.date.localeCompare(a.date))
   let streak = 0
-  const dateObj = new Date(
-    new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' })
-  )
+  const today = new Date()
 
   for (let i = 0; i < 365; i++) {
-    const checkDate = new Date(dateObj)
-    checkDate.setDate(checkDate.getDate() - i)
-    const checkStr = checkDate.toISOString().split('T')[0]
+    const checkDate = new Date(today.getTime() - i * 24 * 60 * 60 * 1000)
+    const checkStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Madrid',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(checkDate)
     const entry = sortedHistory.find((h) => h.date === checkStr)
 
     if (entry?.goalsMet) {
       streak++
-    } else if (i === 0 && !entry) {
-      // Today hasn't been fully logged yet — skip and check from yesterday
+    } else if (i === 0) {
+      // Today hasn't been fully logged yet or goals not met — skip and check from yesterday
       continue
     } else {
       break

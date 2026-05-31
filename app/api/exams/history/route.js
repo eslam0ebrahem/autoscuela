@@ -79,7 +79,7 @@ export async function GET(request) {
 
     const query = { userId: tokenData.userId, status: 'completed' }
 
-    const [sessions, total] = await Promise.all([
+    const [sessions, total, recentSessionsForTrend] = await Promise.all([
       ExamSession.find(query)
         .sort({ completedAt: -1 })
         .skip((page - 1) * limit)
@@ -88,10 +88,14 @@ export async function GET(request) {
           'mode score errorCount passed completedAt language topicFilters totalTimeTakenSeconds topicBreakdown createdAt'
         ),
       ExamSession.countDocuments(query),
+      ExamSession.find(query)
+        .sort({ completedAt: -1 })
+        .limit(30)
+        .select('score passed completedAt topicBreakdown')
     ])
 
     // ── AI: Compute local trend (no API call, instant) ────────────────────
-    const aiTrend = computeLocalTrend(sessions)
+    const aiTrend = computeLocalTrend(recentSessionsForTrend)
 
     return NextResponse.json({
       sessions,
