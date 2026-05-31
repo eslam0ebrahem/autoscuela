@@ -270,11 +270,13 @@ async function resolveQuestionIds({
   topicFilters,
   onlyNewQuestions,
   bookmarkIds,
+  excludeQuestionIds = [],
 }) {
   const adaptiveOptions = buildAdaptiveOptions({
     mode,
     topicFilters,
     onlyNewQuestions,
+    excludeQuestionIds,
   })
 
   if (mode === 'bookmarks') {
@@ -432,6 +434,7 @@ export async function POST(request) {
           topicFilters,
           onlyNewQuestions: only_new_questions,
           bookmarkIds: [],
+          excludeQuestionIds: weakIds,
         })
 
         questionIds = sampleIds([...new Set([...weakIds, ...regularIds])], requestedCount)

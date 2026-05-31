@@ -147,12 +147,20 @@ export async function POST(request, { params }) {
     if (!session)
       return NextResponse.json({ error: 'Session not found or already completed' }, { status: 404 })
 
+    const now = new Date()
+    if (session.expiresAt && now > new Date(session.expiresAt.getTime() + 5 * 60000)) {
+      return NextResponse.json({ error: 'Exam session has expired' }, { status: 400 })
+    }
+
     // ── Calculate results ───────────────────────────────────────────────
     const correctCount = session.answers.filter((a) => a.isCorrect).length
     const totalQuestions = session.questionIds.length
     const errors = totalQuestions - correctCount
     const passed = errors <= MAX_ERRORS_TO_PASS
-    const totalTime = session.answers.reduce((sum, a) => sum + (a.timeTakenSeconds || 0), 0)
+    
+    const elapsedMs = now.getTime() - session.createdAt.getTime()
+    const maxAllowedMs = session.expiresAt ? session.expiresAt.getTime() - session.createdAt.getTime() : elapsedMs
+    const totalTime = Math.max(0, Math.round(Math.min(elapsedMs, maxAllowedMs) / 1000))
     const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0
     const lang = session.language || 'es'
 
@@ -195,7 +203,7 @@ export async function POST(request, { params }) {
     })
 
     // ── Gather full badge context (#5: most badges were unreachable) ──────
-    const totalAnswered = (user.stats?.totalAnswers || 0) + totalQuestions
+    const totalAnswered = user.stats?.totalAnswers || 0
     const avgTimePerQuestion = totalTime > 0 && totalQuestions > 0
       ? Math.round(totalTime / totalQuestions)
       : 0

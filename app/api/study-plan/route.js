@@ -68,16 +68,19 @@ export async function POST(request) {
     const plan = await StudyPlan.findOneAndUpdate(
       { userId: tokenData.userId },
       {
-        targetDate,
-        dailyMinutes: mins,
-        planData,
-        dailyGoals,
-        status: 'active',
-        // Reset tracking when creating/updating a plan
-        planStreak: 0,
-        bestPlanStreak: 0,
-        dailyHistory: [],
-        lastGoalMetDate: null,
+        $set: {
+          targetDate,
+          dailyMinutes: mins,
+          planData,
+          dailyGoals,
+          status: 'active',
+        },
+        $setOnInsert: {
+          planStreak: 0,
+          bestPlanStreak: 0,
+          dailyHistory: [],
+          lastGoalMetDate: null,
+        }
       },
       { upsert: true, returnDocument: 'after' }
     )
