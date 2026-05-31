@@ -8,6 +8,7 @@ import { useAuth } from '@/components/AuthContext'
 import DOMPurify from 'dompurify'
 import { useExamSession } from './useExamSession'
 import { useExamAI } from './useExamAI'
+import { useToast } from '@/components/Toast'
 import {
   CloseOutlined,
   ClockCircleOutlined,
@@ -411,9 +412,10 @@ function AIExplanationPanel({ explanation, loading, t }) {
 
 function ExamInterface() {
   const { user, t } = useAuth()
-  const params = useParams()
   const router = useRouter()
-  const sessionId = params?.sessionId
+  const params = useParams()
+  const sessionId = params.sessionId
+  const toast = useToast()
 
   const lang = user?.preferences?.language || 'es'
   const soundEnabled = user?.preferences?.soundEnabled !== false
