@@ -13,10 +13,7 @@ export function useExamAI({ currentQuestion, feedbackData, selectedOption, lang,
   const handleRequestHint = useCallback(async () => {
     if (!currentQuestion || loadingHint || hintUsed) return
     if (!isPremium) {
-      toast?.error?.(
-        t('Función Premium', 'Premium Feature'),
-        t('Mejora tu plan para usar las pistas IA', 'Upgrade your plan to use AI hints')
-      )
+      toast?.error?.(t('Mejora tu plan para usar las pistas IA', 'Upgrade your plan to use AI hints'))
       router?.push('/settings')
       return
     }
@@ -35,7 +32,7 @@ export function useExamAI({ currentQuestion, feedbackData, selectedOption, lang,
       setAiHint(data.hint)
     } catch (err) {
       console.error('[exam] hint error:', err)
-      toast?.error?.(t('Error', 'Error'), err.message)
+      toast?.error?.(err.message || t('Error al obtener pista', 'Failed to get hint'))
       setHintUsed(false)
       setShowHint(false)
     } finally {
@@ -46,10 +43,7 @@ export function useExamAI({ currentQuestion, feedbackData, selectedOption, lang,
   const handleRequestExplanation = useCallback(async () => {
     if (!currentQuestion || !feedbackData || loadingExplanation) return
     if (!isPremium) {
-      toast?.error?.(
-        t('Función Premium', 'Premium Feature'),
-        t('Mejora tu plan para explicaciones IA', 'Upgrade your plan for AI explanations')
-      )
+      toast?.error?.(t('Mejora tu plan para explicaciones IA', 'Upgrade your plan for AI explanations'))
       router?.push('/settings')
       return
     }
@@ -70,7 +64,7 @@ export function useExamAI({ currentQuestion, feedbackData, selectedOption, lang,
       setAiExplanation(data.explanation)
     } catch (err) {
       console.error('[exam] explanation error:', err)
-      toast?.error?.(t('Error', 'Error'), err.message)
+      toast?.error?.(err.message || t('Error al obtener explicación', 'Failed to get explanation'))
     } finally {
       setLoadingExplanation(false)
     }
