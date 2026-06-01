@@ -31,9 +31,13 @@ export function useExamAI({ currentQuestion, feedbackData, selectedOption, lang,
         body: JSON.stringify({ questionId: currentQuestion._id, lang }),
       })
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to get hint')
       setAiHint(data.hint)
     } catch (err) {
       console.error('[exam] hint error:', err)
+      toast?.error?.(t('Error', 'Error'), err.message)
+      setHintUsed(false)
+      setShowHint(false)
     } finally {
       setLoadingHint(false)
     }
@@ -62,9 +66,11 @@ export function useExamAI({ currentQuestion, feedbackData, selectedOption, lang,
         }),
       })
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to get explanation')
       setAiExplanation(data.explanation)
     } catch (err) {
       console.error('[exam] explanation error:', err)
+      toast?.error?.(t('Error', 'Error'), err.message)
     } finally {
       setLoadingExplanation(false)
     }
