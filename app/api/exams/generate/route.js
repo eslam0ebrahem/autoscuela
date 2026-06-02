@@ -514,6 +514,7 @@ export async function POST(request) {
         lang: language,
       },
       lang: language,
+      sessionId: session._id.toString(),
     })
       .then((rec) => {
         if (rec && !rec._fallback) {
