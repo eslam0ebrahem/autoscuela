@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 import { useToast } from '@/components/Toast'
+import FormattedText from '@/components/FormattedText'
 import {
   RobotOutlined,
   TrophyOutlined,
@@ -373,7 +374,7 @@ function AIInsightsContent() {
             <h2 className="text-xl md:text-2xl font-black mb-3">
               {t('Tu Nivel de Preparación', 'Your Readiness Level')}
             </h2>
-            {coachMessage && <p className="text-indigo-100 leading-relaxed mb-4">{coachMessage}</p>}
+            {coachMessage && <p className="text-indigo-100 leading-relaxed mb-4"><FormattedText text={coachMessage} /></p>}
             {predictedReadyDate && (
               <div className="flex items-center gap-2 text-indigo-200 text-sm">
                 <ClockCircleOutlined />

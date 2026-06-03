@@ -9,6 +9,7 @@ import DOMPurify from 'dompurify'
 import { useExamSession } from './useExamSession'
 import { useExamAI } from './useExamAI'
 import { useToast } from '@/components/Toast'
+import FormattedText from '@/components/FormattedText'
 import {
   CloseOutlined,
   ClockCircleOutlined,
@@ -349,7 +350,7 @@ function AIHintPanel({ hint, loading, onClose, t }) {
               {hint.concept}
             </p>
           )}
-          <p className="text-sm text-ink dark:text-white leading-relaxed">{displayed}</p>
+          <p className="text-sm text-ink dark:text-white leading-relaxed"><FormattedText text={displayed} /></p>
         </>
       )}
     </div>
@@ -381,14 +382,14 @@ function AIExplanationPanel({ explanation, loading, t }) {
       ) : (
         <div className="space-y-3">
           {explanation?.summary && (
-            <p className="text-sm font-semibold text-ink dark:text-white">{summaryText}</p>
+            <p className="text-sm font-semibold text-ink dark:text-white"><FormattedText text={summaryText} /></p>
           )}
           {explanation?.correct_explanation && (
             <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-blue-100 dark:border-blue-800">
               <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mb-1 uppercase tracking-wide">
                 {t('¿Por qué es correcta?', 'Why is it correct?')}
               </p>
-              <p className="text-sm text-ink dark:text-white leading-relaxed">{correctText}</p>
+              <p className="text-sm text-ink dark:text-white leading-relaxed"><FormattedText text={correctText} /></p>
             </div>
           )}
           {explanation?.memory_tip && (
@@ -396,7 +397,7 @@ function AIExplanationPanel({ explanation, loading, t }) {
               <p className="text-xs font-bold text-amber-600 dark:text-amber-400 mb-1 uppercase tracking-wide">
                 💡 {t('Tip para recordar', 'Memory tip')}
               </p>
-              <p className="text-sm text-ink dark:text-white leading-relaxed">{tipText}</p>
+              <p className="text-sm text-ink dark:text-white leading-relaxed"><FormattedText text={tipText} /></p>
             </div>
           )}
           {explanation?.law_reference && (

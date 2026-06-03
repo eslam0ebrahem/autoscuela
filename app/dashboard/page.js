@@ -8,6 +8,7 @@ import { useToast } from '@/components/Toast'
 import { useFetch } from '@/lib/useFetch'
 import confetti from 'canvas-confetti'
 import Spinner from '@/components/ui/Spinner'
+import FormattedText from '@/components/FormattedText'
 import {
   LineChartOutlined,
   RobotOutlined,
@@ -302,7 +303,7 @@ function DashboardContent() {
             </h1>
             {insights?.coachMessage && (
               <p className="text-indigo-100 font-medium mt-2 text-sm md:text-base max-w-2xl">
-                {insights.coachMessage}
+                <FormattedText text={insights.coachMessage} />
               </p>
             )}
           </div>

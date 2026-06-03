@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AppShell from '@/components/AppShell'
+import FormattedText from '@/components/FormattedText'
 import { useAuth } from '@/components/AuthContext'
 import { useToast } from '@/components/Toast'
 import {
@@ -336,7 +337,7 @@ function AIRecommendBanner({ lang, t, onApply }) {
             ) : rec ? (
               <>
                 <p className="text-sm text-ink dark:text-white leading-relaxed mb-2">
-                  {rec.reason}
+                  <FormattedText text={rec.reason} />
                 </p>
                 {rec.tip && (
                   <p className="text-xs text-ink-light dark:text-slate-400 italic mb-3">

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AppShell from '@/components/AppShell'
+import FormattedText from '@/components/FormattedText'
 import { useAuth } from '@/components/AuthContext'
 import { useToast } from '@/components/Toast'
 import {
@@ -269,7 +270,7 @@ function ProgressContent() {
               <h3 className="font-black text-lg mb-2">
                 {t('Mensaje del Coach IA', 'AI Coach Message')}
               </h3>
-              <p className="text-indigo-100 leading-relaxed">{insights.coachMessage}</p>
+              <p className="text-indigo-100 leading-relaxed"><FormattedText text={insights.coachMessage} /></p>
             </div>
           </div>
         </div>
@@ -461,7 +462,7 @@ function ProgressContent() {
                   {index + 1}
                 </div>
                 <p className="text-sm text-indigo-900 dark:text-indigo-200 leading-relaxed">
-                  {tip}
+                  <FormattedText text={tip} />
                 </p>
               </div>
             ))}
