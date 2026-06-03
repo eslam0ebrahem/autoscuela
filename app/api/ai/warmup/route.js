@@ -42,7 +42,9 @@ export async function GET(request) {
       targetTopic = 'General Traffic Rules'
     }
 
-    const cacheKey = `warmup_${hashKey(lang + '_' + targetTopic)}`
+    // Add a random variation (0 to 9) to the cache key to ensure we don't always show the exact same tip
+    const variation = Math.floor(Math.random() * 10)
+    const cacheKey = `warmup_${hashKey(lang + '_' + targetTopic + '_' + variation)}`
 
     const fallback = {
       fact: lang === 'es' ? 'Recuerda leer atentamente cada pregunta antes de responder.' : 'Remember to read each question carefully before answering.',

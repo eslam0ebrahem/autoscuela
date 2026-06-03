@@ -171,6 +171,9 @@ function estimatePassProbability(skillProfile, mode, topicFilters, userStats, us
     trendBonus = Math.min(10, Math.max(-10, (improving - declining) * 2))
   }
 
+  // Add a slight random jitter (-2 to +2) so it doesn't stay completely static
+  const jitter = Math.floor(Math.random() * 5) - 2
+
   const probability = Math.round(
     Math.min(
       95,
@@ -182,7 +185,8 @@ function estimatePassProbability(skillProfile, mode, topicFilters, userStats, us
           targetTopicPenalty +
           experienceBonus +
           streakBonus +
-          trendBonus
+          trendBonus +
+          jitter
       )
     )
   )
