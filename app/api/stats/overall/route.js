@@ -16,14 +16,15 @@ export async function GET(request) {
     const today = new Date()
     const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000)
+    const objectId = new mongoose.Types.ObjectId(tokenData.userId)
 
-    const [user, thisWeekStats, lastWeekStats, totalDB, seenStats] = await Promise.all([
+    const [user, thisWeekStats, lastWeekStats, totalDB, seenStats, timeStats] = await Promise.all([
       User.findById(tokenData.userId).select('gamification.currentStreak stats'),
       // This week accuracy
       UserAnswer.aggregate([
         {
           $match: {
-            userId: new mongoose.Types.ObjectId(tokenData.userId),
+            userId: objectId,
             createdAt: { $gte: lastWeek },
           },
         },
@@ -39,7 +40,7 @@ export async function GET(request) {
       UserAnswer.aggregate([
         {
           $match: {
-            userId: new mongoose.Types.ObjectId(tokenData.userId),
+            userId: objectId,
             createdAt: { $gte: twoWeeksAgo, $lt: lastWeek },
           },
         },
@@ -54,7 +55,7 @@ export async function GET(request) {
       Question.countDocuments({ isActive: true }),
       // Unique questions seen
       UserAnswer.aggregate([
-        { $match: { userId: new mongoose.Types.ObjectId(tokenData.userId) } },
+        { $match: { userId: objectId } },
         {
           $lookup: {
             from: 'questions',
@@ -68,11 +69,23 @@ export async function GET(request) {
         { $group: { _id: '$questionId' } },
         { $count: 'uniqueCount' },
       ]),
+      // All-time time tracking stats
+      UserAnswer.aggregate([
+        { $match: { userId: objectId, time_taken_seconds: { $exists: true, $gt: 0 } } },
+        {
+          $group: {
+            _id: null,
+            totalSeconds: { $sum: '$time_taken_seconds' },
+            avgSeconds: { $avg: '$time_taken_seconds' },
+          },
+        },
+      ]),
     ])
 
     const thisWeek = thisWeekStats[0] || { total: 0, correct: 0 }
     const lastWeekData = lastWeekStats[0] || { total: 0, correct: 0 }
     const seenCount = seenStats[0]?.uniqueCount || 0
+    const timeData = timeStats[0] || { totalSeconds: 0, avgSeconds: 0 }
 
     const userStats = user?.stats || { totalAnswers: 0, correctAnswers: 0 }
     const allTimeTotal = userStats.totalAnswers || 0
@@ -92,6 +105,8 @@ export async function GET(request) {
       weeklyAccuracyChange,
       totalQuestionsInDB: totalDB,
       seenQuestions: seenCount,
+      totalStudyTimeSeconds: timeData.totalSeconds,
+      avgTimePerQuestion: Math.round(timeData.avgSeconds),
     }
 
     return NextResponse.json({ stats })

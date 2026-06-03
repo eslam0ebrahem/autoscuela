@@ -21,7 +21,11 @@ import {
   WarningOutlined,
   InteractionOutlined,
   BookOutlined,
+  ClockCircleOutlined,
+  HourglassOutlined,
+  SearchOutlined
 } from '@ant-design/icons'
+import StudyTrendsChart from '@/components/stats/StudyTrendsChart'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -62,6 +66,19 @@ const getAccuracyColors = (accuracy) => {
   if (accuracy >= ACCURACY_THRESHOLDS.EXCELLENT) return ACCURACY_COLORS.EXCELLENT
   if (accuracy >= ACCURACY_THRESHOLDS.GOOD) return ACCURACY_COLORS.GOOD
   return ACCURACY_COLORS.POOR
+}
+
+/**
+ * Format seconds to a readable time string
+ */
+const formatTime = (seconds) => {
+  if (!seconds || seconds <= 0) return '0s'
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = Math.round(seconds % 60)
+  if (h > 0) return `${h}h ${m}m`
+  if (m > 0) return `${m}m`
+  return `${s}s`
 }
 
 // ---------------------------------------------------------------------------
@@ -154,8 +171,11 @@ function ProgressContent() {
   const [stats, setStats] = useState(null)
   const [insights, setInsights] = useState(null)
   const [topicStats, setTopicStats] = useState([])
+  const [calendarData, setCalendarData] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [topicSearch, setTopicSearch] = useState('')
+  const [topicSort, setTopicSort] = useState('accuracy-asc')
 
   // ── Fetch data ─────────────────────────────────────────────────────────
   const fetchData = useCallback(
@@ -163,19 +183,22 @@ function ProgressContent() {
       try {
         setRefreshing(force)
 
-        const [statsRes, insightsRes, topicsRes] = await Promise.all([
+        const [statsRes, insightsRes, topicsRes, calendarRes] = await Promise.all([
           fetch('/api/stats/overall'),
           fetch(`/api/stats/ai-insights${force ? '?force=true' : ''}`),
           fetch('/api/stats/topics'),
+          fetch('/api/stats/calendar'),
         ])
 
         const statsData = await statsRes.json().catch(() => ({}))
         const insightsData = await insightsRes.json().catch(() => ({}))
         const topicsData = await topicsRes.json().catch(() => ({}))
+        const calendarJson = await calendarRes.json().catch(() => ({}))
 
         setStats(statsData.stats || null)
         setInsights(insightsData.insights || null)
         setTopicStats(topicsData.topics || [])
+        setCalendarData(calendarJson.calendarData || [])
       } catch (err) {
         console.error('[progress] Fetch error:', err)
         toast?.error?.(
@@ -221,6 +244,27 @@ function ProgressContent() {
       .sort((a, b) => b.accuracy - a.accuracy)
       .slice(0, 3)
   }, [topicStats])
+
+  const filteredTopics = useMemo(() => {
+    let result = [...topicStats]
+    if (topicSearch) {
+      const q = topicSearch.toLowerCase()
+      result = result.filter(t => 
+        (t.tag?.es && t.tag.es.toLowerCase().includes(q)) || 
+        (t.tag?.en && t.tag.en.toLowerCase().includes(q)) ||
+        (typeof t.tag === 'string' && t.tag.toLowerCase().includes(q))
+      )
+    }
+    
+    result.sort((a, b) => {
+      if (topicSort === 'accuracy-asc') return a.accuracy - b.accuracy
+      if (topicSort === 'accuracy-desc') return b.accuracy - a.accuracy
+      if (topicSort === 'attempted-desc') return b.attempted - a.attempted
+      return 0
+    })
+
+    return result
+  }, [topicStats, topicSearch, topicSort])
 
   // ── Loading state ──────────────────────────────────────────────────────
   if (loading) {
@@ -295,6 +339,11 @@ function ProgressContent() {
         </div>
       )}
 
+      {/* ── Study Trends Chart ────────────────────────────────────── */}
+      {calendarData.length > 0 && (
+        <StudyTrendsChart data={calendarData} />
+      )}
+
       {/* ── Overall Stats ───────────────────────────────────────────── */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -335,6 +384,18 @@ function ProgressContent() {
             label={t('Banco de Preguntas', 'Question Bank')}
             value={`${stats.seenQuestions || 0} / ${stats.totalQuestionsInDB || 0}`}
             color="indigo-500"
+          />
+          <StatCard
+            icon={<ClockCircleOutlined />}
+            label={t('Tiempo Total de Estudio', 'Total Study Time')}
+            value={formatTime(stats.totalStudyTimeSeconds)}
+            color="purple-500"
+          />
+          <StatCard
+            icon={<HourglassOutlined />}
+            label={t('Tiempo Promedio', 'Avg Time/Q')}
+            value={formatTime(stats.avgTimePerQuestion)}
+            color="teal-500"
           />
         </div>
       )}
@@ -396,25 +457,56 @@ function ProgressContent() {
       {/* ── All Topics ──────────────────────────────────────────────── */}
       {topicStats.length > 0 && (
         <div className="card">
-          <h2 className="text-lg font-black text-ink dark:text-white flex items-center gap-2 mb-4">
-            <BarChartOutlined />
-            {t('Todos los Temas', 'All Topics')}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {topicStats.map((topic, index) => (
-              <TopicBar
-                key={index}
-                tag={getLocalizedText(topic.tag, lang)}
-                originalTag={topic.tag.es}
-                accuracy={topic.accuracy}
-                attempted={topic.attempted}
-                lang={lang}
-                onPractice={handlePracticeTopic}
-              />
-            ))}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <h2 className="text-lg font-black text-ink dark:text-white flex items-center gap-2">
+              <BarChartOutlined />
+              {t('Todos los Temas', 'All Topics')}
+            </h2>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative">
+                <SearchOutlined className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder={t('Buscar tema...', 'Search topic...')}
+                  value={topicSearch}
+                  onChange={(e) => setTopicSearch(e.target.value)}
+                  className="pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-48"
+                />
+              </div>
+              <select
+                value={topicSort}
+                onChange={(e) => setTopicSort(e.target.value)}
+                className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-auto"
+              >
+                <option value="accuracy-asc">{t('Precisión: Menor a Mayor', 'Accuracy: Low to High')}</option>
+                <option value="accuracy-desc">{t('Precisión: Mayor a Menor', 'Accuracy: High to Low')}</option>
+                <option value="attempted-desc">{t('Más Practicados', 'Most Practiced')}</option>
+              </select>
+            </div>
           </div>
+          
+          {filteredTopics.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredTopics.map((topic, index) => (
+                <TopicBar
+                  key={index}
+                  tag={getLocalizedText(topic.tag, lang)}
+                  originalTag={topic.tag.es}
+                  accuracy={topic.accuracy}
+                  attempted={topic.attempted}
+                  lang={lang}
+                  onPractice={handlePracticeTopic}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-slate-500">
+              {t('No se encontraron temas.', 'No topics found.')}
+            </div>
+          )}
         </div>
       )}
+
 
       {/* ── Empty State ─────────────────────────────────────────────── */}
       {(!stats || !topicStats.length) && (
