@@ -93,7 +93,15 @@ export function AuthProvider({ children }) {
             const data = await res.json()
             setUser(data.user)
           } else if (res.status === 401) {
-            // Refresh token expired, user needs to log in again
+            // Refresh token expired, clear cookies and log out
+            await fetch('/api/auth/me', {
+              method: 'DELETE',
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest', // CSRF header
+              },
+              credentials: 'same-origin',
+            }).catch(() => {})
+            
             setUser(null)
           }
         } catch (err) {
@@ -101,8 +109,8 @@ export function AuthProvider({ children }) {
           // Continue - will refresh again on next interval
         }
       },
-      12 * 60 * 1000
-    ) // 12 minutes — refresh before 15-minute access token expires
+      6 * 60 * 60 * 1000 // 6 hours
+    )
 
     return () => clearInterval(refreshInterval)
   }, [user])
