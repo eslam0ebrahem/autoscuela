@@ -31,9 +31,13 @@ export function useExamSession(sessionId, soundEnabled, resetAIStates) {
   const [confetti, setConfetti] = useState(false)
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState(new Set())
   const [isSessionStarted, setIsSessionStarted] = useState(false)
+  const [sessionCorrect, setSessionCorrect] = useState(0)
+  const [sessionErrors, setSessionErrors] = useState(0)
+  const [autoAdvanceTimer, setAutoAdvanceTimer] = useState(null)
 
   const timerRef = useRef(null)
   const answerFetchRef = useRef(null)
+  const autoAdvanceRef = useRef(null)
 
   const fetchSessionData = useCallback(async (router) => {
     if (!sessionId) return
@@ -62,6 +66,16 @@ export function useExamSession(sessionId, soundEnabled, resetAIStates) {
           setIsSessionStarted(true)
         } else {
           setCurrentIdx(examData.session.currentQuestionIndex || 0)
+          
+          let correct = 0
+          let errors = 0
+          ;(examData.session.answers || []).forEach((a) => {
+            if (a.isCorrect) correct++
+            else errors++
+          })
+          setSessionCorrect(correct)
+          setSessionErrors(errors)
+
           if (examData.session.currentQuestionIndex > 0) {
             setIsSessionStarted(true)
             setStartTime(Date.now())
@@ -112,6 +126,37 @@ export function useExamSession(sessionId, soundEnabled, resetAIStates) {
     return () => clearInterval(timerRef.current)
   }, [session, result, isSessionStarted, handleSubmitExam])
 
+  const handleNext = useCallback(() => {
+    answerFetchRef.current?.abort()
+    answerFetchRef.current = null
+    
+    if (autoAdvanceRef.current) {
+      clearTimeout(autoAdvanceRef.current)
+      autoAdvanceRef.current = null
+    }
+    setAutoAdvanceTimer(null)
+
+    if (currentIdx < questions.length - 1) {
+      setCurrentIdx((i) => i + 1)
+      setSelectedOption(null)
+      setAnswered(false)
+      setFeedbackData(null)
+      setShowExplanation(false)
+      if (resetAIStates) resetAIStates()
+      setStartTime(Date.now())
+    } else {
+      handleSubmitExam()
+    }
+  }, [currentIdx, questions.length, handleSubmitExam, resetAIStates])
+
+  const cancelAutoAdvance = useCallback(() => {
+    if (autoAdvanceRef.current) {
+      clearTimeout(autoAdvanceRef.current)
+      autoAdvanceRef.current = null
+      setAutoAdvanceTimer(null)
+    }
+  }, [])
+
   const handleSelectOption = useCallback(
     (optIdx) => {
       if (answered || submitting) return
@@ -147,6 +192,10 @@ export function useExamSession(sessionId, soundEnabled, resetAIStates) {
           if (answerFetchRef.current !== controller) return
 
           setFeedbackData(data)
+          
+          if (data.isCorrect) setSessionCorrect(c => c + 1)
+          else setSessionErrors(e => e + 1)
+
           if (
             soundEnabled &&
             session?.assistanceMode === 'instant' &&
@@ -154,30 +203,23 @@ export function useExamSession(sessionId, soundEnabled, resetAIStates) {
           ) {
             playSound(data.isCorrect ? '/sounds/correct-answer.mp3' : '/sounds/wrong-answer.mp3')
           }
+
+          // Auto-advance logic for instant mode
+          if (session?.assistanceMode === 'instant' && data.isCorrect) {
+            setAutoAdvanceTimer(true)
+            autoAdvanceRef.current = setTimeout(() => {
+              handleNext()
+            }, 2500)
+          }
         })
         .catch((err) => {
           if (err.name !== 'AbortError') console.error('Answer fetch error:', err)
         })
     },
-    [answered, submitting, startTime, session, soundEnabled, currentQuestion, sessionId]
+    [answered, submitting, startTime, session, soundEnabled, currentQuestion, sessionId, handleNext]
   )
 
-  const handleNext = useCallback(() => {
-    answerFetchRef.current?.abort()
-    answerFetchRef.current = null
 
-    if (currentIdx < questions.length - 1) {
-      setCurrentIdx((i) => i + 1)
-      setSelectedOption(null)
-      setAnswered(false)
-      setFeedbackData(null)
-      setShowExplanation(false)
-      if (resetAIStates) resetAIStates()
-      setStartTime(Date.now())
-    } else {
-      handleSubmitExam()
-    }
-  }, [currentIdx, questions.length, handleSubmitExam, resetAIStates])
 
   const toggleBookmark = useCallback(async (questionId) => {
     try {
@@ -219,6 +261,10 @@ export function useExamSession(sessionId, soundEnabled, resetAIStates) {
     bookmarkedQuestions,
     isSessionStarted,
     setIsSessionStarted,
+    sessionCorrect,
+    sessionErrors,
+    autoAdvanceTimer,
+    cancelAutoAdvance,
     setStartTime,
     fetchSessionData,
     handleSubmitExam,

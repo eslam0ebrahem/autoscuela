@@ -411,6 +411,49 @@ function AIExplanationPanel({ explanation, loading, t }) {
   )
 }
 
+/**
+ * AI DEEP DIVE PANEL COMPONENT
+ */
+function AIDeepDivePanel({ deepDive, t }) {
+  const { displayed: reasonText } = useTypewriter(deepDive?.reason_for_mistake || '')
+  const { displayed: strategyText } = useTypewriter(deepDive?.strategy_to_remember || '')
+
+  if (!deepDive) return null
+
+  return (
+    <div className="mt-4 p-5 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border-2 border-red-200 dark:border-red-800 rounded-3xl space-y-4 animate-scale-in">
+      <div className="flex items-center gap-3 text-red-700 dark:text-red-400">
+        <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+          <ThunderboltOutlined />
+        </div>
+        <div>
+          <h4 className="font-black text-sm uppercase tracking-wider">{t('Intervención IA', 'AI Intervention')}</h4>
+          <p className="text-xs opacity-80">{t('Notamos que sueles fallar en este tema', 'We noticed you struggle with this topic')}</p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {deepDive?.reason_for_mistake && (
+          <div className="p-4 bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-red-100 dark:border-red-900/50 backdrop-blur-sm">
+            <p className="text-xs font-black text-red-600 dark:text-red-400 mb-2 uppercase tracking-wide">
+              {t('¿Por qué te confundes?', 'Why the confusion?')}
+            </p>
+            <p className="text-sm text-ink dark:text-white leading-relaxed"><FormattedText text={reasonText} /></p>
+          </div>
+        )}
+        {deepDive?.strategy_to_remember && (
+          <div className="p-4 bg-orange-100/50 dark:bg-orange-900/30 rounded-2xl border border-orange-200 dark:border-orange-800/50">
+            <p className="text-xs font-black text-orange-700 dark:text-orange-400 mb-2 uppercase tracking-wide">
+              🧠 {t('Estrategia definitiva', 'Definitive strategy')}
+            </p>
+            <p className="text-sm text-ink dark:text-white leading-relaxed font-medium"><FormattedText text={strategyText} /></p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function ExamInterface() {
   const { user, t } = useAuth()
   const router = useRouter()
@@ -441,6 +484,10 @@ function ExamInterface() {
     bookmarkedQuestions,
     isSessionStarted,
     setIsSessionStarted,
+    sessionCorrect,
+    sessionErrors,
+    autoAdvanceTimer,
+    cancelAutoAdvance,
     setStartTime,
     fetchSessionData,
     handleSubmitExam,
@@ -682,12 +729,20 @@ function ExamInterface() {
             <span>
               {t('Pregunta', 'Question')} {currentIdx + 1} / {questions.length}
             </span>
-            {timeLeft != null && (
-              <span className={timeLeft < 60 ? 'text-danger animate-pulse' : ''}>
-                <ClockCircleOutlined /> {Math.floor(timeLeft / 60)}:
-                {String(timeLeft % 60).padStart(2, '0')}
-              </span>
-            )}
+            <div className="flex items-center gap-4">
+              {isInstant && (sessionCorrect > 0 || sessionErrors > 0) && (
+                <span className="flex gap-2 text-xs">
+                  {sessionCorrect > 0 && <span className="text-success">{sessionCorrect} ✓</span>}
+                  {sessionErrors > 0 && <span className="text-danger">{sessionErrors} ✗</span>}
+                </span>
+              )}
+              {timeLeft != null && (
+                <span className={timeLeft < 60 ? 'text-danger animate-pulse' : ''}>
+                  <ClockCircleOutlined /> {Math.floor(timeLeft / 60)}:
+                  {String(timeLeft % 60).padStart(2, '0')}
+                </span>
+              )}
+            </div>
           </div>
           <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div
@@ -759,6 +814,10 @@ function ExamInterface() {
 
           {answered && session?.assistanceMode === 'instant' && (
             <>
+              {feedbackData?.aiDeepDive && (
+                <AIDeepDivePanel deepDive={feedbackData.aiDeepDive} t={t} />
+              )}
+              
               {!aiExplanation && !loadingExplanation && (
                 <button
                   onClick={handleRequestExplanation}
@@ -770,7 +829,7 @@ function ExamInterface() {
                   {t('Explicación detallada IA', 'Detailed AI Explanation')}
                 </button>
               )}
-              <AIExplanationPanel explanation={aiExplanation} loading={loadingExplanation} t={t} />
+              <AIExplanationPanel explanation={aiExplanation || feedbackData?.aiExplanation} loading={loadingExplanation} t={t} />
             </>
           )}
         </div>
@@ -843,15 +902,29 @@ function ExamInterface() {
         </div>
 
         {answered && (
-          <button
-            onClick={handleNext}
-            className="btn-primary px-10 py-4 rounded-2xl font-black shadow-2xl shadow-primary/30 animate-scale-in flex items-center gap-2"
-          >
-            {currentIdx === questions.length - 1
-              ? t('Finalizar', 'Finish')
-              : t('Siguiente', 'Next')}
-            <ArrowRightOutlined />
-          </button>
+          <div className="flex items-center gap-4">
+            {autoAdvanceTimer && (
+              <button
+                onClick={cancelAutoAdvance}
+                className="text-sm font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors"
+              >
+                {t('Cancelar avance', 'Cancel auto-advance')}
+              </button>
+            )}
+            <button
+              onClick={() => {
+                cancelAutoAdvance()
+                handleNext()
+              }}
+              className="btn-primary px-10 py-4 rounded-2xl font-black shadow-2xl shadow-primary/30 animate-scale-in flex items-center gap-2"
+            >
+              {autoAdvanceTimer && <LoadingOutlined className="mr-2" />}
+              {currentIdx === questions.length - 1
+                ? t('Finalizar', 'Finish')
+                : t('Siguiente', 'Next')}
+              <ArrowRightOutlined />
+            </button>
+          </div>
         )}
       </div>
 
