@@ -1,22 +1,23 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import DOMPurify from 'dompurify'
 import AppShell from '@/components/AppShell'
 import { useAuth } from '@/components/AuthContext'
 import { useToast } from '@/components/Toast'
 import {
   StarFilled,
   StarOutlined,
-  BookOutlined,
   DeleteOutlined,
   EyeOutlined,
   FilterOutlined,
   ReloadOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined,
   RocketOutlined,
   WarningOutlined,
   BulbOutlined,
+  RobotOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons'
 
 // ---------------------------------------------------------------------------
@@ -30,15 +31,9 @@ const API_ENDPOINTS = {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Get localized text from multilingual object or string.
- */
-const getLocalizedText = (obj, lang) => {
-  if (!obj) return ''
-  if (typeof obj === 'string') return obj
-  if (lang === 'en' && obj.en) return obj.en
-  return obj.es || obj.en || ''
+function sanitizeHtml(html) {
+  if (typeof window === 'undefined') return ''
+  return DOMPurify.sanitize(html)
 }
 
 // ---------------------------------------------------------------------------
@@ -50,6 +45,10 @@ const getLocalizedText = (obj, lang) => {
  */
 function BookmarkCard({ question, onRemove, onReview, t, lang = 'es' }) {
   const [expanded, setExpanded] = useState(false)
+  const [showAi, setShowAi] = useState(false)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiExplanation, setAiExplanation] = useState(null)
+  const [aiError, setAiError] = useState(null)
 
   // Mapping to real schema
   const questionText = question.question?.[lang] || question.question?.es || ''
@@ -62,28 +61,72 @@ function BookmarkCard({ question, onRemove, onReview, t, lang = 'es' }) {
     setExpanded((prev) => !prev)
   }, [])
 
+  const handleAskAI = useCallback(async () => {
+    if (showAi && aiExplanation) {
+      setShowAi(false)
+      return
+    }
+    setShowAi(true)
+    if (aiExplanation) return
+
+    setAiLoading(true)
+    setAiError(null)
+
+    try {
+      const res = await fetch('/api/ai/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId: question._id || question.questionId,
+          selectedIdx: correctIdx !== undefined ? correctIdx : 0, // Sending correct index to get general explanation
+          lang,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || data.error || 'Failed to load AI explanation')
+      setAiExplanation(data.explanation)
+    } catch (err) {
+      setAiError(err.message)
+    } finally {
+      setAiLoading(false)
+    }
+  }, [question, lang, correctIdx, showAi, aiExplanation])
+
   return (
-    <div className="card hover:shadow-lg transition-shadow">
+    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-2xl p-5 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 flex flex-col relative overflow-hidden group">
+      {/* Decorative gradient blob */}
+      <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-400/10 dark:bg-amber-500/10 rounded-full blur-2xl pointer-events-none group-hover:scale-110 transition-transform duration-500" />
+      
       {/* Header */}
-      <div className="flex items-start gap-3 mb-3">
-        <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-          <StarFilled className="text-xl text-amber-600 dark:text-amber-400" />
+      <div className="flex items-start gap-3 mb-4 relative z-10">
+        <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0 shadow-inner">
+          <StarFilled className="text-xl text-amber-500 dark:text-amber-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold rounded">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="px-2.5 py-1 bg-indigo-100/80 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[10px] uppercase tracking-wider font-bold rounded-lg border border-indigo-200 dark:border-indigo-800">
               {topic}
             </span>
           </div>
-          <h3 className="text-sm font-semibold text-ink dark:text-white leading-snug">
+          <h3 className="text-base font-bold text-ink dark:text-white leading-snug">
             {questionText}
           </h3>
+          {question.metadata?.image_url && (
+            <div className="mt-3 rounded-xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 w-full max-h-48 relative group/img">
+              <img
+                src={question.metadata.image_url}
+                alt="Question"
+                className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+              />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Options (if available) */}
       {options.length > 0 && (
-        <div className="space-y-2 mb-3">
+        <div className="space-y-2 mb-4 relative z-10 flex-1">
           {options.map((option, index) => {
             const optionText = option['text_' + lang] || option.text_es || ''
             const isCorrect = option.idx === correctIdx
@@ -91,19 +134,26 @@ function BookmarkCard({ question, onRemove, onReview, t, lang = 'es' }) {
             return (
               <div
                 key={index}
-                className={`flex items-start gap-2 p-2 rounded-lg border ${
+                className={`flex items-start gap-3 p-3 rounded-xl border relative overflow-hidden transition-colors ${
                   isCorrect
-                    ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
-                    : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700'
+                    ? 'bg-green-50/80 dark:bg-green-900/10 border-green-200 dark:border-green-800/50 shadow-sm'
+                    : 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-200/50 dark:border-slate-700/50'
                 }`}
               >
+                {isCorrect && (
+                   <div className="absolute inset-y-0 left-0 w-1 bg-green-500 rounded-l-xl" />
+                )}
                 {isCorrect ? (
                   <CheckCircleOutlined className="text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
                 ) : (
                   <div className="w-4 h-4 rounded-full border-2 border-slate-300 dark:border-slate-600 shrink-0 mt-0.5" />
                 )}
                 <p
-                  className={`text-sm ${isCorrect ? 'text-green-900 dark:text-green-200 font-semibold' : 'text-ink-light dark:text-slate-400'}`}
+                  className={`text-sm ${
+                    isCorrect 
+                      ? 'text-green-900 dark:text-green-100 font-bold' 
+                      : 'text-slate-600 dark:text-slate-400 font-medium'
+                  }`}
                 >
                   {optionText}
                 </p>
@@ -113,70 +163,93 @@ function BookmarkCard({ question, onRemove, onReview, t, lang = 'es' }) {
         </div>
       )}
 
-      {/* Explanation (expandable) */}
-      {explanation && (
-        <div className="mb-3">
-          <button
-            onClick={toggleExpanded}
-            className="w-full text-left px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors flex items-center justify-between"
-          >
-            <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
-              <BulbOutlined />
-              {t('Explicación', 'Explanation')}
-            </span>
-            <span
-              className={`text-indigo-600 dark:text-indigo-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+      {/* Expandable Sections */}
+      <div className="space-y-2 mb-4 relative z-10">
+        {/* Official Explanation */}
+        {explanation && (
+          <div>
+            <button
+              onClick={toggleExpanded}
+              className="w-full text-left px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-between border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
             >
-              ▼
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <BulbOutlined className="text-amber-500" />
+                {t('Explicación oficial', 'Official explanation')}
+              </span>
+              <span className={`text-slate-400 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}>
+                ▼
+              </span>
+            </button>
+            {expanded && (
+              <div className="mt-2 p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm animate-in slide-in-from-top-2 duration-200">
+                <div
+                  className="text-sm text-ink dark:text-white leading-relaxed prose prose-sm dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(explanation) }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* AI Tutor */}
+        <div>
+          <button
+            onClick={handleAskAI}
+            className={`w-full text-left px-3 py-2 rounded-xl transition-all flex items-center justify-between border ${
+              showAi 
+                ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700' 
+                : 'bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/40 dark:hover:to-purple-900/40 border-indigo-100 dark:border-indigo-800/50'
+            }`}
+          >
+            <span className="text-sm font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
+              <RobotOutlined className="text-indigo-500" />
+              {t('Explicación IA', 'AI Explanation')}
             </span>
+             <span className={`text-indigo-400 transition-transform duration-300 ${showAi ? 'rotate-180' : ''}`}>
+                ▼
+              </span>
           </button>
-          {expanded && (
-            <div className="mt-2 p-3 bg-white dark:bg-slate-800 rounded-lg border border-indigo-200 dark:border-indigo-800">
-              <div
-                className="text-sm text-ink dark:text-white leading-relaxed prose prose-sm dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: explanation }}
-              />
+          
+          {showAi && (
+            <div className="mt-2 p-4 bg-white/90 dark:bg-slate-800/90 backdrop-blur rounded-xl border border-indigo-200 dark:border-indigo-700 shadow-sm animate-in slide-in-from-top-2 duration-200">
+              {aiLoading ? (
+                <div className="flex items-center justify-center gap-2 text-indigo-500 py-4">
+                  <LoadingOutlined className="text-xl" />
+                  <span className="text-sm font-medium">{t('Generando explicación...', 'Generating explanation...')}</span>
+                </div>
+              ) : aiError ? (
+                <div className="text-sm text-red-600 dark:text-red-400 font-medium p-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-900">
+                  {aiError}
+                </div>
+              ) : aiExplanation ? (
+                <div 
+                  className="text-sm text-ink dark:text-white leading-relaxed prose prose-sm dark:prose-invert prose-indigo max-w-none"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation) }}
+                />
+              ) : null}
             </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* Actions */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 mt-auto pt-2 relative z-10 border-t border-slate-100 dark:border-slate-800">
         <button
           onClick={() => onReview(question)}
-          className="flex-1 px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+          className="flex-1 px-4 py-2.5 bg-ink text-white dark:bg-primary dark:hover:bg-indigo-600 font-bold rounded-xl hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
         >
           <EyeOutlined />
           {t('Revisar', 'Review')}
         </button>
         <button
           onClick={() => onRemove(question._id)}
-          className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-red-500 dark:text-red-400 rounded-xl hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-300 transition-all active:scale-95 border border-transparent hover:border-red-200 dark:hover:border-red-800"
           title={t('Quitar de guardados', 'Remove bookmark')}
         >
-          <DeleteOutlined />
+          <DeleteOutlined className="text-lg" />
         </button>
       </div>
     </div>
-  )
-}
-
-/**
- * Filter button component
- */
-function FilterButton({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-        active
-          ? 'bg-primary text-white shadow-md'
-          : 'bg-slate-100 dark:bg-slate-800 text-ink dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
-      }`}
-    >
-      {children}
-    </button>
   )
 }
 
@@ -274,9 +347,8 @@ function BookmarksContent() {
   // ── Review question ────────────────────────────────────────────────────
   const handleReviewQuestion = useCallback(
     (question) => {
-      // Navigate to single question review or practice
-      if (question.questionId) {
-        router.push(`/question/${question.questionId}`)
+      if (question.questionId || question._id) {
+        router.push(`/question/${question.questionId || question._id}`)
       } else if (question.topic) {
         router.push(`/exam?mode=custom&topics=${encodeURIComponent(question.topic)}`)
       }
@@ -293,9 +365,9 @@ function BookmarksContent() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-ink-light dark:text-slate-400 text-sm">
-          {t('Cargando guardados...', 'Loading bookmarks...')}
+        <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4 shadow-lg"></div>
+        <p className="text-slate-500 dark:text-slate-400 font-medium">
+          {t('Cargando tus guardados...', 'Loading your bookmarks...')}
         </p>
       </div>
     )
@@ -304,31 +376,27 @@ function BookmarksContent() {
   // ── Error state ────────────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="container-wrapper max-w-2xl mx-auto">
-        <div className="card text-center py-12">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-20 h-20 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-              <WarningOutlined className="text-5xl text-red-600 dark:text-red-400" />
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-ink dark:text-white mb-2">
-                {t('Error al cargar', 'Failed to load')}
-              </h3>
-              <p className="text-sm text-ink-light dark:text-slate-400 max-w-md mx-auto">
-                {t(
-                  'No pudimos cargar tus preguntas guardadas. Inténtalo de nuevo más tarde.',
-                  'We could not load your bookmarked questions. Please try again later.'
-                )}
-              </p>
-            </div>
-            <button
-              onClick={() => fetchBookmarks(true)}
-              className="px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
-            >
-              <ReloadOutlined />
-              {t('Reintentar', 'Retry')}
-            </button>
+      <div className="container-wrapper max-w-2xl mx-auto px-4 py-8">
+        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-3xl p-12 text-center border border-white/50 dark:border-slate-700/50 shadow-sm flex flex-col items-center">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-red-400 to-rose-600 flex items-center justify-center shadow-xl shadow-red-500/20 mb-6">
+            <WarningOutlined className="text-5xl text-white drop-shadow-md" />
           </div>
+          <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-3 tracking-tight">
+            {t('Error al cargar', 'Failed to load')}
+          </h3>
+          <p className="text-base text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-8 font-medium">
+            {t(
+              'No pudimos cargar tus preguntas guardadas. Inténtalo de nuevo más tarde.',
+              'We could not load your bookmarked questions. Please try again later.'
+            )}
+          </p>
+          <button
+            onClick={() => fetchBookmarks(true)}
+            className="px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl hover:scale-105 transition-all shadow-xl active:scale-95 flex items-center gap-3 text-lg"
+          >
+            <ReloadOutlined />
+            {t('Reintentar', 'Retry')}
+          </button>
         </div>
       </div>
     )
@@ -336,30 +404,33 @@ function BookmarksContent() {
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="container-wrapper space-y-6 max-w-5xl mx-auto">
+    <div className="container-wrapper space-y-8 max-w-7xl mx-auto px-4 py-8">
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-ink dark:text-white">
-            {t('Preguntas Guardadas', 'Bookmarked Questions')}
-          </h1>
-          <p className="text-sm text-ink-light dark:text-slate-400 mt-1">
-            {questions.length > 0
-              ? t(
-                  `${questions.length} preguntas para revisar`,
-                  `${questions.length} questions to review`
-                )
-              : t('Sin preguntas guardadas', 'No bookmarks yet')}
-          </p>
+      <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
+        <div className="relative">
+          <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 to-orange-500 rounded-xl blur opacity-20 dark:opacity-30 pointer-events-none"></div>
+          <div className="relative">
+            <h1 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 tracking-tight mb-2">
+              {t('Preguntas Guardadas', 'Bookmarked Questions')}
+            </h1>
+            <p className="text-base text-slate-500 dark:text-slate-400 font-medium max-w-xl">
+              {questions.length > 0
+                ? t(
+                    `Tienes ${questions.length} preguntas reservadas para repaso especial.`,
+                    `You have ${questions.length} questions saved for special review.`
+                  )
+                : t('No tienes preguntas guardadas aún.', 'No bookmarks yet.')}
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button
             onClick={() => fetchBookmarks(true)}
             disabled={refreshing}
-            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-ink dark:text-white rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-white rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 font-bold"
           >
             <ReloadOutlined className={refreshing ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline font-semibold">
+            <span className="hidden sm:inline">
               {refreshing ? t('Actualizando...', 'Refreshing...') : t('Actualizar', 'Refresh')}
             </span>
           </button>
@@ -367,116 +438,106 @@ function BookmarksContent() {
       </div>
 
       {/* ── Info Card ───────────────────────────────────────────────── */}
-      <div className="card bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800">
-        <div className="flex items-start gap-3">
-          <StarFilled className="text-2xl text-amber-600 dark:text-amber-400 shrink-0 mt-1" />
+      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 border border-amber-200/50 dark:border-amber-800/30 p-5 md:p-6 shadow-sm">
+        <div className="absolute right-0 top-0 w-32 h-32 bg-amber-400/10 dark:bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex items-start md:items-center gap-4 relative z-10">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20 shrink-0">
+            <StarFilled className="text-2xl drop-shadow-sm" />
+          </div>
           <div>
-            <h3 className="font-bold text-indigo-900 dark:text-indigo-200 mb-1">
+            <h3 className="text-lg font-black text-amber-900 dark:text-amber-100 mb-1">
               {t('¿Cómo funciona?', 'How does it work?')}
             </h3>
-            <p className="text-sm text-indigo-700 dark:text-indigo-300 leading-relaxed">
+            <p className="text-sm font-medium text-amber-800/80 dark:text-amber-200/80 leading-relaxed max-w-3xl">
               {t(
-                'Guarda preguntas durante los exámenes haciendo clic en la estrella para repasarlas aquí.',
-                'Bookmark questions during exams by clicking the star to review them here.'
+                'Guarda preguntas difíciles o interesantes durante tus exámenes haciendo clic en la estrella. Tu colección personal te ayudará a enfocarte en lo que más necesitas repasar.',
+                'Save difficult or interesting questions during your exams by clicking the star. Your personal collection will help you focus on what you need to review most.'
               )}
             </p>
           </div>
         </div>
       </div>
 
-      {/* ── Topic Filter ────────────────────────────────────────────── */}
-      {topics.length > 0 && questions.length > 0 && (
-        <div className="card">
-          <h2 className="text-lg font-black text-ink dark:text-white mb-4 flex items-center gap-2">
-            <FilterOutlined />
-            {t('Filtrar por tema', 'Filter by topic')}
-          </h2>
-          <select
-            value={selectedTopic || ''}
-            onChange={(e) => setSelectedTopic(e.target.value || null)}
-            className="w-full md:w-auto px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-ink dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
-          >
-            <option value="">{t('Todos los temas', 'All topics')}</option>
-            {topics.map((topic, index) => {
-              const tagValue = typeof topic.tag === 'object' ? topic.tag.es : topic.tag
-              const tagName = topic.name || tagValue
-              return (
-                <option key={`topic-${tagValue || index}`} value={tagValue}>
-                  {tagName}
-                </option>
-              )
-            })}
-          </select>
-        </div>
-      )}
-
-      {/* ── Practice All CTA ────────────────────────────────────────── */}
-      {questions.length > 0 && (
-        <div className="card bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-              <h3 className="text-lg font-black mb-1">
-                {t('¿Listo para practicar?', 'Ready to practice?')}
-              </h3>
-              <p className="text-sm text-amber-100">
-                {t(
-                  'Practica un examen con tus preguntas guardadas',
-                  'Practice an exam with your bookmarked questions'
-                )}
-              </p>
+      {/* ── Filters & Action Bar ──────────────────────────────────────── */}
+      {(topics.length > 0 || questions.length > 0) && (
+        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+          
+          {/* Topic Filter */}
+          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-2xl p-4 border border-white/50 dark:border-slate-700/50 shadow-sm flex items-center gap-4 flex-1 md:flex-none">
+            <FilterOutlined className="text-slate-400 text-lg hidden sm:block" />
+            <div className="relative w-full md:w-auto inline-block">
+              <select
+                value={selectedTopic || ''}
+                onChange={(e) => setSelectedTopic(e.target.value || null)}
+                className="w-full md:min-w-[250px] px-4 py-2.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-white focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 transition-all appearance-none cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 shadow-sm pr-10"
+              >
+                <option value="">{t('Todos los temas', 'All topics')}</option>
+                {topics.map((topic, index) => {
+                  const tagValue = typeof topic.tag === 'object' ? topic.tag.es : topic.tag
+                  const tagName = topic.name || tagValue
+                  return (
+                    <option key={`topic-${tagValue || index}`} value={tagValue}>
+                      {tagName}
+                    </option>
+                  )
+                })}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400">
+                ▼
+              </div>
             </div>
+          </div>
+
+          {/* Practice All CTA */}
+          {questions.length > 0 && (
             <button
               onClick={handlePracticeAll}
-              className="px-8 py-3 bg-white text-amber-600 font-black rounded-xl hover:bg-amber-50 transition-all shadow-lg active:scale-95 flex items-center gap-2 whitespace-nowrap"
+              className="px-8 py-3 md:py-0 h-[60px] bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl hover:scale-105 transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 whitespace-nowrap text-base"
             >
-              <RocketOutlined />
+              <RocketOutlined className="text-amber-500" />
               {t('Practicar Guardados', 'Practice Bookmarks')}
             </button>
-          </div>
+          )}
         </div>
       )}
 
       {/* ── Bookmarks List ──────────────────────────────────────────── */}
       {questions.length === 0 ? (
-        <div className="card text-center py-12">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-20 h-20 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-              <StarOutlined className="text-5xl text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-ink dark:text-white mb-2">
-                {selectedTopic
-                  ? t('No hay preguntas guardadas', 'No bookmarked questions')
-                  : t('Aún no has guardado preguntas', "You haven't bookmarked any questions yet")}
-              </h3>
-              <p className="text-sm text-ink-light dark:text-slate-400 max-w-md mx-auto">
-                {selectedTopic
-                  ? t(
-                      'No tienes preguntas guardadas en este tema',
-                      'You have no bookmarked questions in this topic'
-                    )
-                  : t(
-                      'Durante los exámenes, haz clic en la estrella para guardar preguntas importantes',
-                      'During exams, click the star to save important questions'
-                    )}
-              </p>
-            </div>
-            {!selectedTopic && (
-              <button
-                onClick={() => router.push('/exam')}
-                className="px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
-              >
-                <RocketOutlined />
-                {t('Tomar Examen', 'Take Exam')}
-              </button>
-            )}
+        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-3xl p-12 text-center border border-white/50 dark:border-slate-700/50 shadow-sm flex flex-col items-center">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-200 to-amber-400 dark:from-amber-700 dark:to-amber-900 flex items-center justify-center shadow-xl shadow-amber-500/20 mb-6">
+            <StarOutlined className="text-5xl text-amber-600 dark:text-amber-300 drop-shadow-md" />
           </div>
+          <h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-white mb-3 tracking-tight">
+            {selectedTopic
+              ? t('No hay preguntas guardadas', 'No bookmarked questions')
+              : t('Aún no has guardado preguntas', "You haven't bookmarked any questions yet")}
+          </h3>
+          <p className="text-base text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-8 font-medium">
+            {selectedTopic
+              ? t(
+                  'No tienes preguntas guardadas en este tema específico.',
+                  'You have no bookmarked questions in this specific topic.'
+                )
+              : t(
+                  'Durante los exámenes, haz clic en el ícono de estrella para guardar preguntas importantes y repasarlas más tarde.',
+                  'During exams, click the star icon to save important questions and review them later.'
+                )}
+          </p>
+          {!selectedTopic && (
+            <button
+              onClick={() => router.push('/exam')}
+              className="px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl hover:scale-105 transition-all shadow-xl active:scale-95 flex items-center gap-3 text-lg"
+            >
+              <RocketOutlined className="text-amber-500" />
+              {t('Tomar un Examen', 'Take an Exam')}
+            </button>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {questions.map((question) => (
             <BookmarkCard
-              key={question._id}
+              key={question._id || question.questionId}
               question={question}
               onRemove={handleRemoveBookmark}
               onReview={handleReviewQuestion}
