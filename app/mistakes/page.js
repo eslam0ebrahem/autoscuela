@@ -225,10 +225,42 @@ function MistakeCard({ mistake, onReview, onClear, t, lang = 'es' }) {
                   {aiError}
                 </div>
               ) : aiExplanation ? (
-                <div 
-                  className="text-sm text-ink dark:text-white leading-relaxed prose prose-sm dark:prose-invert prose-indigo max-w-none"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation) }}
-                />
+                typeof aiExplanation === 'string' ? (
+                  <div 
+                    className="text-sm text-ink dark:text-white leading-relaxed prose prose-sm dark:prose-invert prose-indigo max-w-none"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation) }}
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    <p className="font-bold text-indigo-900 dark:text-indigo-200">
+                      {aiExplanation.summary}
+                    </p>
+                    
+                    {aiExplanation.wrong_explanation && (
+                      <div className="text-sm text-red-800 dark:text-red-200 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-800/50">
+                        <span className="font-bold block mb-1">❌ {t('Por qué es incorrecto:', 'Why it is incorrect:')}</span>
+                        <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation.wrong_explanation) }} />
+                      </div>
+                    )}
+
+                    {aiExplanation.correct_explanation && (
+                      <div className="text-sm text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-100 dark:border-green-800/50">
+                        <span className="font-bold block mb-1">✅ {t('La regla correcta:', 'The correct rule:')}</span>
+                        <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation.correct_explanation) }} />
+                      </div>
+                    )}
+
+                    {aiExplanation.memory_tip && (
+                      <div className="text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg flex gap-3 border border-amber-100 dark:border-amber-800/50 mt-1">
+                        <span className="text-xl shrink-0">💡</span>
+                        <div>
+                          <span className="font-bold block mb-0.5">{t('Consejo de memoria:', 'Memory tip:')}</span>
+                          <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation.memory_tip) }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
               ) : null}
             </div>
           )}
@@ -292,31 +324,53 @@ function MistakeReviewContent() {
   const [filter, setFilter] = useState(FILTER_OPTIONS.ALL)
   const [selectedTopic, setSelectedTopic] = useState(null)
   
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [loadingMore, setLoadingMore] = useState(false)
+
   const [aiPatterns, setAiPatterns] = useState(null)
 
   // ── Fetch mistakes ─────────────────────────────────────────────────────
   const fetchMistakes = useCallback(
-    async (force = false) => {
+    async (pageNumber = 1, force = false) => {
       try {
-        setRefreshing(force)
+        if (pageNumber === 1) {
+          setRefreshing(true)
+        } else {
+          setLoadingMore(true)
+        }
 
         const params = new URLSearchParams()
         if (filter === FILTER_OPTIONS.RECENT) params.append('sort', 'recent')
         if (filter === FILTER_OPTIONS.FREQUENT) params.append('sort', 'frequent')
         if (selectedTopic) params.append('topic', selectedTopic)
         if (force) params.append('force', 'true')
+        params.append('page', pageNumber.toString())
+        params.append('limit', '20')
 
         const res = await fetch(`${API_ENDPOINTS.MISTAKES}?${params}`)
         if (!res.ok) throw new Error(t('Error al cargar errores', 'Failed to load mistakes'))
 
         const data = await res.json()
-        setMistakes(data.mistakes || [])
+        if (pageNumber === 1) {
+          setMistakes(data.mistakes || [])
+        } else {
+          setMistakes((prev) => {
+            // Prevent duplicates if React StrictMode double-invokes
+            const existingIds = new Set(prev.map(m => m.questionId))
+            const newMistakes = (data.mistakes || []).filter(m => !existingIds.has(m.questionId))
+            return [...prev, ...newMistakes]
+          })
+        }
+        setPage(pageNumber)
+        setTotalPages(data.totalPages || 1)
       } catch (err) {
         console.error('[mistakes] Fetch error:', err)
         toast?.error?.(t('Error', 'Error'), err.message)
       } finally {
-        setLoading(false)
+        if (pageNumber === 1) setLoading(false)
         setRefreshing(false)
+        setLoadingMore(false)
       }
     },
     [filter, selectedTopic, t, toast]
@@ -354,7 +408,7 @@ function MistakeReviewContent() {
 
   // ── Fetch mistakes when filters change ────────────────────────────────
   useEffect(() => {
-    fetchMistakes()
+    fetchMistakes(1)
   }, [fetchMistakes])
 
   // ── Fetch AI Patterns on mount ─────────────────────────────────────────
@@ -460,7 +514,7 @@ function MistakeReviewContent() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => fetchMistakes(true)}
+            onClick={() => fetchMistakes(1, true)}
             disabled={refreshing}
             className="px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-white rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 font-bold"
           >
@@ -692,21 +746,36 @@ function MistakeReviewContent() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredMistakes.map(
-            (mistake, index) =>
-              mistake && (
-                <MistakeCard
-                  key={mistake.questionId || `mistake-${index}`}
-                  mistake={mistake}
-                  onReview={handleReviewMistake}
-                  onClear={handleClearMistake}
-                  t={t}
-                  lang={lang}
-                />
-              )
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredMistakes.map(
+              (mistake, index) =>
+                mistake && (
+                  <MistakeCard
+                    key={mistake.questionId || `mistake-${index}`}
+                    mistake={mistake}
+                    onReview={handleReviewMistake}
+                    onClear={handleClearMistake}
+                    t={t}
+                    lang={lang}
+                  />
+                )
+            )}
+          </div>
+          
+          {page < totalPages && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={() => fetchMistakes(page + 1)}
+                disabled={loadingMore}
+                className="px-8 py-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-white font-bold rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+              >
+                {loadingMore && <LoadingOutlined className="animate-spin" />}
+                {t('Cargar más', 'Load more')}
+              </button>
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   )

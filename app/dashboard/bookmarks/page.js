@@ -222,10 +222,42 @@ function BookmarkCard({ question, onRemove, onReview, t, lang = 'es' }) {
                   {aiError}
                 </div>
               ) : aiExplanation ? (
-                <div 
-                  className="text-sm text-ink dark:text-white leading-relaxed prose prose-sm dark:prose-invert prose-indigo max-w-none"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation) }}
-                />
+                typeof aiExplanation === 'string' ? (
+                  <div 
+                    className="text-sm text-ink dark:text-white leading-relaxed prose prose-sm dark:prose-invert prose-indigo max-w-none"
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation) }}
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    <p className="font-bold text-indigo-900 dark:text-indigo-200">
+                      {aiExplanation.summary}
+                    </p>
+                    
+                    {aiExplanation.wrong_explanation && (
+                      <div className="text-sm text-red-800 dark:text-red-200 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-800/50">
+                        <span className="font-bold block mb-1">❌ {t('Por qué es incorrecto:', 'Why it is incorrect:')}</span>
+                        <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation.wrong_explanation) }} />
+                      </div>
+                    )}
+
+                    {aiExplanation.correct_explanation && (
+                      <div className="text-sm text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-100 dark:border-green-800/50">
+                        <span className="font-bold block mb-1">✅ {t('La regla correcta:', 'The correct rule:')}</span>
+                        <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation.correct_explanation) }} />
+                      </div>
+                    )}
+
+                    {aiExplanation.memory_tip && (
+                      <div className="text-sm text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg flex gap-3 border border-amber-100 dark:border-amber-800/50 mt-1">
+                        <span className="text-xl shrink-0">💡</span>
+                        <div>
+                          <span className="font-bold block mb-0.5">{t('Consejo de memoria:', 'Memory tip:')}</span>
+                          <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation.memory_tip) }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
               ) : null}
             </div>
           )}
@@ -270,30 +302,51 @@ function BookmarksContent() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(false)
   const [selectedTopic, setSelectedTopic] = useState(null)
+  
+  const [offset, setOffset] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   // ── Fetch bookmarks ────────────────────────────────────────────────────
   const fetchBookmarks = useCallback(
-    async (force = false) => {
+    async (newOffset = 0, force = false) => {
       try {
-        setRefreshing(force)
+        if (newOffset === 0) {
+          setRefreshing(true)
+        } else {
+          setLoadingMore(true)
+        }
         setError(false)
 
         const params = new URLSearchParams()
         if (selectedTopic) params.append('topic', selectedTopic)
         if (force) params.append('force', 'true')
+        params.append('offset', newOffset.toString())
+        params.append('limit', '20')
 
         const res = await fetch(`${API_ENDPOINTS.BOOKMARKS}?${params}`)
         if (!res.ok) throw new Error(t('Error al cargar guardados', 'Failed to load bookmarks'))
 
         const data = await res.json()
-        setQuestions(data.bookmarks || [])
+        if (newOffset === 0) {
+          setQuestions(data.bookmarks || [])
+        } else {
+          setQuestions((prev) => {
+            const existingIds = new Set(prev.map(q => q._id || q.questionId))
+            const newQuestions = (data.bookmarks || []).filter(q => !existingIds.has(q._id || q.questionId))
+            return [...prev, ...newQuestions]
+          })
+        }
+        setOffset(newOffset)
+        setHasMore(data.hasMore || false)
       } catch (err) {
         console.error('[bookmarks] Fetch error:', err)
         setError(true)
         toast?.error?.(t('Error', 'Error'), err.message)
       } finally {
-        setLoading(false)
+        if (newOffset === 0) setLoading(false)
         setRefreshing(false)
+        setLoadingMore(false)
       }
     },
     [selectedTopic, t, toast]
@@ -318,7 +371,7 @@ function BookmarksContent() {
 
   // ── Fetch bookmarks when filters change ────────────────────────────────
   useEffect(() => {
-    fetchBookmarks()
+    fetchBookmarks(0)
   }, [fetchBookmarks])
 
   // ── Remove bookmark ────────────────────────────────────────────────────
@@ -391,7 +444,7 @@ function BookmarksContent() {
             )}
           </p>
           <button
-            onClick={() => fetchBookmarks(true)}
+            onClick={() => fetchBookmarks(0, true)}
             className="px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-2xl hover:scale-105 transition-all shadow-xl active:scale-95 flex items-center gap-3 text-lg"
           >
             <ReloadOutlined />
@@ -425,7 +478,7 @@ function BookmarksContent() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => fetchBookmarks(true)}
+            onClick={() => fetchBookmarks(0, true)}
             disabled={refreshing}
             className="px-5 py-2.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-white rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 font-bold"
           >
@@ -534,18 +587,33 @@ function BookmarksContent() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {questions.map((question) => (
-            <BookmarkCard
-              key={question._id || question.questionId}
-              question={question}
-              onRemove={handleRemoveBookmark}
-              onReview={handleReviewQuestion}
-              t={t}
-              lang={lang}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {questions.map((question) => (
+              <BookmarkCard
+                key={question._id || question.questionId}
+                question={question}
+                onRemove={handleRemoveBookmark}
+                onReview={handleReviewQuestion}
+                t={t}
+                lang={lang}
+              />
+            ))}
+          </div>
+          
+          {hasMore && (
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={() => fetchBookmarks(offset + 20)}
+                disabled={loadingMore}
+                className="px-8 py-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-white font-bold rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+              >
+                {loadingMore && <LoadingOutlined className="animate-spin" />}
+                {t('Cargar más', 'Load more')}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
