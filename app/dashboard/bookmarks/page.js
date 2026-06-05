@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import DOMPurify from 'dompurify'
 import AppShell from '@/components/AppShell'
+import FormattedText from '@/components/FormattedText'
 import { useAuth } from '@/components/AuthContext'
 import { useToast } from '@/components/Toast'
 import {
@@ -236,14 +237,14 @@ function BookmarkCard({ question, onRemove, onReview, t, lang = 'es' }) {
                     {aiExplanation.wrong_explanation && (
                       <div className="text-sm text-red-800 dark:text-red-200 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-800/50">
                         <span className="font-bold block mb-1">❌ {t('Por qué es incorrecto:', 'Why it is incorrect:')}</span>
-                        <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation.wrong_explanation) }} />
+                        <span><FormattedText text={aiExplanation.wrong_explanation} /></span>
                       </div>
                     )}
 
                     {aiExplanation.correct_explanation && (
                       <div className="text-sm text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-100 dark:border-green-800/50">
                         <span className="font-bold block mb-1">✅ {t('La regla correcta:', 'The correct rule:')}</span>
-                        <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation.correct_explanation) }} />
+                        <span><FormattedText text={aiExplanation.correct_explanation} /></span>
                       </div>
                     )}
 
@@ -252,7 +253,7 @@ function BookmarkCard({ question, onRemove, onReview, t, lang = 'es' }) {
                         <span className="text-xl shrink-0">💡</span>
                         <div>
                           <span className="font-bold block mb-0.5">{t('Consejo de memoria:', 'Memory tip:')}</span>
-                          <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(aiExplanation.memory_tip) }} />
+                          <span><FormattedText text={aiExplanation.memory_tip} /></span>
                         </div>
                       </div>
                     )}
