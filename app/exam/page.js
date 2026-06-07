@@ -474,6 +474,15 @@ function ExamSetup() {
     }
   }, [t, toast])
 
+  // ── Timer defaults by mode ─────────────────────────────────────────────
+  useEffect(() => {
+    if (mode === 'mistakes' || mode === 'weak_topics') {
+      setTimerMinutes(30)
+    } else if (mode !== 'official') {
+      setTimerMinutes(0)
+    }
+  }, [mode])
+
   // ── Toggle topic selection ─────────────────────────────────────────────
   const toggleTopic = useCallback((tag) => {
     setSelectedTopics((prev) =>
@@ -485,16 +494,7 @@ function ExamSetup() {
   const startExam = useCallback(async () => {
     if (loading) return
 
-    // Validation
-    if (mode === 'custom' && selectedTopics.length === 0) {
-      setErrorMsg(
-        t(
-          'Selecciona al menos un tema o usa el modo oficial',
-          'Select at least one topic or use official mode'
-        )
-      )
-      return
-    }
+    // No custom mode topic validation needed - empty means all topics
 
     setLoading(true)
     setErrorMsg('')
@@ -610,7 +610,7 @@ function ExamSetup() {
         onApply={(rec) => {
           if (rec.recommended_mode) setMode(rec.recommended_mode)
           if (rec.suggested_topics?.length) setSelectedTopics(rec.suggested_topics)
-          // Note: questionCount state doesn't exist in original code, ignoring per original instruction
+          if (rec.suggested_count) setNumQuestions(rec.suggested_count)
         }}
       />
 
@@ -633,7 +633,7 @@ function ExamSetup() {
       </div>
 
       {/* ── Topic Selection (Custom Mode Only) ─────────────────────── */}
-      {mode === 'custom' && (
+      {(mode === 'custom' || mode === 'weak_topics') && (
         <div className="card">
           <h2 className="text-lg font-black text-ink dark:text-white mb-2">
             {t('Selecciona Temas', 'Select Topics')}

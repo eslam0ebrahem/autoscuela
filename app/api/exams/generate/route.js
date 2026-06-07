@@ -471,7 +471,7 @@ export async function POST(request) {
       if (mode === 'spaced_repetition') {
         return NextResponse.json(
           {
-            error: 'no_reviews_due',
+            noReviewsDue: true,
             message:
               language === 'es'
                 ? '¡Excelente! No tienes preguntas pendientes de repaso. Vuelve más tarde.'
@@ -497,7 +497,9 @@ export async function POST(request) {
       )
     }
 
-    const expiresAt = calculateExpiration(mode, questionIds.length, timer_minutes)
+    // 5. Calculate expiration and estimate pass probability
+    const effectiveTimerMinutes = mode === 'official' ? undefined : timer_minutes
+    const expiresAt = calculateExpiration(mode, questionIds.length, effectiveTimerMinutes)
     
     const passPrediction = estimatePassProbability(
       skillProfile,
@@ -516,6 +518,7 @@ export async function POST(request) {
       questionIds,
       expiresAt,
       source,
+      timerMinutes: effectiveTimerMinutes ?? null,
       aiPassPrediction: passPrediction,
     })
 

@@ -21,7 +21,12 @@ import { getExamCoachFeedback, getSessionQuickSummary } from '@/lib/groq'
 import { withTransaction } from '@/lib/db-utils'
 import { checkCSRF } from '@/lib/csrf'
 
-const MAX_ERRORS_TO_PASS = 3
+function calculatePassed(mode, correctCount, totalQuestions) {
+  if (mode === 'official') {
+    return (totalQuestions - correctCount) <= 3
+  }
+  return totalQuestions > 0 && (correctCount / totalQuestions) >= 0.70
+}
 
 // How long to wait for AI coach before giving up (ms). Keeps fire-and-forget bounded.
 const AI_COACH_TIMEOUT_MS = 15_000
@@ -156,7 +161,7 @@ export async function POST(request, { params }) {
     const correctCount = session.answers.filter((a) => a.isCorrect).length
     const totalQuestions = session.questionIds.length
     const errors = totalQuestions - correctCount
-    const passed = errors <= MAX_ERRORS_TO_PASS
+    const passed = calculatePassed(session.mode, correctCount, totalQuestions)
     
     const elapsedMs = now.getTime() - session.createdAt.getTime()
     const maxAllowedMs = session.expiresAt ? session.expiresAt.getTime() - session.createdAt.getTime() : elapsedMs

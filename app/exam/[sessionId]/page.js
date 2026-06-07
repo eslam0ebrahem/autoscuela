@@ -156,10 +156,10 @@ function SessionIntroOverlay({ session, onStart, t, lang }) {
         </button>
 
         <p className="mt-6 text-xs text-ink-light dark:text-slate-500 font-medium">
-          {session.mode === 'official'
+          {session.expiresAt || session.timerMinutes
             ? t(
-                'El cronómetro de 30 minutos empezará al hacer clic.',
-                'The 30-minute timer will start upon clicking.'
+                `El cronómetro de ${session.timerMinutes || 30} minutos empezará al hacer clic.`,
+                `The ${session.timerMinutes || 30}-minute timer will start upon clicking.`
               )
             : t(
                 'Sin límite de tiempo. Tómate tu tiempo para aprender.',
@@ -520,6 +520,26 @@ function ExamInterface() {
 
   const [expandedImage, setExpandedImage] = useState(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [flaggedQuestions, setFlaggedQuestions] = useState(new Set())
+
+  const toggleFlag = useCallback(async (questionId) => {
+    try {
+      const res = await fetch(`/api/exams/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId, action: 'toggleFlag' }),
+      })
+      if (res.ok) {
+        setFlaggedQuestions((prev) => {
+          const s = new Set(prev)
+          s.has(questionId) ? s.delete(questionId) : s.add(questionId)
+          return s
+        })
+      }
+    } catch (err) {
+      console.error('Error toggling flag:', err)
+    }
+  }, [sessionId])
 
   useEffect(() => {
     fetchSessionData(router)
@@ -632,19 +652,79 @@ function ExamInterface() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
-            <button
-              onClick={() => router.push(`/exam/${sessionId}/review`)}
-              className="btn-secondary flex-1 py-4 rounded-2xl font-black"
-            >
-              {t('Revisar', 'Review')}
-            </button>
-            <button
-              onClick={() => router.push('/exam')}
-              className="btn-primary flex-1 py-4 rounded-2xl font-black shadow-xl shadow-primary/20"
-            >
-              {t('Nuevo Intento', 'New Try')}
-            </button>
+          {/* XP & Streak */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            {result.xpEarned > 0 && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-3xl p-4 text-center">
+                <p className="text-2xl font-black text-amber-600">+{result.xpEarned}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-ink-light mt-1">XP</p>
+              </div>
+            )}
+            {result.newStreak > 0 && (
+              <div className="bg-orange-50 dark:bg-orange-900/20 rounded-3xl p-4 text-center">
+                <p className="text-2xl font-black text-orange-600">🔥 {result.newStreak}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-ink-light mt-1">{t('Racha', 'Streak')}</p>
+              </div>
+            )}
+            {result.accuracy != null && (
+              <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-3xl p-4 text-center">
+                <p className="text-2xl font-black text-indigo-600">{result.accuracy}%</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-ink-light mt-1">{t('Precisión', 'Accuracy')}</p>
+              </div>
+            )}
+          </div>
+
+          {/* XP Bonus reasons */}
+          {result.aiXPBonus && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl">
+              <p className="text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-2">✨ {t('Bonus XP', 'XP Bonus')}</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {result.aiXPBonus.reasons.map((r, i) => (
+                  <span key={i} className="px-3 py-1 bg-white dark:bg-slate-800 rounded-full text-xs font-bold text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700">
+                    +{Math.round(result.aiXPBonus.bonus / result.aiXPBonus.reasons.length)} {r}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* New Badges */}
+          {result.newBadges?.length > 0 && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl">
+              <p className="text-xs font-black text-purple-700 dark:text-purple-400 uppercase tracking-widest mb-2">🏆 {t('Nuevas Insignias', 'New Badges')}</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {result.newBadges.map((badge, i) => (
+                  <span key={i} className="px-3 py-1 bg-white dark:bg-slate-800 rounded-full text-xs font-bold text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-700">
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button
+                onClick={() => router.push(`/exam/${sessionId}/review`)}
+                className="btn-secondary flex-1 py-4 rounded-2xl font-black"
+              >
+                {t('Revisar', 'Review')}
+              </button>
+              <button
+                onClick={() => router.push('/exam')}
+                className="btn-primary flex-1 py-4 rounded-2xl font-black shadow-xl shadow-primary/20"
+              >
+                {t('Nuevo Intento', 'New Try')}
+              </button>
+            </div>
+            {result.errors > 0 && (
+              <button
+                onClick={() => router.push('/exam?mode=mistakes')}
+                className="w-full py-4 rounded-2xl font-black text-red-600 bg-red-50 dark:bg-red-900/20 border-2 border-red-100 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
+              >
+                {t('Practicar Errores', 'Practice Mistakes')}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -898,6 +978,18 @@ function ExamInterface() {
             }
           >
             {bookmarkedQuestions.has(currentQuestion._id) ? <StarFilled /> : <StarOutlined />}
+          </button>
+          <button
+            onClick={() => toggleFlag(currentQuestion._id)}
+            className={`w-12 h-12 flex items-center justify-center rounded-2xl border-2 transition-all
+              ${flaggedQuestions.has(currentQuestion._id)
+                ? 'bg-red-50 border-red-200 text-red-500'
+                : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+            aria-label={flaggedQuestions.has(currentQuestion._id)
+              ? t('Quitar bandera', 'Remove flag')
+              : t('Marcar pregunta', 'Flag question')}
+          >
+            {flaggedQuestions.has(currentQuestion._id) ? '🚩' : '⚑'}
           </button>
         </div>
 

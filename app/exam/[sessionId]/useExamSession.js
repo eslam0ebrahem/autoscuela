@@ -38,6 +38,8 @@ export function useExamSession(sessionId, soundEnabled, resetAIStates) {
   const timerRef = useRef(null)
   const answerFetchRef = useRef(null)
   const autoAdvanceRef = useRef(null)
+  const warned5m = useRef(false)
+  const warned1m = useRef(false)
 
   const fetchSessionData = useCallback(async (router) => {
     if (!sessionId) return
@@ -99,7 +101,20 @@ export function useExamSession(sessionId, soundEnabled, resetAIStates) {
       const res = await fetch(`/api/exams/${sessionId}/submit`, { method: 'POST' })
       const data = await res.json()
       if (data.result) {
-        setResult(data.result)
+        setResult({
+          score: data.result.score,
+          errors: data.result.errors,
+          passed: data.result.passed,
+          total: data.result.total,
+          xpEarned: data.result.xpEarned,
+          newBadges: data.result.newBadges,
+          newStreak: data.result.newStreak,
+          accuracy: data.result.accuracy,
+          aiXPBonus: data.result.aiXPBonus,
+          topicBreakdown: data.result.topicBreakdown,
+          totalTime: data.result.totalTime,
+          skillLevel: data.result.skillLevel,
+        })
         if (soundEnabled)
           playSound(data.result.passed ? '/sounds/sucess-exam.mp3' : '/sounds/fail-exam.mp3')
         if (data.result.passed) setConfetti(true)
@@ -118,8 +133,13 @@ export function useExamSession(sessionId, soundEnabled, resetAIStates) {
       if (remaining <= 0) {
         clearInterval(timerRef.current)
         handleSubmitExam()
-      } else if (remaining === 300) setTimerWarning('5min')
-      else if (remaining === 60) setTimerWarning('1min')
+      } else if (remaining <= 300 && !warned5m.current) {
+        warned5m.current = true
+        setTimerWarning('5min')
+      } else if (remaining <= 60 && !warned1m.current) {
+        warned1m.current = true
+        setTimerWarning('1min')
+      }
     }
     checkTime()
     timerRef.current = setInterval(checkTime, 1000)
@@ -213,7 +233,11 @@ export function useExamSession(sessionId, soundEnabled, resetAIStates) {
           }
         })
         .catch((err) => {
-          if (err.name !== 'AbortError') console.error('Answer fetch error:', err)
+          if (err.name !== 'AbortError') {
+            console.error('Answer fetch error:', err)
+            setAnswered(false)
+            setSelectedOption(null)
+          }
         })
     },
     [answered, submitting, startTime, session, soundEnabled, currentQuestion, sessionId, handleNext]

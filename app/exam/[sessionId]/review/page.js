@@ -369,6 +369,45 @@ function ReviewInterface() {
           {/* ── AI Coach ── */}
           <AICoachCard sessionId={sessionId} lang={lang} t={t} />
 
+          {/* ── Topic Breakdown & Actions ── */}
+          {session.topicBreakdown?.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <h3 className="text-sm font-black text-ink dark:text-white mb-3 uppercase tracking-widest">
+                {t('Rendimiento por Tema', 'Performance by Topic')}
+              </h3>
+              <div className="space-y-2">
+                {session.topicBreakdown.map((topic, i) => (
+                  <button
+                    key={i}
+                    onClick={() => router.push(`/exam?mode=custom&topics=${encodeURIComponent(topic.tag)}`)}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                  >
+                    <div className="flex-1 min-w-0 pr-4">
+                      <p className="text-sm font-bold text-ink dark:text-white truncate">
+                        {topic.tag}
+                      </p>
+                      <p className="text-xs text-ink-light dark:text-slate-400 mt-0.5">
+                        {topic.correct}/{topic.total} {t('correctas', 'correct')}
+                      </p>
+                    </div>
+                    <div className={`shrink-0 px-2 py-1 rounded-lg text-xs font-black ${topic.accuracy >= 70 ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+                      {Math.round(topic.accuracy)}%
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {counts.incorrect > 0 && (
+            <button
+              onClick={() => router.push('/exam?mode=mistakes')}
+              className="w-full py-4 rounded-2xl font-black text-red-600 bg-red-50 dark:bg-red-900/20 border-2 border-red-100 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
+            >
+              {t('Practicar Errores', 'Practice Mistakes')}
+            </button>
+          )}
+
           {/* ── Filter Tabs ── */}
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
             {[

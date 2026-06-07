@@ -8,6 +8,7 @@ import Question from '@/models/Question'
 import mongoose from 'mongoose'
 import { selectAdaptiveQuestions } from '@/lib/adaptive-selection'
 import { checkCSRF } from '@/lib/csrf'
+import { checkRateLimit } from '@/lib/utils'
 
 /**
  * POST /api/mistakes/practice
@@ -22,6 +23,14 @@ export async function POST(request) {
     if (csrfError) return NextResponse.json(csrfError, { status: csrfError.status })
 
     await connectDB()
+
+    const rateLimitError = await checkRateLimit('mistakes:practice:' + tokenData.userId, 2, 60000)
+    if (rateLimitError) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+
+    const activeCount = await ExamSession.countDocuments({ userId: tokenData.userId, status: 'in_progress' })
+    if (activeCount >= 3) {
+      return NextResponse.json({ error: 'Too many active sessions' }, { status: 403 })
+    }
 
     const user = await User.findById(tokenData.userId)
     if (!user?.isPremium) {
@@ -132,12 +141,17 @@ export async function POST(request) {
     )
 
     // Create exam session
+    const expiresAt = new Date()
+    expiresAt.setHours(expiresAt.getHours() + 24)
+
     const session = await ExamSession.create({
       userId: user._id,
       mode: 'mistakes',
       language: user.preferences.language,
       assistanceMode: 'exam',
       questionIds: selectedIds,
+      expiresAt,
+      timerMinutes: null,
     })
 
     return NextResponse.json({

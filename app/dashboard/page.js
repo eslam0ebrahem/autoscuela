@@ -27,6 +27,7 @@ import {
   CheckCircleOutlined,
   CalendarOutlined,
   ThunderboltOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons'
 
 // ---------------------------------------------------------------------------
@@ -175,6 +176,7 @@ function DashboardContent() {
     return localStorage.getItem(todayKey) === '1'
   })
   const [pendingReviews, setPendingReviews] = useState(0)
+  const [inProgressSessions, setInProgressSessions] = useState([])
 
   const isPremium = user?.isPremium
 
@@ -210,6 +212,7 @@ function DashboardContent() {
           setPlanTracking(dashRes.planTracking || null)
           setPendingReviews(dashRes.pendingReviewsCount || 0)
           setTrends(dashRes.studyTrends || []) // Use studyTrends directly from dashboard response
+          setInProgressSessions(dashRes.inProgressSessions || [])
         }
       } catch (err) {
         if (err.name !== 'AbortError') {
@@ -511,6 +514,33 @@ function DashboardContent() {
               <StarOutlined /> {t('Empezar', 'Get Started')}
             </Link>
           </div>
+        </div>
+      )}
+
+      {/* ── In-Progress Sessions ─────────────────────────────────── */}
+      {inProgressSessions?.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-black text-ink dark:text-white flex items-center gap-2">
+            <ClockCircleOutlined className="text-orange-500" /> {t('Continuar Examen', 'Resume Exam')}
+          </h2>
+          {inProgressSessions.map(session => (
+            <div key={session._id} className="card border-l-4 border-l-orange-500 flex flex-col md:flex-row items-center justify-between gap-4 p-4 hover:shadow-lg transition-shadow">
+              <div>
+                <h3 className="text-base font-black text-ink dark:text-white capitalize">
+                  {t('Modo', 'Mode')}: {session.mode.replace('_', ' ')}
+                </h3>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">
+                  {t('Progreso', 'Progress')}: {session.currentQuestionIndex || 0} / {session.questions?.length || 0} {t('preguntas', 'questions')}
+                </p>
+              </div>
+              <button
+                onClick={() => router.push(`/exam/${session._id}`)}
+                className="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold shadow-md hover:-translate-y-0.5 transition-all"
+              >
+                {t('Continuar', 'Resume')}
+              </button>
+            </div>
+          ))}
         </div>
       )}
 

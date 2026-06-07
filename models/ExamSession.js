@@ -29,6 +29,8 @@ const examSessionSchema = new mongoose.Schema(
     // FIX: field was written in route.js but missing from schema
     source: { type: String },
 
+    timerMinutes: { type: Number },
+
     // Array of question IDs — locks test order at creation time
     questionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
 

@@ -264,6 +264,15 @@ export async function GET(request) {
       skillProfile,
     })
 
+    // ── Active Exam Sessions ────────────────────────────────────────────────
+    const inProgressSessions = await ExamSession.find({
+      userId: tokenData.userId,
+      status: 'in_progress',
+    })
+      .select('_id mode currentQuestionIndex questions createdAt')
+      .sort({ createdAt: -1 })
+      .lean()
+
     // ── Response payload ─────────────────────────────────────────────────────
     return NextResponse.json({
       insights: user.aiInsights ?? null,
@@ -287,6 +296,7 @@ export async function GET(request) {
       planTracking,
       pendingReviewsCount,
       studyTrends,
+      inProgressSessions,
     })
   } catch (error) {
     console.error('[dashboard] Unhandled error:', error)

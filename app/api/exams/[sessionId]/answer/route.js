@@ -232,11 +232,7 @@ export async function POST(request, { params }) {
       return jsonError('Question not part of this exam', 400)
     }
 
-    if (
-      session.mode === 'official' &&
-      session.expiresAt &&
-      new Date() > new Date(session.expiresAt)
-    ) {
+    if (session.expiresAt && new Date() > new Date(session.expiresAt)) {
       return jsonError('Exam time has expired', 400, { expired: true })
     }
 
