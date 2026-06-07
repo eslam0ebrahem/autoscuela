@@ -49,7 +49,16 @@ function normalizeTopicFilters(topicFilter) {
   return [topicFilter].filter(Boolean)
 }
 
-function calculateExpiration(mode, questionCount) {
+function calculateExpiration(mode, questionCount, timerMinutes) {
+  if (timerMinutes !== undefined && timerMinutes !== null) {
+    if (timerMinutes === 0) {
+      return null // No timer (unlimited)
+    }
+    const expiresAt = new Date()
+    expiresAt.setMinutes(expiresAt.getMinutes() + timerMinutes)
+    return expiresAt
+  }
+
   const expiresAt = new Date()
   if (mode === 'official') {
     // Official exams have a strict time limit
@@ -349,6 +358,7 @@ export async function POST(request) {
       num_questions,
       only_new_questions,
       source,
+      timer_minutes,
     } = validated
 
     if (!VALID_MODES.has(mode)) {
@@ -487,7 +497,7 @@ export async function POST(request) {
       )
     }
 
-    const expiresAt = calculateExpiration(mode, questionIds.length)
+    const expiresAt = calculateExpiration(mode, questionIds.length, timer_minutes)
     
     const passPrediction = estimatePassProbability(
       skillProfile,
@@ -538,7 +548,7 @@ export async function POST(request) {
       mode,
       assistanceMode: assistance_mode,
       expiresAt,
-      duration: expiresAt ? DURATIONS[mode] : null,
+      duration: timer_minutes !== undefined ? timer_minutes : (expiresAt ? DURATIONS[mode] : null),
       topicFilters: topicFilters.length > 0 ? topicFilters : null,
       aiPassPrediction: passPrediction,
     })

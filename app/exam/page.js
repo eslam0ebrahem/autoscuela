@@ -366,6 +366,36 @@ function AIRecommendBanner({ lang, t, onApply }) {
   )
 }
 
+/**
+ * Timer selector component
+ */
+function TimerSelector({ value, onChange, t }) {
+  const options = [
+    { value: 0, labelKey: 'Sin Límite', labelEn: 'Unlimited' },
+    { value: 15, labelKey: '15 min', labelEn: '15 min' },
+    { value: 30, labelKey: '30 min', labelEn: '30 min' },
+    { value: 45, labelKey: '45 min', labelEn: '45 min' },
+    { value: 60, labelKey: '60 min', labelEn: '60 min' },
+  ]
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => onChange(opt.value)}
+          className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+            value === opt.value
+              ? 'bg-primary text-white shadow-md'
+              : 'bg-slate-100 dark:bg-slate-800 text-ink dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          {t(opt.labelKey, opt.labelEn)}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
@@ -388,6 +418,7 @@ function ExamSetup() {
   const [assistanceMode, setAssistanceMode] = useState('exam')
   const [selectedTopics, setSelectedTopics] = useState(aiTopics)
   const [numQuestions, setNumQuestions] = useState(30)
+  const [timerMinutes, setTimerMinutes] = useState(0)
   const [onlyNewQuestions, setOnlyNewQuestions] = useState(false)
   const [availableTopics, setAvailableTopics] = useState([])
   const [loading, setLoading] = useState(false)
@@ -480,6 +511,7 @@ function ExamSetup() {
           only_new_questions: ['official', 'custom', 'weak_topics'].includes(mode)
             ? onlyNewQuestions
             : false,
+          timer_minutes: mode === 'official' ? 30 : timerMinutes,
         }),
       })
 
@@ -510,6 +542,7 @@ function ExamSetup() {
     assistanceMode,
     numQuestions,
     onlyNewQuestions,
+    timerMinutes,
     loading,
     router,
     t,
@@ -550,8 +583,10 @@ function ExamSetup() {
         ? ` · ${t('Solo nuevas', 'Only new')}`
         : ''
 
-    return `${topicText} · ${numQuestions}Q · ${modeText}${newQuestionsText}`
-  }, [mode, selectedTopics, assistanceMode, numQuestions, onlyNewQuestions, t, availableTopics])
+    const timerText = mode === 'official' ? '' : (timerMinutes === 0 ? ` · ${t('Sin Límite', 'Unlimited')}` : ` · ${timerMinutes}m`)
+
+    return `${topicText} · ${numQuestions}Q · ${modeText}${newQuestionsText}${timerText}`
+  }, [mode, selectedTopics, assistanceMode, numQuestions, timerMinutes, onlyNewQuestions, t, availableTopics])
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -677,6 +712,16 @@ function ExamSetup() {
             {t('Número de Preguntas', 'Number of Questions')}
           </h2>
           <QuestionCountSelector value={numQuestions} onChange={setNumQuestions} t={t} />
+        </div>
+      )}
+
+      {/* ── Timer (Non-official only) ─────────────────────── */}
+      {mode !== 'official' && (
+        <div className="card">
+          <h2 className="text-lg font-black text-ink dark:text-white mb-4">
+            {t('Tiempo Límite', 'Time Limit')}
+          </h2>
+          <TimerSelector value={timerMinutes} onChange={setTimerMinutes} t={t} />
         </div>
       )}
 
