@@ -4,6 +4,7 @@ import connectDB from '@/lib/db'
 import UserAnswer from '@/models/UserAnswer'
 import User from '@/models/User'
 import Question from '@/models/Question'
+import ExamSession from '@/models/ExamSession'
 import { getCurrentUser } from '@/lib/auth'
 
 export async function GET(request) {
@@ -18,8 +19,8 @@ export async function GET(request) {
     const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000)
     const objectId = new mongoose.Types.ObjectId(tokenData.userId)
 
-    const [user, thisWeekStats, lastWeekStats, totalDB, seenStats, timeStats] = await Promise.all([
-      User.findById(tokenData.userId).select('gamification.currentStreak stats'),
+    const [user, thisWeekStats, lastWeekStats, totalDB, seenStats, timeStats, examStats, timeOfDayStats] = await Promise.all([
+      User.findById(tokenData.userId).select('gamification stats'),
       // This week accuracy
       UserAnswer.aggregate([
         {
@@ -80,14 +81,38 @@ export async function GET(request) {
           },
         },
       ]),
+      // Official Exam Win Rate
+      ExamSession.aggregate([
+        { $match: { userId: objectId, mode: 'official', status: 'completed' } },
+        {
+          $group: {
+            _id: null,
+            totalExams: { $sum: 1 },
+            passedExams: { $sum: { $cond: [{ $eq: ['$passed', true] }, 1, 0] } }
+          }
+        }
+      ]),
+      // Time of Day Productivity
+      UserAnswer.aggregate([
+        { $match: { userId: objectId } },
+        {
+          $group: {
+            _id: { $hour: "$createdAt" },
+            total: { $sum: 1 },
+            correct: { $sum: { $cond: ['$is_correct', 1, 0] } }
+          }
+        }
+      ])
     ])
 
     const thisWeek = thisWeekStats[0] || { total: 0, correct: 0 }
     const lastWeekData = lastWeekStats[0] || { total: 0, correct: 0 }
     const seenCount = seenStats[0]?.uniqueCount || 0
     const timeData = timeStats[0] || { totalSeconds: 0, avgSeconds: 0 }
+    const examsData = examStats[0] || { totalExams: 0, passedExams: 0 }
 
     const userStats = user?.stats || { totalAnswers: 0, correctAnswers: 0 }
+    const gamification = user?.gamification || {}
     const allTimeTotal = userStats.totalAnswers || 0
     const allTimeCorrect = userStats.correctAnswers || 0
 
@@ -100,13 +125,19 @@ export async function GET(request) {
       answeredQuestions: allTimeTotal,
       correctAnswers: allTimeCorrect,
       incorrectAnswers: Math.max(0, allTimeTotal - allTimeCorrect),
-      currentStreak: user?.gamification?.currentStreak || 0,
+      currentStreak: gamification.currentStreak || 0,
+      totalXP: gamification.totalXP || 0,
+      rank: gamification.rank || 0,
+      earnedBadges: gamification.earnedBadges || [],
       weeklyTrend: weeklyAccuracyChange !== 0,
       weeklyAccuracyChange,
       totalQuestionsInDB: totalDB,
       seenQuestions: seenCount,
       totalStudyTimeSeconds: timeData.totalSeconds,
       avgTimePerQuestion: Math.round(timeData.avgSeconds),
+      officialExamsTotal: examsData.totalExams,
+      officialExamsPassed: examsData.passedExams,
+      timeOfDay: timeOfDayStats
     }
 
     return NextResponse.json({ stats })

@@ -23,7 +23,11 @@ import {
   BookOutlined,
   ClockCircleOutlined,
   HourglassOutlined,
-  SearchOutlined
+  SearchOutlined,
+  StarOutlined,
+  SunOutlined,
+  MoonOutlined,
+  DashboardOutlined
 } from '@ant-design/icons'
 import StudyTrendsChart from '@/components/stats/StudyTrendsChart'
 
@@ -291,6 +295,41 @@ function ProgressContent() {
     return { mastered, learning, struggling, total: topicStats.length }
   }, [topicStats])
 
+  const timeOfDayInsights = useMemo(() => {
+    if (!stats?.timeOfDay || stats.timeOfDay.length === 0) return null
+    const buckets = {
+      morning: { name: t('Mañana (6-12h)', 'Morning (6-12h)'), total: 0, correct: 0, icon: <SunOutlined className="text-amber-500" /> },
+      afternoon: { name: t('Tarde (12-18h)', 'Afternoon (12-18h)'), total: 0, correct: 0, icon: <SunOutlined className="text-orange-500" /> },
+      evening: { name: t('Noche (18-24h)', 'Evening (18-24h)'), total: 0, correct: 0, icon: <MoonOutlined className="text-indigo-500" /> },
+      night: { name: t('Madrugada (0-6h)', 'Night (0-6h)'), total: 0, correct: 0, icon: <MoonOutlined className="text-slate-500" /> },
+    }
+    stats.timeOfDay.forEach(h => {
+      const hour = h._id
+      let b = 'night'
+      if (hour >= 6 && hour < 12) b = 'morning'
+      else if (hour >= 12 && hour < 18) b = 'afternoon'
+      else if (hour >= 18 && hour < 24) b = 'evening'
+      
+      buckets[b].total += h.total
+      buckets[b].correct += h.correct
+    })
+    
+    let bestBucket = null
+    let bestAcc = -1
+    Object.keys(buckets).forEach(k => {
+      const b = buckets[k]
+      if (b.total >= 5) { // minimum attempts
+        const acc = b.correct / b.total
+        if (acc > bestAcc) {
+          bestAcc = acc
+          bestBucket = b
+        }
+      }
+    })
+    
+    return { buckets, bestBucket, bestAcc: Math.round(bestAcc * 100) }
+  }, [stats?.timeOfDay, t])
+
   // ── Loading state ──────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -405,9 +444,97 @@ function ProgressContent() {
         </div>
       )}
 
+      {/* ── Gamification Profile ──────────────────────────────────── */}
+      {stats && (stats.totalXP > 0 || stats.earnedBadges?.length > 0) && (
+        <div className="card bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white shadow-lg shrink-0">
+                <StarOutlined className="text-3xl" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-purple-900 dark:text-purple-200">
+                  {t('Perfil de Juego', 'Gamification Profile')}
+                </h2>
+                <div className="flex items-center gap-4 mt-2">
+                  <div className="flex flex-col">
+                    <span className="text-xs uppercase font-bold tracking-widest text-purple-600/70 dark:text-purple-400/70">Total XP</span>
+                    <span className="font-black text-purple-700 dark:text-purple-300">{stats.totalXP}</span>
+                  </div>
+                  {stats.rank > 0 && (
+                    <div className="flex flex-col">
+                      <span className="text-xs uppercase font-bold tracking-widest text-purple-600/70 dark:text-purple-400/70">Rank</span>
+                      <span className="font-black text-purple-700 dark:text-purple-300">#{stats.rank}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {stats.earnedBadges?.length > 0 && (
+              <div className="flex-1 max-w-sm">
+                <span className="text-xs uppercase font-bold tracking-widest text-purple-600/70 dark:text-purple-400/70 block mb-2">
+                  {t('Insignias Recientes', 'Recent Badges')}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {stats.earnedBadges.slice(-4).map((b, i) => (
+                    <span key={i} className="px-3 py-1 bg-white dark:bg-slate-800 rounded-full text-xs font-bold text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-700/50 shadow-sm">
+                      {b}
+                    </span>
+                  ))}
+                  {stats.earnedBadges.length > 4 && (
+                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/50 rounded-full text-xs font-bold text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-700/50 shadow-sm">
+                      +{stats.earnedBadges.length - 4}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Study Trends Chart ────────────────────────────────────── */}
       {calendarData.length > 0 && (
         <StudyTrendsChart data={calendarData} />
+      )}
+
+      {/* ── Best Time to Study ────────────────────────────────────── */}
+      {timeOfDayInsights?.bestBucket && (
+        <div className="card">
+          <h2 className="text-lg font-black text-ink dark:text-white flex items-center gap-2 mb-4">
+            <ClockCircleOutlined className="text-indigo-500" />
+            {t('Tu Mejor Momento de Estudio', 'Your Best Time to Study')}
+          </h2>
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="flex flex-col items-center justify-center p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800 shrink-0 w-full md:w-auto">
+              <span className="text-4xl mb-2">{timeOfDayInsights.bestBucket.icon}</span>
+              <span className="text-lg font-black text-indigo-900 dark:text-indigo-200">{timeOfDayInsights.bestBucket.name}</span>
+              <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mt-1">{timeOfDayInsights.bestAcc}% {t('Precisión', 'Accuracy')}</span>
+            </div>
+            
+            <div className="flex-1 w-full grid grid-cols-2 md:grid-cols-4 gap-3">
+              {Object.keys(timeOfDayInsights.buckets).map(k => {
+                const b = timeOfDayInsights.buckets[k]
+                const acc = b.total > 0 ? Math.round((b.correct / b.total) * 100) : 0
+                return (
+                  <div key={k} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 flex flex-col items-center text-center">
+                    <div className="text-lg mb-1">{b.icon}</div>
+                    <span className="text-[10px] font-bold uppercase text-slate-500">{b.name.split(' ')[0]}</span>
+                    {b.total > 0 ? (
+                      <>
+                        <span className="text-lg font-black text-ink dark:text-white mt-1">{acc}%</span>
+                        <span className="text-[10px] text-slate-400 mt-1">{b.total} qs</span>
+                      </>
+                    ) : (
+                      <span className="text-xs text-slate-400 mt-2">-</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Overall Stats ───────────────────────────────────────────── */}
@@ -434,10 +561,22 @@ function ProgressContent() {
             color="red-500"
           />
           <StatCard
+            icon={<DashboardOutlined />}
+            label={t('Aprobados (Oficial)', 'Passed (Official)')}
+            value={`${stats.officialExamsPassed || 0} / ${stats.officialExamsTotal || 0}`}
+            color="indigo-500"
+          />
+          <StatCard
             icon={<FireOutlined />}
             label={t('Racha Actual', 'Current Streak')}
             value={`${stats.currentStreak || 0} ${t('días', 'days')}`}
             color="orange-500"
+          />
+          <StatCard
+            icon={<StarOutlined />}
+            label={t('Experiencia', 'Experience')}
+            value={`${stats.totalXP || 0} XP`}
+            color="purple-500"
           />
           <StatCard
             icon={<InteractionOutlined />}
