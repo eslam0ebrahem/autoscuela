@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import connectDB from '@/lib/db'
-import User from '@/models/User'
+import UserAnswer from '@/models/UserAnswer'
 import { getCurrentUser } from '@/lib/auth'
 
 export async function GET(request) {
@@ -10,26 +10,16 @@ export async function GET(request) {
 
     await connectDB()
 
-    const user = await User.findById(tokenData.userId).select('stats').lean()
-    const userStats = user?.stats || { topicStats: {} }
+    // Aggregate stats for the last 10 years (essentially all time)
+    const aggregatedStats = await UserAnswer.aggregateForAI(tokenData.userId, 3650)
 
-    const topics = []
-    const topicStatsMap =
-      userStats.topicStats instanceof Map
-        ? Object.fromEntries(userStats.topicStats)
-        : userStats.topicStats || {}
-
-    for (const [tag, stat] of Object.entries(topicStatsMap)) {
-      const attempted = stat.attempted || 0
-      const correct = stat.correct || 0
-      const topicAccuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : 0
-      topics.push({
-        tag: { es: tag, en: tag }, // Simplify EN tag for now as it's not cached in stats
-        attempted,
-        correct,
-        accuracy: topicAccuracy,
-      })
-    }
+    const topics = aggregatedStats.topics.map(t => ({
+      tag: { es: t.tag, en: t.tagEn || t.tag },
+      attempted: t.attempted,
+      correct: t.correct,
+      accuracy: t.accuracy,
+      avg_time_sec: t.avg_time_sec
+    }))
 
     // Sort by accuracy ascending (weakest first)
     topics.sort((a, b) => a.accuracy - b.accuracy)

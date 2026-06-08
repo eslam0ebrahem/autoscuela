@@ -88,7 +88,7 @@ const formatTime = (seconds) => {
 /**
  * Topic progress bar component
  */
-function TopicBar({ tag, originalTag, accuracy, attempted, lang, onPractice }) {
+function TopicBar({ tag, originalTag, accuracy, attempted, avg_time_sec, lang, onPractice }) {
   const colors = getAccuracyColors(accuracy)
   const percentage = Math.round(accuracy)
 
@@ -108,9 +108,16 @@ function TopicBar({ tag, originalTag, accuracy, attempted, lang, onPractice }) {
       </div>
 
       <div className="flex items-center justify-between text-xs text-ink-light dark:text-slate-400">
-        <span>
-          {attempted} {lang === 'es' ? 'preguntas' : 'questions'}
-        </span>
+        <div className="flex gap-3">
+          <span>
+            {attempted} {lang === 'es' ? 'preguntas' : 'questions'}
+          </span>
+          {avg_time_sec > 0 && (
+            <span className="flex items-center gap-1">
+              <ClockCircleOutlined /> {formatTime(avg_time_sec)}
+            </span>
+          )}
+        </div>
         {onPractice && (
           <button
             onClick={() => onPractice(originalTag || tag)}
@@ -172,6 +179,7 @@ function ProgressContent() {
   const [insights, setInsights] = useState(null)
   const [topicStats, setTopicStats] = useState([])
   const [calendarData, setCalendarData] = useState([])
+  const [criticalMistakes, setCriticalMistakes] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [topicSearch, setTopicSearch] = useState('')
@@ -183,22 +191,25 @@ function ProgressContent() {
       try {
         setRefreshing(force)
 
-        const [statsRes, insightsRes, topicsRes, calendarRes] = await Promise.all([
+        const [statsRes, insightsRes, topicsRes, calendarRes, mistakesRes] = await Promise.all([
           fetch('/api/stats/overall'),
           fetch(`/api/stats/ai-insights${force ? '?force=true' : ''}`),
           fetch('/api/stats/topics'),
           fetch('/api/stats/calendar'),
+          fetch('/api/mistakes?limit=3&corrected=false'),
         ])
 
         const statsData = await statsRes.json().catch(() => ({}))
         const insightsData = await insightsRes.json().catch(() => ({}))
         const topicsData = await topicsRes.json().catch(() => ({}))
         const calendarJson = await calendarRes.json().catch(() => ({}))
+        const mistakesData = await mistakesRes.json().catch(() => ({}))
 
         setStats(statsData.stats || null)
         setInsights(insightsData.insights || null)
         setTopicStats(topicsData.topics || [])
         setCalendarData(calendarJson.calendarData || [])
+        setCriticalMistakes(mistakesData.mistakes || [])
       } catch (err) {
         console.error('[progress] Fetch error:', err)
         toast?.error?.(
@@ -260,11 +271,25 @@ function ProgressContent() {
       if (topicSort === 'accuracy-asc') return a.accuracy - b.accuracy
       if (topicSort === 'accuracy-desc') return b.accuracy - a.accuracy
       if (topicSort === 'attempted-desc') return b.attempted - a.attempted
+      if (topicSort === 'time-asc') return (a.avg_time_sec || 0) - (b.avg_time_sec || 0)
+      if (topicSort === 'time-desc') return (b.avg_time_sec || 0) - (a.avg_time_sec || 0)
       return 0
     })
 
     return result
   }, [topicStats, topicSearch, topicSort])
+
+  const masteryDist = useMemo(() => {
+    let mastered = 0
+    let learning = 0
+    let struggling = 0
+    topicStats.forEach(t => {
+      if (t.accuracy >= 80) mastered++
+      else if (t.accuracy >= 50) learning++
+      else struggling++
+    })
+    return { mastered, learning, struggling, total: topicStats.length }
+  }, [topicStats])
 
   // ── Loading state ──────────────────────────────────────────────────────
   if (loading) {
@@ -339,6 +364,47 @@ function ProgressContent() {
         </div>
       )}
 
+      {/* ── Critical Mistakes ─────────────────────────────────────── */}
+      {criticalMistakes.length > 0 && (
+        <div className="card border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-black text-red-600 dark:text-red-400 flex items-center gap-2">
+              <WarningOutlined />
+              {t('Errores Críticos', 'Critical Mistakes')}
+            </h2>
+            <Link
+              href="/mistakes"
+              className="px-4 py-2 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 font-semibold rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors text-sm"
+            >
+              {t('Revisar Todos', 'Review All')}
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {criticalMistakes.map((mistake, idx) => (
+              <div key={idx} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-red-100 dark:border-red-900/30 flex justify-between items-center gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+                      Score: {mistake.severityScore}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-500 truncate">
+                      {getLocalizedText({es: mistake.topic, en: mistake.topicEn}, lang)}
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold text-ink dark:text-white line-clamp-2">
+                    {getLocalizedText(mistake.question, lang)}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-lg font-black text-red-500">{mistake.timesWrong}x</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-400">{t('Errores', 'Mistakes')}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Study Trends Chart ────────────────────────────────────── */}
       {calendarData.length > 0 && (
         <StudyTrendsChart data={calendarData} />
@@ -400,6 +466,43 @@ function ProgressContent() {
         </div>
       )}
 
+      {/* ── Mastery Distribution ────────────────────────────────────── */}
+      {masteryDist.total > 0 && (
+        <div className="card">
+          <h2 className="text-lg font-black text-ink dark:text-white mb-4">
+            {t('Distribución de Dominio', 'Mastery Distribution')}
+          </h2>
+          <div className="flex h-4 rounded-full overflow-hidden mb-4">
+            <div 
+              style={{ width: `${(masteryDist.mastered / masteryDist.total) * 100}%` }} 
+              className="bg-green-500 transition-all duration-500" 
+            />
+            <div 
+              style={{ width: `${(masteryDist.learning / masteryDist.total) * 100}%` }} 
+              className="bg-amber-400 transition-all duration-500" 
+            />
+            <div 
+              style={{ width: `${(masteryDist.struggling / masteryDist.total) * 100}%` }} 
+              className="bg-red-500 transition-all duration-500" 
+            />
+          </div>
+          <div className="flex justify-between text-xs font-bold px-2">
+            <div className="text-green-600 dark:text-green-400 flex flex-col items-start">
+              <span>{masteryDist.mastered} {t('Temas', 'Topics')}</span>
+              <span className="text-ink-light dark:text-slate-500 text-[10px] uppercase">{t('Dominado', 'Mastered')} (&ge;80%)</span>
+            </div>
+            <div className="text-amber-600 dark:text-amber-400 flex flex-col items-center">
+              <span>{masteryDist.learning} {t('Temas', 'Topics')}</span>
+              <span className="text-ink-light dark:text-slate-500 text-[10px] uppercase">{t('En Proceso', 'Learning')} (50-79%)</span>
+            </div>
+            <div className="text-red-600 dark:text-red-400 flex flex-col items-end">
+              <span>{masteryDist.struggling} {t('Temas', 'Topics')}</span>
+              <span className="text-ink-light dark:text-slate-500 text-[10px] uppercase">{t('Dificultad', 'Struggling')} (&lt;50%)</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Weak Topics ─────────────────────────────────────────────── */}
       {weakTopics.length > 0 && (
         <div className="card">
@@ -424,6 +527,7 @@ function ProgressContent() {
                 originalTag={topic.tag.es}
                 accuracy={topic.accuracy}
                 attempted={topic.attempted}
+                avg_time_sec={topic.avg_time_sec}
                 lang={lang}
                 onPractice={handlePracticeTopic}
               />
@@ -447,6 +551,7 @@ function ProgressContent() {
                 originalTag={topic.tag.es}
                 accuracy={topic.accuracy}
                 attempted={topic.attempted}
+                avg_time_sec={topic.avg_time_sec}
                 lang={lang}
               />
             ))}
@@ -481,6 +586,8 @@ function ProgressContent() {
                 <option value="accuracy-asc">{t('Precisión: Menor a Mayor', 'Accuracy: Low to High')}</option>
                 <option value="accuracy-desc">{t('Precisión: Mayor a Menor', 'Accuracy: High to Low')}</option>
                 <option value="attempted-desc">{t('Más Practicados', 'Most Practiced')}</option>
+                <option value="time-desc">{t('Más Lentos', 'Slowest')}</option>
+                <option value="time-asc">{t('Más Rápidos', 'Fastest')}</option>
               </select>
             </div>
           </div>
@@ -494,6 +601,7 @@ function ProgressContent() {
                   originalTag={topic.tag.es}
                   accuracy={topic.accuracy}
                   attempted={topic.attempted}
+                  avg_time_sec={topic.avg_time_sec}
                   lang={lang}
                   onPractice={handlePracticeTopic}
                 />

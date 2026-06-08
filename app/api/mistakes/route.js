@@ -23,86 +23,82 @@ export const GET = compose(
 
     const objectId = new mongoose.Types.ObjectId(ctx.user.userId)
 
-    // 1. Find all wrong answers for the user
-    const wrongAnswers = await UserAnswer.aggregate([
-      {
-        $match: { userId: objectId, is_correct: false },
-      },
+    // 1. Fetch all answers for the user to compute error rates and severity
+    const rawAnswers = await UserAnswer.aggregate([
+      { $match: { userId: objectId } },
       { $sort: { createdAt: 1 } },
       {
         $group: {
           _id: '$questionId',
-          topic: { $first: '$topic_tag.es' },
-          topicEn: { $first: '$topic_tag.en' },
-          timesWrong: { $sum: 1 },
-          lastWrong: { $max: '$createdAt' },
-          lastWrongAnswerIdx: { $last: '$selected_option_idx' },
-        },
-      },
-      {
-        $project: {
-          questionId: '$_id',
-          topic: 1,
-          topicEn: 1,
-          timesWrong: 1,
-          lastWrong: 1,
-          lastWrongAnswerIdx: 1,
-          _id: 0,
-        },
-      },
+          topic: { $last: '$topic_tag.es' },
+          topicEn: { $last: '$topic_tag.en' },
+          attempts: {
+            $push: {
+              is_correct: '$is_correct',
+              createdAt: '$createdAt',
+              selected_option_idx: '$selected_option_idx'
+            }
+          }
+        }
+      }
     ])
 
-    // 2. Fetch correction status only for those specific wrong questions
-    let correctionStatus = []
-    if (wrongAnswers.length > 0) {
-      const questionIds = wrongAnswers.map((w) => w.questionId)
-      correctionStatus = await UserAnswer.aggregate([
-        {
-          $match: {
-            userId: objectId,
-            is_correct: true,
-            questionId: { $in: questionIds },
-          },
-        },
-        {
-          $group: {
-            _id: '$questionId',
-            lastCorrect: { $max: '$createdAt' },
-          },
-        },
-      ])
-    }
+    const now = new Date()
 
-    if (wrongAnswers.length === 0) {
-      return NextResponse.json({
-        mistakes: [],
-        total: 0,
-        page,
-        limit,
-        totalPages: 0,
-        stats: {
-          totalMistakes: 0,
-          uncorrectedCount: 0,
-          correctionRate: 0,
-        },
-      })
-    }
+    // 2. Process and calculate Severity Score
+    const mistakesProcessed = rawAnswers.map(m => {
+      const wrongAttempts = m.attempts.filter(a => !a.is_correct)
+      if (wrongAttempts.length === 0) return null
 
-    // Build correction map
-    const correctionMap = new Map()
-    for (const c of correctionStatus) {
-      correctionMap.set(c._id.toString(), c.lastCorrect)
-    }
+      const totalAttempts = m.attempts.length
+      const timesWrong = wrongAttempts.length
+      const lastWrongAttempt = wrongAttempts[wrongAttempts.length - 1]
+      const lastWrong = lastWrongAttempt.createdAt
+      const lastWrongAnswerIdx = lastWrongAttempt.selected_option_idx
 
-    // Mark mistakes as corrected
-    const withCorrectionStatus = wrongAnswers.map((m) => {
-      const lastCorrect = correctionMap.get(m.questionId.toString())
-      const isCorrected = lastCorrect && lastCorrect > m.lastWrong
-      return { ...m, isCorrected: isCorrected || false }
-    })
+      const correctAttempts = m.attempts.filter(a => a.is_correct)
+      const lastCorrect = correctAttempts.length > 0 ? correctAttempts[correctAttempts.length - 1].createdAt : null
+
+      const isCorrected = lastCorrect && lastCorrect > lastWrong
+
+      // ── Severity Score Formula (0-100) ──
+      const errorRate = timesWrong / totalAttempts
+      let severityScore = errorRate * 50 // Max 50 points based on error rate
+
+      // Frequency penalty (up to 30 points)
+      severityScore += Math.min(timesWrong * 10, 30)
+
+      // Recency penalty (20 points if within last 7 days)
+      const daysSinceLastWrong = (now - lastWrong) / (1000 * 60 * 60 * 24)
+      if (daysSinceLastWrong <= 7) {
+        severityScore += 20
+      }
+
+      // Correction bonus
+      if (isCorrected) {
+        severityScore -= 50
+      }
+
+      severityScore = Math.max(0, Math.min(100, Math.round(severityScore)))
+
+      return {
+        questionId: m._id,
+        topic: m.topic,
+        topicEn: m.topicEn,
+        totalAttempts,
+        timesWrong,
+        lastWrong,
+        lastWrongAnswerIdx,
+        isCorrected: !!isCorrected,
+        severityScore
+      }
+    }).filter(Boolean)
+
+    // Sort by severityScore descending, then by lastWrong descending
+    mistakesProcessed.sort((a, b) => b.severityScore - a.severityScore || b.lastWrong - a.lastWrong)
 
     // Apply filters
-    let filtered = withCorrectionStatus
+    let filtered = mistakesProcessed
 
     if (topic) {
       filtered = filtered.filter((m) => m.topic === topic)
@@ -145,12 +141,13 @@ export const GET = compose(
           correct_option_idx: q.correct_option_idx,
           options: q.options,
           metadata: q.metadata,
+          severityScore: m.severityScore,
         }
       })
       .filter(Boolean)
 
-    const totalMistakes = withCorrectionStatus.length
-    const uncorrectedCount = withCorrectionStatus.filter((m) => !m.isCorrected).length
+    const totalMistakes = mistakesProcessed.length
+    const uncorrectedCount = mistakesProcessed.filter((m) => !m.isCorrected).length
 
     return NextResponse.json({
       mistakes,
