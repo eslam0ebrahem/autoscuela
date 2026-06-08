@@ -193,10 +193,10 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-surface dark:bg-slate-950 overflow-hidden">
       {/* ── Hero Section ────────────────────────────────────────────── */}
-      <section className="relative pt-20 pb-32 px-4">
+      <section className="relative pt-20 pb-32 px-4 sm:px-6 md:px-8 lg:px-12">
         <AnimatedBackground />
 
-        <div className="container-wrapper max-w-6xl mx-auto relative z-10">
+        <div className="container-wrapper max-w-[1600px] 2xl:max-w-[1920px] mx-auto relative z-10">
           {/* Badge */}
           <div className="flex justify-center mb-6">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 dark:bg-primary/20 border border-primary/20 rounded-full text-sm font-semibold text-primary">
@@ -255,8 +255,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── Features Section ────────────────────────────────────────── */}
-      <section className="py-20 px-4 bg-slate-50 dark:bg-slate-900/50">
-        <div className="container-wrapper max-w-6xl mx-auto">
+      <section className="py-20 px-4 sm:px-6 md:px-8 lg:px-12 bg-slate-50 dark:bg-slate-900/50">
+        <div className="container-wrapper max-w-[1600px] 2xl:max-w-[1920px] mx-auto">
           {/* Section Header */}
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-black text-ink dark:text-white mb-4">
@@ -280,8 +280,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── Stats Section ───────────────────────────────────────────── */}
-      <section className="py-20 px-4">
-        <div className="container-wrapper max-w-4xl mx-auto">
+      <section className="py-20 px-4 sm:px-6 md:px-8 lg:px-12">
+        <div className="container-wrapper max-w-[1600px] 2xl:max-w-[1920px] mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {STATS.map((stat, index) => (
               <StatCard key={index} stat={stat} lang={lang} />
@@ -291,8 +291,8 @@ export default function LandingPage() {
       </section>
 
       {/* ── Final CTA Section ───────────────────────────────────────── */}
-      <section className="py-20 px-4 bg-gradient-to-r from-primary to-indigo-600">
-        <div className="container-wrapper max-w-4xl mx-auto text-center">
+      <section className="py-20 px-4 sm:px-6 md:px-8 lg:px-12 bg-gradient-to-r from-primary to-indigo-600">
+        <div className="container-wrapper max-w-[1600px] 2xl:max-w-[1920px] mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-black text-white mb-4">
             {t('Tu aprobado empieza en Vialia', 'Your success starts at Vialia')}
           </h2>
