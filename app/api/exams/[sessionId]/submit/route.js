@@ -25,7 +25,7 @@ function calculatePassed(mode, correctCount, totalQuestions) {
   if (mode === 'official') {
     return (totalQuestions - correctCount) <= 3
   }
-  return totalQuestions > 0 && (correctCount / totalQuestions) >= 0.70
+  return totalQuestions > 0 && (correctCount / totalQuestions) >= 0.90
 }
 
 // How long to wait for AI coach before giving up (ms). Keeps fire-and-forget bounded.
