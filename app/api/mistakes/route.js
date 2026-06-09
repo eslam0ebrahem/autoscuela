@@ -3,6 +3,7 @@ import { compose, withAuth, withDB } from '@/lib/middleware'
 import UserAnswer from '@/models/UserAnswer'
 import Question from '@/models/Question'
 import mongoose from 'mongoose'
+import { calculateMistakesSeverity } from '@/lib/mistakes'
 
 /**
  * GET /api/mistakes
@@ -21,81 +22,8 @@ export const GET = compose(
     const limit = Math.min(50, parseInt(url.searchParams.get('limit')) || 20)
     const skip = (page - 1) * limit
 
-    const objectId = new mongoose.Types.ObjectId(ctx.user.userId)
-
-    // 1. Fetch all answers for the user to compute error rates and severity
-    const rawAnswers = await UserAnswer.aggregate([
-      { $match: { userId: objectId } },
-      { $sort: { createdAt: 1 } },
-      {
-        $group: {
-          _id: '$questionId',
-          topic: { $last: '$topic_tag.es' },
-          topicEn: { $last: '$topic_tag.en' },
-          attempts: {
-            $push: {
-              is_correct: '$is_correct',
-              createdAt: '$createdAt',
-              selected_option_idx: '$selected_option_idx'
-            }
-          }
-        }
-      }
-    ])
-
-    const now = new Date()
-
-    // 2. Process and calculate Severity Score
-    const mistakesProcessed = rawAnswers.map(m => {
-      const wrongAttempts = m.attempts.filter(a => !a.is_correct)
-      if (wrongAttempts.length === 0) return null
-
-      const totalAttempts = m.attempts.length
-      const timesWrong = wrongAttempts.length
-      const lastWrongAttempt = wrongAttempts[wrongAttempts.length - 1]
-      const lastWrong = lastWrongAttempt.createdAt
-      const lastWrongAnswerIdx = lastWrongAttempt.selected_option_idx
-
-      const correctAttempts = m.attempts.filter(a => a.is_correct)
-      const lastCorrect = correctAttempts.length > 0 ? correctAttempts[correctAttempts.length - 1].createdAt : null
-
-      const isCorrected = lastCorrect && lastCorrect > lastWrong
-
-      // ── Severity Score Formula (0-100) ──
-      const errorRate = timesWrong / totalAttempts
-      let severityScore = errorRate * 50 // Max 50 points based on error rate
-
-      // Frequency penalty (up to 30 points)
-      severityScore += Math.min(timesWrong * 10, 30)
-
-      // Recency penalty (20 points if within last 7 days)
-      const daysSinceLastWrong = (now - lastWrong) / (1000 * 60 * 60 * 24)
-      if (daysSinceLastWrong <= 7) {
-        severityScore += 20
-      }
-
-      // Correction bonus
-      if (isCorrected) {
-        severityScore -= 50
-      }
-
-      severityScore = Math.max(0, Math.min(100, Math.round(severityScore)))
-
-      return {
-        questionId: m._id,
-        topic: m.topic,
-        topicEn: m.topicEn,
-        totalAttempts,
-        timesWrong,
-        lastWrong,
-        lastWrongAnswerIdx,
-        isCorrected: !!isCorrected,
-        severityScore
-      }
-    }).filter(Boolean)
-
-    // Sort by severityScore descending, then by lastWrong descending
-    mistakesProcessed.sort((a, b) => b.severityScore - a.severityScore || b.lastWrong - a.lastWrong)
+    // 1 & 2. Fetch and calculate Severity Score using the shared helper
+    const mistakesProcessed = await calculateMistakesSeverity(ctx.user.userId)
 
     // Apply filters
     let filtered = mistakesProcessed

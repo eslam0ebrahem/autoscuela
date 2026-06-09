@@ -7,6 +7,7 @@ import UserAnswer from '@/models/UserAnswer'
 import Question from '@/models/Question'
 import mongoose from 'mongoose'
 import { selectAdaptiveQuestions } from '@/lib/adaptive-selection'
+import { calculateMistakesSeverity } from '@/lib/mistakes'
 import { checkCSRF } from '@/lib/csrf'
 import { checkRateLimit } from '@/lib/utils'
 
@@ -51,94 +52,37 @@ export async function POST(request) {
       count = 30,
     } = body
 
-    const objectId = new mongoose.Types.ObjectId(tokenData.userId)
+    // 1. Get all mistakes with their severity scores
+    const mistakesProcessed = await calculateMistakesSeverity(tokenData.userId)
 
-    // Get wrong answers
-    const wrongAnswers = await UserAnswer.aggregate([
-      {
-        $match: {
-          userId: objectId,
-          is_correct: false,
-        },
-      },
-      {
-        $group: {
-          _id: '$questionId',
-          topic: { $first: '$topic_tag.es' },
-          timesWrong: { $sum: 1 },
-          lastWrong: { $max: '$createdAt' },
-        },
-      },
-    ])
-
-    if (wrongAnswers.length === 0) {
+    if (mistakesProcessed.length === 0) {
       return NextResponse.json({ error: 'No mistakes found to practice' }, { status: 404 })
     }
 
-    // Check which have been corrected
-    const questionIds = wrongAnswers.map((m) => m._id)
-    const correctedMistakes = await UserAnswer.aggregate([
-      {
-        $match: {
-          userId: objectId,
-          questionId: { $in: questionIds },
-          is_correct: true,
-        },
-      },
-      {
-        $group: {
-          _id: '$questionId',
-          lastCorrect: { $max: '$createdAt' },
-        },
-      },
-    ])
+    // 2. Filter mistakes based on requested filters
+    let filtered = mistakesProcessed.filter(m => corrected_filter ? true : !m.isCorrected)
 
-    const correctedMap = new Map()
-    for (const m of correctedMistakes) {
-      correctedMap.set(m._id.toString(), m.lastCorrect)
-    }
-
-    // Filter to uncorrected only (if requested)
-    let filtered = wrongAnswers.filter((m) => {
-      const lastCorrect = correctedMap.get(m._id.toString())
-      const isCorrected = lastCorrect && lastCorrect > m.lastWrong
-      // If corrected_filter is strictly true, we might include both or only corrected depending on intended UX.
-      // Usually toggle "Include corrected" means include both.
-      return corrected_filter ? true : !isCorrected
-    })
-
-    // Fetch difficulties from Question model for filtering
-    const questionDocs = await Question.find({ _id: { $in: questionIds } }).select('_id difficulty').lean()
-    const difficultyMap = new Map()
-    for (const q of questionDocs) {
-      difficultyMap.set(q._id.toString(), q.difficulty)
-    }
-
-    // Apply difficulty filter
-    if (difficulty_filter) {
-      filtered = filtered.filter((m) => difficultyMap.get(m._id.toString()) === difficulty_filter)
-    }
-
-    // Apply topic filter
     if (topic_filter) {
-      filtered = filtered.filter((m) => m.topic === topic_filter)
+      filtered = filtered.filter((m) => m.topic === topic_filter || m.topicEn === topic_filter)
+    }
+
+    if (difficulty_filter) {
+      // Need to fetch difficulties for the filtered questions
+      const questionIds = filtered.map(m => m.questionId)
+      const questionDocs = await Question.find({ _id: { $in: questionIds } }).select('_id difficulty').lean()
+      const difficultyMap = new Map()
+      for (const q of questionDocs) {
+        difficultyMap.set(q._id.toString(), q.difficulty)
+      }
+      filtered = filtered.filter((m) => difficultyMap.get(m.questionId.toString()) === difficulty_filter)
     }
 
     if (filtered.length === 0) {
       return NextResponse.json({ error: 'No mistakes match the selected filters' }, { status: 404 })
     }
 
-    const mistakeQuestionIds = filtered.map((m) => m._id)
-
-    // Use adaptive selection with mistake mode to shuffle and select
-    const selectedIds = await selectAdaptiveQuestions(
-      tokenData.userId,
-      Math.min(count, mistakeQuestionIds.length),
-      {
-        mode: 'mistakes',
-        mistakeQuestionIds,
-      }
-    )
+    // 3. Take the top N most severe mistakes
+    const selectedIds = filtered.slice(0, count).map(m => m.questionId)
 
     // Create exam session
     const expiresAt = new Date()
