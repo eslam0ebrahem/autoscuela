@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 
-const TARGET_URI = process.env.MONGODB_URI || 'mongodb+srv://eslam:052LZqFY6vjllpNG@cluster0.yvqtrkm.mongodb.net/vialia'
+const TARGET_URI = process.env.MONGODB_URI || 'mongodb+srv://user:password@cluster.mongodb.net/dbname'
 
 const questionSchema = new mongoose.Schema({
   question: { es: String, en: String },

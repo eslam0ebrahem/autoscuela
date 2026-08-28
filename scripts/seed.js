@@ -17,7 +17,7 @@ const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
 
 const SOURCE_URI = 'mongodb://localhost:27017/gala_exams'
-const TARGET_URI = process.env.MONGODB_URI || 'mongodb+srv://eslam:052LZqFY6vjllpNG@cluster0.yvqtrkm.mongodb.net/vialia'
+const TARGET_URI = process.env.MONGODB_URI || 'mongodb+srv://user:password@cluster.mongodb.net/dbname'
 
 // --- Parse CLI args ---
 const args = process.argv.slice(2)

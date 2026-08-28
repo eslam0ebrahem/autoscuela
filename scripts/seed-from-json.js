@@ -12,7 +12,7 @@ const bcrypt = require('bcryptjs')
 const fs = require('fs')
 const path = require('path')
 
-const TARGET_URI = process.env.MONGODB_URI || 'mongodb+srv://eslam:052LZqFY6vjllpNG@cluster0.yvqtrkm.mongodb.net/vialia'
+const TARGET_URI = process.env.MONGODB_URI || 'mongodb+srv://user:password@cluster.mongodb.net/dbname'
 const JSON_PATH = path.resolve(__dirname, '..', 'scraped_questions.json')
 
 const TOPIC_KEYWORDS = {
